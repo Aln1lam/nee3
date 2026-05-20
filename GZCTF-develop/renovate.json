@@ -1,0 +1,12 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended", ":dependencyDashboardApproval"],
+  "baseBranchPatterns": ["work"],
+  "automerge": true,
+  "packageRules": [
+    {
+      "matchPackageNames": ["pdfjs-dist"],
+      "allowedVersions": "<=5.4.296"
+    }
+  ]
+}

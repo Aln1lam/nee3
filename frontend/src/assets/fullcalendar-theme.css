@@ -1,0 +1,117 @@
+/* FullCalendar visual theme overrides for NEEPU CTF */
+:root{
+  /* Use theme variables where possible; fallbacks provided */
+  --fc-event-coming-bg: var(--event-coming-bg, linear-gradient(180deg, rgba(220,250,230,0.96), rgba(235,255,240,0.94)));
+  --fc-event-coming-border: rgba(0,160,85,0.9);
+  --fc-event-coming-text: var(--text, #022b15);
+  --fc-event-past-bg: var(--event-past-bg, #f3f4f6);
+  --fc-event-past-text: var(--muted, #7a7f86);
+  --fc-event-radius: 8px;
+  --fc-event-shadow: 0 6px 18px rgba(3,64,102,0.06);
+}
+
+/* make events look card-like */
+.fc .fc-daygrid-event {
+  border-radius: calc(var(--fc-event-radius)) !important;
+  box-shadow: 0 8px 22px rgba(3,64,102,0.06) !important;
+  padding: 4px 6px !important; /* 收紧内边距以显示更多事件 */
+  border: 1px solid var(--border, rgba(0,0,0,0.04)) !important;
+  font-weight: 700; /* 加粗 */
+  color: var(--fc-event-coming-text, var(--text)) !important;
+  transition: transform 140ms ease, box-shadow 140ms ease;
+  font-size: 13px !important;
+  line-height: 1.05 !important;
+}
+
+/* coming events: soft blue */
+.fc .fc-daygrid-event.fc-coming {
+  background: var(--fc-event-coming-bg) !important;
+  border-left: 4px solid var(--fc-event-coming-border) !important;
+  color: var(--fc-event-coming-text) !important;
+}
+
+/* past events: muted gray */
+.fc .fc-daygrid-event.fc-past {
+  background: var(--fc-event-past-bg) !important;
+  border-left: 4px solid var(--border, rgba(0,0,0,0.06)) !important;
+  color: var(--fc-event-past-text) !important;
+  opacity: 0.95;
+}
+
+/* improve time label visibility */
+.fc .fc-event-time {
+  /* 默认深色底白字（适用于深色事件背景） */
+  background: rgba(0,0,0,0.6);
+  color: var(--slide-caption-color, #fff) !important;
+  border-radius: 6px;
+  padding: 0 6px;
+  margin-right: 6px;
+  font-weight: 800;
+  font-size: 11px;
+}
+
+/* 对于浅色事件背景（coming/past），使用浅底深字以增强可读性 */
+.fc .fc-daygrid-event.fc-coming .fc-event-time,
+.fc .fc-daygrid-event.fc-past .fc-event-time {
+  background: rgba(255,255,255,0.9) !important;
+  color: var(--text) !important;
+  box-shadow: inset 0 -1px 0 rgba(0,0,0,0.04);
+}
+
+/* 尝试让月视图中的每个日期格子接近正方形 */
+.fc .fc-daygrid-day {
+  padding: 0 !important;
+}
+.fc .fc-daygrid-day-frame {
+  /* 近似正方形：使用更紧凑的基线高度以显示更多事件 */
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  padding: 8px !important;
+  box-sizing: border-box;
+  min-height: 78px; /* 更短的基础高度 */
+}
+
+@media (min-width: 1100px) {
+  .fc .fc-daygrid-day-frame { min-height: 96px; }
+}
+@media (min-width: 1500px) {
+  .fc .fc-daygrid-day-frame { min-height: 112px; }
+}
+
+/* 确保事件区域在格子内显示良好 */
+.fc .fc-daygrid-day-frame .fc-daygrid-day-events {
+  margin-top: 6px;
+  overflow: hidden;
+}
+
+
+/* month header center title */
+.fc .fc-toolbar-title { font-weight:700; font-size:18px; }
+
+/* subtle cell hover */
+.fc .fc-daygrid-day:hover { background: rgba(0,196,140,0.02); }
+
+/* hover 微动与提升感（事件卡片） */
+.fc .fc-daygrid-event:hover {
+  transform: translateY(-4px) scale(1.01);
+  box-shadow: 0 18px 40px rgba(3,64,102,0.12) !important;
+}
+
+/* 强制覆盖 FullCalendar 可能应用的内部样式：确保事件内所有文本为深绿并继承颜色 */
+.fc .fc-daygrid-event, .fc .fc-daygrid-event * {
+  color: var(--text) !important;
+}
+
+/* 链接内部默认样式去除，继承父颜色 */
+.fc .fc-daygrid-event a, .fc .fc-daygrid-event a * {
+  color: inherit !important;
+  text-decoration: none !important;
+}
+
+/* 标题与时间使用更强的权重和继承颜色 */
+.fc .fc-daygrid-event .fc-event-title, .fc .fc-daygrid-event .fc-event-title * {
+  color: inherit !important;
+  font-weight: 700 !important;
+}
+

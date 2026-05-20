@@ -1,0 +1,108 @@
+/* Global styles to make layout and typography scale predictably across browser zoom levels */
+
+/* Monaspace 字体 - 用于英文和非中文 */
+@font-face {
+  font-family: 'Monaspace Neon';
+  src: url('/fonts/MonospaceNeon-Regular.ttf') format('opentype');
+  font-weight: 400;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'Monaspace Neon';
+  src: url('/fonts/MonospaceNeon-Medium.ttf') format('opentype');
+  font-weight: 500;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'Monaspace Neon';
+  src: url('/fonts/MonospaceNeon-Bold.ttf') format('opentype');
+  font-weight: 700;
+  font-style: normal;
+}
+
+/* 落霞字体 - 用于中文 */
+@font-face {
+  font-family: 'LXGW WenKai';
+  src: url('/fonts/LXGWWenKai-Regular.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'LXGW WenKai';
+  src: url('/fonts/LXGWWenKai-Medium.ttf') format('truetype');
+  font-weight: 500;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'LXGW WenKai';
+  src: url('/fonts/LXGWWenKai-Light.ttf') format('truetype');
+  font-weight: 300;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'LXGW WenKai Mono';
+  src: url('/fonts/LXGWWenKaiMono-Regular.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+}
+
+:root{
+  /* Keep a sensible rem base; browser zoom will scale rems proportionally */
+  font-size:16px;
+}
+
+/* Use border-box everywhere so padding/border don't affect measured widths unexpectedly */
+html{box-sizing:border-box;-webkit-text-size-adjust:100%}
+*,*::before,*::after{box-sizing:inherit}
+
+body{
+  margin:0;
+  font-family: 'Monaspace Neon', 'LXGW WenKai', monospace;
+  font-size:1rem; /* equals 16px from :root */
+  line-height:1.45;
+  color:var(--text);
+}
+
+/* 英文和代码使用等宽字体 */
+code, pre, kbd, samp {
+  font-family: 'Monaspace Neon', 'LXGW WenKai Mono', monospace;
+}
+
+/* 输入框和文本区域也用等宽 */
+input, textarea, select {
+  font-family: 'Monaspace Neon', 'LXGW WenKai Mono', monospace !important;
+}
+
+/* 确保 Naive UI 输入框也使用正确的字体 */
+:deep(.n-input input),
+:deep(.n-input textarea),
+:deep(.n-input-group input),
+:deep(.n-select),
+:deep(.n-cascader),
+:deep(.n-tree-select) {
+  font-family: 'Monaspace Neon', 'LXGW WenKai Mono', monospace !important;
+}
+
+/* Naive UI Card 透明度设置 */
+:deep(.n-card) {
+  background-color: rgba(255, 255, 255, 0.3) !important;
+  color: var(--text) !important;
+}
+
+:deep(.n-card__content) {
+  background-color: rgba(255, 255, 255, 0.3) !important;
+  color: var(--text) !important;
+}
+
+/* Small utility to keep controls visually consistent when zooming */
+.u-btn-small{padding:0.375rem 0.625rem;font-size:0.875rem}
+
+/* Prevent large unexpected text resizing on mobile/zoom */
+html, body { -ms-text-size-adjust: 100%; }
+
+/* Components can still use rem/em for sizes; this file ensures their baseline behaves consistently */

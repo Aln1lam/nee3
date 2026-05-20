@@ -1,0 +1,76 @@
+[changelog]
+
+trim = true
+
+header = """
+# Changelog\n
+All notable changes to [**GZCTF**](https://github.com/GZTimeWalker/GZCTF) will be documented in this file.\n
+"""
+
+body = """
+---
+{% if version %}\
+    {% if previous.version %}\
+        ## [{{ version | trim_start_matches(pat="v") }}]($REPO/compare/{{ previous.version }}..{{ version }}) - {{ timestamp | date(format="%Y-%m-%d") }}
+    {% else %}\
+        ## [{{ version | trim_start_matches(pat="v") }}] - {{ timestamp | date(format="%Y-%m-%d") }}
+    {% endif %}\
+{% else %}\
+    ## [unreleased]
+{% endif %}\
+{% for group, commits in commits | group_by(attribute="group") %}
+    ### {{ group | striptags | trim | upper_first }}
+    {% for commit in commits
+    | filter(attribute="scope")
+    | sort(attribute="scope") %}
+        - **({{commit.scope}})**{% if commit.breaking %} [**breaking**]{% endif %} \
+            {{ commit.message }} - ([{{ commit.id | truncate(length=6, end="") }}]($REPO/commit/{{ commit.id | truncate(length=6, end="") }})) by **{{ commit.author.name }}**
+    {%- endfor -%}
+    {% raw %}\n{% endraw %}\
+    {%- for commit in commits %}
+        {%- if commit.scope -%}
+        {% else -%}
+            - {% if commit.breaking %} [**breaking**]{% endif %}\
+                {{ commit.message }} - ([{{ commit.id | truncate(length=6, end="") }}]($REPO/commit/{{ commit.id | truncate(length=6, end="") }})) by **{{ commit.author.name }}**
+        {% endif -%}
+    {% endfor -%}
+{% endfor %}\n
+"""
+
+footer = """
+---
+GZCTF © 2022-present GZTimeWalker
+"""
+
+postprocessors = [
+  { pattern = '\$REPO', replace = "https://github.com/GZTimeWalker/GZCTF" },
+]
+
+[git]
+conventional_commits = true
+filter_unconventional = true
+split_commits = false
+protect_breaking_commits = false
+filter_commits = false
+tag_pattern = "v[0-9]*"
+ignore_tags = "patch"
+topo_order = false
+sort_commits = "newest"
+
+commit_parsers = [
+  { message = ".*BREAK", group = "<!-- 0 -->💥 BREAK CHANGES" },
+  { message = "^[fF]eat", group = "<!-- 1 -->⛰️ Features" },
+  { message = "^[fF]ix", group = "<!-- 2 -->🐛 Bug Fixes" },
+  { message = "^[sS]tyle", group = "<!-- 3 -->🎨 Styling" },
+  { message = "^[pP]erf", group = "<!-- 4 -->🚀 Performances" },
+  { message = "^[rR]efactor", group = "<!-- 5 -->🔨 Refactor" },
+  { message = "^[tT]est", group = "<!-- 6 -->🧪 Tests" },
+  { message = "^[dD]oc", skip = true },
+  { message = "^[rR]elease", skip = true },
+  { message = "^[rR]evert", skip = true },
+  { message = "^[wW]ip", skip = true },
+  { message = "^[dD]eps", skip = true },
+  { message = "^[cC]hore", skip = true },
+  { body = ".*security", group = "<!-- 8 -->🛡️ Security" },
+  { message = ".*", group = "<!-- 9 -->📦 Other Changes"}
+]

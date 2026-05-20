@@ -1,0 +1,495 @@
+/* Temporary debug: force-show top accent with high specificity and !important.
+  This makes the top bar visible immediately for verification. Remove when
+  confirmed and revert to the normal rules. */
+/* Component utility classes (theme-agnostic) — use CSS variables for colors so
+   these follow whatever theme is active via public/themes/*.css */
+
+.btn-neon {
+  background: linear-gradient(90deg, rgba(0,0,0,0.02), rgba(0,0,0,0.01));
+  border: 1px solid rgba(0,0,0,0.06);
+  color: inherit;
+  transition: transform .12s ease, box-shadow .12s ease;
+}
+.btn-neon:hover { transform: translateY(-2px); box-shadow: var(--glow); }
+
+/* Button hover: 全局加深（适用于 Naive UI 的 .n-button 及自定义按钮） */
+.n-button, .btn-neon { transition: filter .12s ease, box-shadow .12s ease; }
+.n-button:hover, .btn-neon:hover { filter: brightness(0.88); }
+
+/* ========== 统一按钮样式规范 ========== */
+/* 标准按钮尺寸 */
+button:not(.icon-btn):not(.month-header):not(.carousel-dots button):not(.pagination button) {
+  padding: 8px 16px;
+  font-size: 14px;
+  border-radius: 6px;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-weight: 500;
+  min-height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+/* 主要按钮 */
+.btn-primary, button[type="submit"], .n-button--primary {
+  background: var(--color-primary, #00C48C);
+  color: white;
+}
+.btn-primary:hover, button[type="submit"]:hover, .n-button--primary:hover {
+  background: var(--primary-hover, rgba(0,196,140,0.9));
+  transform: translateY(-1px);
+}
+
+/* 次要按钮 */
+.btn-secondary {
+  background: rgba(0,0,0,0.06);
+  color: inherit;
+  border: 1px solid rgba(0,0,0,0.12);
+}
+.btn-secondary:hover {
+  background: rgba(0,0,0,0.08);
+}
+
+/* 危险按钮 */
+.btn-danger {
+  background: #f44336;
+  color: white;
+}
+.btn-danger:hover {
+  background: #d32f2f;
+  transform: translateY(-1px);
+}
+
+/* 小按钮 */
+.btn-small {
+  padding: 6px 12px;
+  font-size: 13px;
+  min-height: 32px;
+}
+
+/* 取消按钮 */
+.btn-cancel {
+  background: rgba(0,0,0,0.06);
+  color: inherit;
+  border: 1px solid rgba(0,0,0,0.12);
+}
+.btn-cancel:hover {
+  background: rgba(0,0,0,0.08);
+}
+
+/* 禁用状态 */
+button:disabled, .btn-primary:disabled, .btn-secondary:disabled, .btn-danger:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Naive UI 按钮统一 */
+.n-button {
+  min-height: 36px !important;
+  padding: 8px 16px !important;
+  height: auto;
+}
+
+/* 导航项按钮统一 */
+.nav-item {
+  min-height: 44px;
+  height: auto;
+  display: flex;
+  align-items: center;
+}
+
+.theme-switch-card { transition: transform .14s ease, box-shadow .18s ease, opacity .18s ease; }
+.theme-switch-card.pressed { transform: scale(.98); opacity: .92; }
+
+.edge-avatar {
+  position: absolute; width: 46px; height: 46px; border-radius: 50%;
+  display: inline-grid; place-items: center;
+  background: rgba(255,255,255,0.02);
+  border: 2px solid var(--border);
+  box-shadow: var(--glow);
+  overflow: hidden;
+}
+.edge-avatar img { width: 100%; height: 100%; object-fit: cover; display:block }
+.edge-avatar.top-left { top: -22px; left: -22px; }
+.edge-avatar.top-right { top: -22px; right: -22px; }
+.edge-avatar.bottom-left { bottom: -22px; left: -22px; }
+.edge-avatar.bottom-right { bottom: -22px; right: -22px; }
+
+.edge-tag {
+  position: absolute; padding: 6px 8px; border-radius: 999px; font-size: 12px;
+  background: var(--color-accent); color: #062022; font-weight: 700;
+  border: 1px solid rgba(255,255,255,0.06);
+  box-shadow: 0 6px 18px rgba(0,0,0,0.18);
+}
+.edge-tag.top-right { top: -10px; right: -10px; }
+.edge-tag.top-left { top: -10px; left: -10px; }
+.edge-tag.bottom-right { bottom: -10px; right: -10px; }
+.edge-tag.bottom-left { bottom: -10px; left: -10px; }
+
+:where(.n-card, [class*="card"]) {
+  --card-accent-fill-height: var(--card-accent-fill-height, 36px);
+  position: relative;
+  overflow: visible;
+  /* Provide a layered background that draws: 1) left stripe, 2) top stripe + filled band.
+     This avoids stacking-context issues with inner wrapper backgrounds and guarantees
+     the area between the top stripe and the fill height is completely colored. */
+  background-color: var(--card-bg);
+  background-image: linear-gradient(to right, var(--card-accent) 0, var(--card-accent) var(--card-left-accent-width), transparent var(--card-left-accent-width)), linear-gradient(to bottom, var(--card-accent) 0, var(--card-accent) var(--card-top-accent-height), var(--card-accent) calc(var(--card-top-accent-height) + var(--card-accent-fill-height)), transparent calc(var(--card-top-accent-height) + var(--card-accent-fill-height)));
+  background-repeat: no-repeat, no-repeat;
+  background-position: left top, left top;
+  background-size: var(--card-left-accent-width) 100%, 100% calc(var(--card-top-accent-height) + var(--card-accent-fill-height));
+  background-clip: padding-box;
+  background-origin: border-box;
+}
+
+:where(.n-card, [class*="card"])::before {
+  content: "";
+  position: absolute;
+  left: 0; right: 0; top: 0;
+  height: var(--card-top-accent-height);
+  background: var(--card-accent);
+  border-top-left-radius: inherit;
+  border-top-right-radius: inherit;
+  pointer-events: none;
+  z-index: 12000;
+}
+
+:where(.n-card, [class*="card"])::after {
+  content: "";
+  position: absolute;
+
+/* Also apply the layered background to card headers so the filled band remains
+  visible when the header has its own solid background. Keep header visuals
+  intact while allowing the accent fill to show beneath. */
+:where(.n-card > .n-card-header, .n-card-header, [class*="card"] > .n-card-header) {
+  background-image: linear-gradient(to right, var(--card-accent) 0, var(--card-accent) var(--card-left-accent-width), transparent var(--card-left-accent-width)), linear-gradient(to bottom, var(--card-accent) 0, var(--card-accent) var(--card-top-accent-height), var(--card-accent) calc(var(--card-top-accent-height) + var(--card-accent-fill-height)), transparent calc(var(--card-top-accent-height) + var(--card-accent-fill-height)));
+  background-repeat: no-repeat, no-repeat;
+  background-position: left top, left top;
+  background-size: var(--card-left-accent-width) 100%, 100% calc(var(--card-top-accent-height) + var(--card-accent-fill-height));
+  background-clip: padding-box;
+  background-origin: border-box;
+}
+  left: var(--card-left-accent-width);
+  right: 0;
+  top: var(--card-top-accent-height);
+  height: var(--card-accent-fill-height);
+  background: var(--card-accent);
+  pointer-events: none;
+  z-index: 11000;
+}
+
+/* Ensure inner content accounts for left accent width */
+:where(.n-card > .n-card__content, .n-card > .n-card__body) {
+  padding-left: calc(14px + var(--card-left-accent-width));
+}
+
+/* Also apply the layered background to inner wrappers so the filled band
+   remains visible even when Naive UI sets an explicit background on them. */
+:where(.n-card > .n-card__content, .n-card > .n-card__body, [class*="card"] > .n-card__content, [class*="card"] > .n-card__body) {
+  background-image: linear-gradient(to right, var(--card-accent) 0, var(--card-accent) var(--card-left-accent-width), transparent var(--card-left-accent-width)), linear-gradient(to bottom, var(--card-accent) 0, var(--card-accent) var(--card-top-accent-height), var(--card-accent) calc(var(--card-top-accent-height) + var(--card-accent-fill-height)), transparent calc(var(--card-top-accent-height) + var(--card-accent-fill-height)));
+  background-repeat: no-repeat, no-repeat;
+  background-position: left top, left top;
+  background-size: var(--card-left-accent-width) 100%, 100% calc(var(--card-top-accent-height) + var(--card-accent-fill-height));
+  background-clip: padding-box;
+  background-origin: border-box;
+}
+
+/* Global: apply filled top band to all card-like elements and their inner wrappers.
+   This broad selector ensures any element used as a 'card' will show the accent
+   fill even if framework components add their own backgrounds. Keep rules
+   near the end to maximize override power; uses !important sparingly for the
+   layered background only. */
+:where(.n-card, .card, [class*="card"], .panel, .panel-card, .ant-card) {
+  --card-accent-fill-height: var(--card-accent-fill-height, 36px);
+  background-color: var(--card-bg);
+  background-image: linear-gradient(to right, var(--card-accent) 0, var(--card-accent) var(--card-left-accent-width), transparent var(--card-left-accent-width)), linear-gradient(to bottom, var(--card-accent) 0, var(--card-accent) var(--card-top-accent-height), var(--card-accent) calc(var(--card-top-accent-height) + var(--card-accent-fill-height)), transparent calc(var(--card-top-accent-height) + var(--card-accent-fill-height)));
+  background-repeat: no-repeat, no-repeat;
+  background-position: left top, left top;
+  background-size: var(--card-left-accent-width) 100%, 100% calc(var(--card-top-accent-height) + var(--card-accent-fill-height));
+  background-clip: padding-box;
+  background-origin: border-box;
+}
+
+:where(.n-card, .card, [class*="card"], .panel, .panel-card, .ant-card) > * {
+  /* Ensure children don't completely cover the accent band: allow overlap but
+     keep the accent visible by increasing stacking via pseudo-element fallback. */
+  position: relative;
+  z-index: 1;
+}
+
+/* Inner wrappers (Naive UI / other libs) — apply same layered background so
+   an inner background won't fully hide the accent area. */
+:where(.n-card > .n-card__content, .n-card > .n-card__body, .card > .card__content, [class*="card"] > .n-card__content, [class*="card"] > .n-card__body, .panel > .panel-body, .ant-card > .ant-card-body) {
+  background-image: linear-gradient(to right, var(--card-accent) 0, var(--card-accent) var(--card-left-accent-width), transparent var(--card-left-accent-width)), linear-gradient(to bottom, var(--card-accent) 0, var(--card-accent) var(--card-top-accent-height), var(--card-accent) calc(var(--card-top-accent-height) + var(--card-accent-fill-height)), transparent calc(var(--card-top-accent-height) + var(--card-accent-fill-height)));
+  background-repeat: no-repeat, no-repeat;
+  background-position: left top, left top;
+  background-size: var(--card-left-accent-width) 100%, 100% calc(var(--card-top-accent-height) + var(--card-accent-fill-height));
+  background-clip: padding-box;
+  background-origin: border-box;
+}
+
+/* Strong pseudo-elements placed above inner content to guarantee visibility
+   of the filled band and left stripe even when inner wrappers set solid
+   backgrounds or create stacking contexts. These are last-resort, high z-index
+   rules that coexist with the layered-background approach above. */
+:where(.n-card, .card, [class*="card"], .panel, .panel-card, .ant-card)::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: calc(var(--card-top-accent-height) + var(--card-accent-fill-height));
+  background: linear-gradient(to bottom, var(--card-accent) 0, var(--card-accent) var(--card-top-accent-height), var(--card-accent) calc(var(--card-top-accent-height) + var(--card-accent-fill-height)), transparent calc(var(--card-top-accent-height) + var(--card-accent-fill-height)));
+  pointer-events: none;
+  z-index: 99999;
+  border-top-left-radius: inherit;
+  border-top-right-radius: inherit;
+}
+
+:where(.n-card, .card, [class*="card"], .panel, .panel-card, .ant-card)::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: var(--card-left-accent-width);
+  background: var(--card-accent);
+  pointer-events: none;
+  z-index: 99999;
+  border-bottom-left-radius: inherit;
+}
+
+/* Title-band accent: 填充卡片顶部标题区域，使文字位于有色填充上
+   适配常见标题类：`.card-title`, `.kb-card-title`, 以及 Naive UI 的 header 元素
+   使用 theme 变量 `--card-accent` 控制颜色，保留卡片圆角。 */
+#app .app-container :where(.n-card, .card, [class*="card"]) .card-title,
+#app .app-container :where(.n-card, .card, [class*="card"]) .kb-card-title,
+#app .app-container :where(.n-card, .card, [class*="card"]) .n-card__header,
+#app .app-container :where(.n-card, .card, [class*="card"]) .n-card__header * {
+  display: block;
+  width: 100%;
+  background: var(--card-accent);
+  color: var(--card-accent-foreground, #ffffff);
+  padding: 0.55rem 0.9rem;
+  margin: 0;
+  box-sizing: border-box;
+  font-weight: 600;
+  border-top-left-radius: inherit;
+  border-top-right-radius: inherit;
+}
+
+/* 如果卡片内部还有单独的 header 区域，确保正文不会覆盖标题条 */
+#app .app-container :where(.n-card, .card, [class*="card"]) > *:not(.n-card__header):not(.card-title) {
+  margin-top: 0;
+}
+
+/* 为侧边小卡（如 kb-card）稍微减小内边距以保持视觉一致 */
+.kb-card .kb-card-body { padding-top: 0.4rem; }
+
+/* Sidebar card headings (e.g. Home.vue 的侧边小卡) */
+.sidebar-card .sidebar-heading,
+.sidebar-heading {
+  display: block;
+  width: 100%;
+  background: var(--card-accent);
+  color: var(--card-accent-foreground, #ffffff);
+  padding: 0.5rem 0.75rem;
+  font-weight: 700;
+  margin: 0 0 0.5rem 0;
+  box-sizing: border-box;
+  border-top-left-radius: inherit;
+  border-top-right-radius: inherit;
+}
+
+/* Ensure small card inner content does not visually overlap the heading */
+.sidebar-card > .n-card__content,
+.sidebar-card > .n-card__body,
+.sidebar-card > * {
+  padding-top: 0.4rem !important;
+}
+
+/* Slightly tighten spacing for very small sidebar cards */
+.sidebar-card[size="small"], .sidebar-card.small { padding: 0.45rem !important; }
+
+/* For sidebar cards we want a single, solid filled header band without
+   the global thin accent stripes. Disable the layered background/overlays
+   on the card root and make the heading a true solid band. */
+.sidebar-card {
+  /* remove global layered background for these small sidebar cards */
+  background-image: none !important;
+  --card-top-accent-height: 0px !important;
+  --card-accent-fill-height: 0px !important;
+}
+
+.sidebar-card::before,
+.sidebar-card::after,
+.sidebar-card > .n-card__content::before,
+.sidebar-card > .n-card__content::after {
+  display: none !important;
+  background: none !important;
+  box-shadow: none !important;
+}
+
+.sidebar-card .n-card__header,
+.sidebar-card .sidebar-heading {
+  background: var(--card-accent) !important;
+  color: var(--card-accent-foreground, #fff) !important;
+  padding: 0.5rem 0.75rem !important;
+  margin: 0 !important;
+  border: 0 !important;
+  border-radius: 8px 8px 0 0 !important;
+}
+
+.sidebar-card .n-card__content,
+.sidebar-card .n-card__body {
+  padding-top: 0.45rem !important;
+}
+
+/* =========================
+   全局：将所有卡片顶部改为实心填充并统一圆角
+   - 禁用之前用于显示薄横线/渐变的背景与伪元素
+   - 将头部元素设为实心背景（使用 --card-accent）并使文字可读
+   - 强制卡片圆角与溢出处理
+   ========================= */
+.n-card, .card, [class*="card"], .panel, .panel-card, .ant-card {
+  border-radius: var(--card-radius, 10px) !important;
+  overflow: hidden !important;
+  /* remove layered accent backgrounds so we draw header band explicitly */
+  background-image: none !important;
+  background-color: var(--card-bg) !important;
+  box-shadow: var(--card-shadow, 0 6px 18px rgba(10,20,40,0.06)) !important;
+  border: 1px solid rgba(0, 0, 0, 0.06) !important;
+  transition: transform .28s cubic-bezier(0.4, 0, 0.2, 1), 
+              box-shadow .28s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+/* Hover effect: lift card slightly with enhanced shadow */
+.n-card:hover,
+.card:hover,
+[class*="card"]:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 10px 28px rgba(10,20,40,0.14) !important;
+}
+
+/* Hide global pseudo-elements that draw thin stripes */
+.n-card::before,
+.n-card::after,
+.card::before,
+.card::after,
+[class*="card"]::before,
+[class*="card"]::after,
+.panel::before,
+.panel::after,
+.panel-card::before,
+.panel-card::after,
+.ant-card::before,
+.ant-card::after,
+.n-card > *::before,
+.n-card > *::after,
+.card > *::before,
+.card > *::after,
+[class*="card"] > *::before,
+[class*="card"] > *::after,
+.panel > *::before,
+.panel > *::after,
+.ant-card > *::before,
+.ant-card > *::after {
+  display: none !important;
+  background: none !important;
+}
+
+/* Header band: fill the full width at the top of each card. Target
+   Naive UI header slot and common title classes used across components. */
+.n-card .n-card__header,
+.n-card__header,
+.card .card-title,
+.card-title,
+.kb-card-title,
+.sidebar-heading,
+.card-title-sm,
+[class*="card"] .card-title {
+  display: block !important;
+  width: 100% !important;
+  background: var(--card-accent) !important;
+  color: var(--card-accent-foreground, #ffffff) !important;
+  padding: 0.5rem 0.8rem !important; /* 微调为更贴合标题的内边距 */
+  margin: 0 !important;
+  font-weight: 700 !important;
+  box-sizing: border-box !important;
+  border-top-left-radius: inherit !important;
+  border-top-right-radius: inherit !important;
+  transition: background-color .18s ease, color .18s ease !important;
+}
+
+/* Ensure inner content does not overlap header band */
+.n-card > .n-card__content,
+.n-card > .n-card__body,
+.card > .card__content,
+.card > .card__body,
+[class*="card"] > .n-card__content {
+  padding-top: 0.8rem !important;
+}
+
+/* Slightly reduce padding for very small headers to avoid overflow */
+.card-title-sm,
+.kb-card-title { padding: 0.45rem 0.75rem !important; }
+
+/* Responsive: reduce header padding and radius on narrow screens */
+@media (max-width: 900px) {
+  .n-card, .card, [class*="card"], .panel, .panel-card, .ant-card { border-radius: calc(var(--card-radius, 10px) - 2px) !important; }
+  .n-card .n-card__header, .card-title, .sidebar-heading { padding: 0.4rem 0.6rem !important; font-size: 0.95rem !important; }
+}
+
+
+
+/* =======================================================
+   Vditor icons global fallback
+   Ensures svg <use> references to #vditor-icon-* are visible
+   even if other global rules attempt to hide or clear SVG fills.
+   This is intentionally broad and uses !important to override
+   interfering rules from other stylesheets.
+   ======================================================= */
+
+/* Target vditor toolbar svgs and buttons */
+#app .vditor-toolbar svg,
+#app .vditor-toolbar button svg,
+.vditor-toolbar svg,
+.vditor-toolbar button svg,
+button .vditor-toolbar svg {
+  display: inline-block !important;
+  width: 18px !important;
+  height: 18px !important;
+  min-width: 18px !important;
+  min-height: 18px !important;
+  fill: currentColor !important;
+  color: currentColor !important;
+  stroke: currentColor !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+
+/* Ensure the inner shapes inherit visible fill/stroke */
+#app .vditor-toolbar svg *,
+.vditor-toolbar svg *,
+button .vditor-toolbar svg * {
+  fill: currentColor !important;
+  stroke: currentColor !important;
+  color: currentColor !important;
+  opacity: 1 !important;
+}
+
+/* Also cover direct <use> elements (some browsers use href instead of xlink:href) */
+svg use[href^="#vditor-icon-"], svg use[xlink\:href^="#vditor-icon-"] {
+  fill: currentColor !important;
+  color: currentColor !important;
+  opacity: 1 !important;
+}
+
+/* If a global rule set svg size to zero via font-size or line-height, reset those */
+.vditor-toolbar svg { font-size: initial !important; line-height: normal !important; }
+
+
+

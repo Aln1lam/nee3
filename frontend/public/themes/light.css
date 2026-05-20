@@ -1,0 +1,216 @@
+:root{
+  /* light theme variables */
+  --color-primary: #00C48C;
+  --color-accent: #00BFD8;
+  --color-neon: #7CFFB2;
+  --primary: var(--color-primary);
+  --muted: #5f8e6f;
+  --glow: 0 8px 22px rgba(0,196,140,0.08);
+
+  /* additional UI vars consumed by components */
+  --avatar-dark: rgba(12,80,40,0.12);
+  --avatar-light: rgba(240,245,250,0.9);
+  --term-bg: #eaf8ee;
+  --term-fg: #006633;
+  --term-min-height: 100vh;
+  --term-font-family: 'Fira Code', monospace;
+  --term-glow-blur: 5px;
+  --term-scanline-top: rgba(18,16,16,0);
+  --term-scanline-bottom: rgba(0,0,0,0.25);
+  --term-chroma-left: rgba(255,0,0,0.06);
+  --term-chroma-mid: rgba(0,255,0,0.02);
+  --term-chroma-right: rgba(0,0,255,0.06);
+  --term-scanline-size: 100% 2px;
+  --term-chroma-size: 3px 100%;
+  --term-overlay-z: 999;
+  /* Card accent defaults (can be overridden per-card) */
+  --card-accent: #31492c;  /* 比如改成红色 */  --card-accent-foreground: #ffffff;  /* 头部文字颜色，深色背景用白字 */  --card-top-accent-height: 4px;
+  --card-left-accent-width: 0px;
+  --card-accent-fill-height: 36px;
+  /* Card visual tokens */
+  --card-radius: 10px; /* 默认圆角，可按主题调整 */
+  --card-shadow: 0 6px 18px rgba(10,20,40,0.06);
+  --grain-1: rgba(255,255,255,0.6);
+  --grain-2: rgba(255,255,255,0.25);
+  --radial-accent: rgba(200,220,200,0.18);
+  --shadow: 0 1px 6px rgba(10,20,40,0.04);
+  --shadow-lg: 0 6px 18px rgba(10,20,40,0.08);
+  --feature-shadow: 0 8px 20px rgba(20,30,60,0.05);
+  --primary-hover: rgba(0,196,140,0.9);
+  --primary-rgb: 0,196,140;
+  --event-shadow: 0 4px 18px rgba(0,196,140,0.06);
+
+  /* light theme with soft mint/浅绿色 背景 */
+  --light-page-bg: #e7f8e7; /* 浅绿背景 */
+  --light-nav-bg: rgba(13, 41, 19, 0.571);
+  --nav-height: 85px;
+  --light-card-bg: #ffffff;
+  --light-text: #000000; /* 深绿色/接近海军绿的正文颜色 */
+  --light-border: rgba(0, 0, 0, 0.06);
+
+  --page-bg: var(--light-page-bg);
+  --nav-bg: var(--light-nav-bg);
+  --card-bg: var(--light-card-bg);
+  --text: var(--light-text);
+  --border: var(--light-border);
+  /* Layout & spacing variables (centralized for theme control) */
+  --nav-gap: 12px;
+  --nav-gap-small: 8px;
+  --nav-padding-y: 6px;
+  --nav-padding-x: 10px;
+  --nav-inner-padding: 12px 20px;
+  --nav-height: 85px;
+  --nav-font-size: 0.95rem;
+  --nav-item-font-size: 15px;
+  --brand-font-size: 1.1rem;
+  --brand-text-size: 1rem;
+  --minimal-header-padding: 20px 40px;
+  --brand-gap: 12px;
+  --brand-logo-height: 28px;
+  --content-max-width: 1600px;
+  --hover: rgba(0,0,0,0.04);
+  --overlay: rgba(0,0,0,0.4);
+  /* event and UI helpers */
+  --event-coming-bg: linear-gradient(180deg, rgba(220,250,230,0.96), rgba(235,255,240,0.94));
+  --event-past-bg: linear-gradient(180deg, #f6f7f8, #f3f4f6);
+  --overlay: rgba(0,0,0,0.4);
+  --dot-bg: rgba(255,255,255,0.5);
+  --slide-caption-color: #fff;
+  /* Events / Calendar component variables */
+  --events-padding: 16px;
+  --events-gap: 20px;
+  --events-main-width: 720px;
+  --calendar-gap: 6px;
+  --cal-cell-min-height: 96px;
+  --cal-cell-border: 1px solid rgba(0,0,0,0.06);
+  --cal-cell-padding: 6px;
+  --cal-cell-bg: var(--card-bg);
+  --cal-head-bg: #fafafa;
+  --cell-date-font-size: 12px;
+  --cell-date-color: #666;
+  --evt-bg: #e6f7ff;
+  --evt-padding: 2px 4px;
+  --evt-font-size: 12px;
+  --more-font-size: 12px;
+  --more-color: #999;
+  --list-item-padding: 8px 6px;
+  --list-item-border: 1px solid #f5f5f5;
+  /* Teams component variables */
+  --teams-page-padding: 40px;
+  --teams-title-font-size: 1.5rem;
+  --teams-title-margin-bottom: 60px;
+  --teams-bracket-color: #ccc;
+  --teams-panel-title-color: #999;
+  --teams-panel-title-font-size: 0.9rem;
+  --teams-panel-title-border-left: 3px solid var(--primary);
+  --teams-panel-title-padding-left: 10px;
+  --teams-console-bg: #f4f4f4;
+  --teams-console-padding: 15px;
+  --teams-console-font-size: 0.85rem;
+  --teams-console-color: #555;
+  --teams-console-border-left: 2px solid #52c41a;
+  --teams-code-color: #333;
+  --teams-status-bg: var(--card-bg);
+  --teams-status-border: 1px solid rgba(0,0,0,0.06);
+  --teams-status-padding: 30px;
+  --teams-status-shadow: 0 10px 30px rgba(0,0,0,0.03);
+  --teams-status-header-font-size: 0.7rem;
+  --teams-status-header-color: #bbb;
+  --teams-dot-online: #52c41a;
+  --teams-h1-size: 2rem;
+  --teams-meta-font-size: 0.9rem;
+  --teams-meta-key-width: 60px;
+  --teams-meta-key-color: #999;
+  --teams-list-title-size: 0.8rem;
+  --teams-list-title-color: #ccc;
+  --teams-member-row-padding: 8px 0;
+  --teams-member-row-border: 1px dashed #eee;
+  --teams-member-name-color: #555;
+  --teams-member-id-color: #ccc;
+  --teams-empty-padding: 60px;
+  --teams-empty-border: 2px dashed #eee;
+  /* Scoreboard / tables */
+  --scoreboard-table-margin-top: 8px;
+  --scoreboard-row-border: 1px solid #eef;
+  --scoreboard-card-bg: #fafbfc;
+  --scoreboard-card-padding: 12px;
+  /* Submissions component */
+  --submissions-page-padding: 40px;
+  --submission-input-width: 200px;
+  --submissions-header-margin-bottom: 30px;
+  --submissions-title-color: #333;
+  --submissions-table-bg: #fff;
+  --submissions-table-border: 1px solid #eee;
+  --submissions-table-padding: 20px;
+  /* ProfileEdit component */
+  --profile-actions-gap: 8px;
+  --profile-actions-margin-top: 12px;
+  /* ArticleView component */
+  --article-padding: 16px;
+  --article-meta-font-size: 12px;
+  --article-meta-color: var(--muted);
+  --article-body-margin-top: 12px;
+  /* Tools component */
+  --tools-page-padding: 16px;
+  --tools-list-padding-left: 18px;
+  --tools-list-item-gap: 8px;
+  /* Admin panel */
+  --admin-alert-padding: 20px;
+  --admin-alert-border: 1px solid #ffd8d8;
+  --admin-alert-bg: #fff6f6;
+  --admin-alert-radius: 6px;
+  --admin-alert-margin-bottom: 12px;
+  --admin-alert-title-color: #b42318;
+  --admin-muted-color: #6b7280;
+  --admin-error-color: #b42318;
+  --admin-loading-color: #0ea5a2;
+  --admin-panel-padding: 10px;
+  --admin-panel-border: 1px solid #eee;
+  --admin-panel-dashed-border: 1px dashed #ddd;
+  --admin-panel-radius: 6px;
+  --admin-panel-gap: 12px;
+  --admin-input-width-small: 120px;
+  --admin-select-width: 160px;
+  --admin-input-width-medium: 220px;
+  --admin-search-width: 320px;
+  --admin-actions-gap: 8px;
+  --admin-row-gap: 12px;
+  /* Challenge component */
+  --chal-desc-bg: #f9f9f9;
+  --chal-desc-padding: 12px 16px;
+  --chal-desc-radius: 4px;
+  --chal-desc-margin-bottom: 20px;
+  --chal-desc-font-size: 0.85rem;
+  --chal-desc-line-height: 1.6;
+  --chal-desc-color: #444;
+  --chal-desc-border-left: 3px solid var(--primary);
+  --chal-empty-color: #ccc;
+  --chal-action-gap: 8px;
+  /* Modal defaults */
+  --modal-width: 720px;
+  --modal-padding: 18px;
+  --modal-border-radius: 10px;
+  --modal-box-shadow: 0 10px 30px rgba(10,20,40,0.2);
+  --modal-max-height: 90vh;
+  /* Auth / Landing */
+  --auth-title-size: 3rem;
+  --auth-title-gap: 20px;
+  --auth-center-margin-bottom: 100px;
+  --auth-action-margin-top: 40px;
+  --auth-start-btn-padding: 0 30px;
+  --auth-start-btn-font-size: 0.9rem;
+  --auth-start-btn-hover-shadow: 0 4px 12px rgba(255,82,82,0.3);
+  --auth-modal-width: 400px;
+  --auth-mobile-modal-offset: 32px;
+}
+
+/* global transitions */
+html, body, #app { transition: background-color .32s ease, color .32s ease; }
+.top-nav, .app-container, .site-footer, .feature, .card, .hero { transition: background-color .22s ease, border-color .22s ease, box-shadow .22s ease; }
+
+/* small helpers */
+.btn-neon { background: linear-gradient(90deg, rgba(0,196,140,0.06), rgba(0,191,216,0.02)); border:1px solid rgba(0,196,140,0.12); }
+.edge-avatar { border-color: rgba(0,196,140,0.14); }
+
+/* Component utilities moved to src/assets/components.css — this file keeps only
+   theme variables and minimal theme-specific helpers. */
