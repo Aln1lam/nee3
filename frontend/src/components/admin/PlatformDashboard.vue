@@ -44,7 +44,7 @@
         <div class="chart">
           <div class="bar-chart">
             <div v-for="item in stats.trends.daily_new_users" :key="item.date" class="bar-item">
-              <div class="bar" :style="{ height: (item.count * 20 + 40) + 'px' }"></div>
+              <div class="bar" :style="{ height: Math.min(180, item.count * 20 + 40) + 'px' }"></div>
               <div class="label">{{ item.date }}</div>
               <div class="value">{{ item.count }}</div>
             </div>
@@ -69,17 +69,6 @@
       </div>
     </div>
 
-    <!-- 待办任务完成情况 -->
-    <div class="todo-stats">
-      <h3>✅ 待办任务统计</h3>
-      <div class="progress-bar">
-        <div class="progress-fill" :style="{ width: stats.todos.completion_rate + '%' }"></div>
-      </div>
-      <div class="progress-text">
-        完成率: {{ stats.todos.completion_rate }}% ({{ stats.todos.completed }} / {{ stats.todos.total }})
-      </div>
-    </div>
-
     <!-- 活跃用户排行 -->
     <div class="active-users">
       <h3>👑 活跃用户 Top 10</h3>
@@ -88,14 +77,14 @@
           <tr>
             <th>排名</th>
             <th>用户昵称</th>
-            <th>待办任务数</th>
+            <th>提交次数</th>
           </tr>
         </thead>
         <tbody>
           <tr v-for="(user, idx) in topUsers" :key="user.user_id">
             <td><strong>{{ idx + 1 }}</strong></td>
             <td>{{ user.nickname }}</td>
-            <td><span class="badge">{{ user.todo_count }}</span></td>
+            <td><span class="badge">{{ user.submission_count }}</span></td>
           </tr>
         </tbody>
       </table>
@@ -113,14 +102,15 @@ export default {
   setup() {
     const axios = inject('axios')
     
-    const stats = ref({
+    const DEFAULT_STATS = {
       users: { total: 0, new_7d: 0, new_30d: 0, admins: 0, active: 0 },
       articles: { total: 0, published: 0, draft: 0 },
       resources: { total: 0, storage_bytes: 0, storage_mb: 0 },
-      todos: { total: 0, completed: 0, completion_rate: 0 },
       teams: { total: 0 },
-      trends: { daily_new_users: [] }
-    })
+      trends: { daily_new_users: [] },
+    }
+
+    const stats = ref({ ...DEFAULT_STATS })
     
     const articlesDistribution = ref({ published: 0, draft: 0 })
     const topUsers = ref([])
@@ -136,9 +126,18 @@ export default {
           axios.get('/api/admin/platform/stats/top-active-users', { headers })
         ])
         
-        stats.value = dashRes.data
-        articlesDistribution.value = distRes.data
-        topUsers.value = topRes.data.items
+        const d = dashRes.data || {}
+        stats.value = {
+          users: { ...DEFAULT_STATS.users, ...(d.users || {}) },
+          articles: { ...DEFAULT_STATS.articles, ...(d.articles || {}) },
+          resources: { ...DEFAULT_STATS.resources, ...(d.resources || {}) },
+          teams: { ...DEFAULT_STATS.teams, ...(d.teams || {}) },
+          trends: {
+            daily_new_users: d.trends?.daily_new_users || DEFAULT_STATS.trends.daily_new_users,
+          },
+        }
+        articlesDistribution.value = distRes.data || { published: 0, draft: 0 }
+        topUsers.value = topRes.data?.items || []
       } catch (e) {
         console.error('加载仪表盘失败:', e)
       }
@@ -177,24 +176,8 @@ h3 {
 }
 
 /* 指标卡片 */
-.metrics-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 15px;
-  margin-bottom: 30px;
-}
-
-/* 图表区 */
-.charts-section {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
-  gap: 20px;
-  margin-bottom: 30px;
-}
-
 .chart-container {
-  background: white;
-  padding: 20px;
+  background: var(--gradient-card-bg, var(--card-bg));
   border-radius: 10px;
   box-shadow: var(--card-shadow);
   border-left: 4px solid var(--card-accent);
@@ -288,50 +271,12 @@ h3 {
   margin-top: 5px;
 }
 
-/* 待办统计 */
-.todo-stats {
-  background: white;
-  padding: 20px;
-  border-radius: 10px;
-  box-shadow: var(--card-shadow);
-  margin-bottom: 30px;
-  border-left: 4px solid var(--card-accent);
-}
-
-.progress-bar {
-  width: 100%;
-  height: 30px;
-  background: #f0f0f0;
-  border-radius: 15px;
-  overflow: hidden;
-  margin-bottom: 10px;
-}
-
-.progress-fill {
-  height: 100%;
-  background: linear-gradient(90deg, var(--card-accent), rgba(0,196,140,0.6));
-  transition: width .3s ease;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: white;
-  font-size: 12px;
-  font-weight: 600;
-}
-
-.progress-text {
-  font-size: 13px;
-  color: #666;
-  text-align: right;
-}
-
 /* 活跃用户表 */
 .active-users {
-  background: white;
-  padding: 20px;
+  background: var(--gradient-card-bg, var(--card-bg));
   border-radius: 10px;
   box-shadow: var(--card-shadow);
-  border-left: 4px solid var(--card-accent);
+  overflow: hidden;
 }
 
 .users-table {

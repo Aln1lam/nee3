@@ -19,11 +19,28 @@
           <h3>📅 竞赛列表</h3>
           <button class="btn-primary" @click="showCreateGameModal = true">新建竞赛</button>
         </div>
+        <div class="games-filters">
+          <label class="filter-item">
+            类型
+            <select v-model="gameTypeFilter" class="form-input filter-select" @change="loadGames">
+              <option value="">全部</option>
+              <option value="official">正式赛</option>
+              <option value="training">训练场</option>
+              <option value="practice">练习</option>
+            </select>
+          </label>
+          <label class="filter-item">
+            <input v-model="showEphemeral" type="checkbox" @change="loadGames">
+            显示探针/E2E
+          </label>
+          <span class="filter-meta">共 {{ games.length }} 场</span>
+        </div>
         <table class="data-table">
           <thead>
             <tr>
               <th>ID</th>
               <th>竞赛名称</th>
+              <th>类型</th>
               <th>开始时间</th>
               <th>结束时间</th>
               <th>参赛人数</th>
@@ -37,6 +54,9 @@
             <tr>
               <td>{{ game.id }}</td>
               <td>{{ game.title }}</td>
+              <td>
+                <span class="badge" :class="gameTypeBadgeClass(game)">{{ gameTypeLabel(game) }}</span>
+              </td>
               <td>{{ formatTime(game.start_time) }}</td>
               <td>{{ formatTime(game.end_time) }}</td>
               <td>
@@ -59,7 +79,7 @@
               </td>
             </tr>
             <tr v-if="expandedGameId === game.id">
-              <td colspan="8">
+              <td colspan="9">
                 <div class="game-divisions-section">
                   <div class="divisions-header">
                     <div class="divisions-title">分组 / 邀请码</div>
@@ -75,13 +95,14 @@
                         <div class="division-sub">
                           邀请码：<span class="code-pill">{{ division.invite_code || '未设置' }}</span>
                         </div>
+                        <div class="division-sub">学校范围：{{ division.school_scope || '全局' }}</div>
                         <div class="division-sub">成员数：{{ division.member_count || 0 }}</div>
                       </div>
                       <div class="division-actions">
                         <button class="btn-small btn-info" :disabled="!division.invite_code" @click="copyToClipboard(division.invite_code)">复制邀请码</button>
                         <button class="btn-small" @click="viewDivisionMembers(game.id, division)">查看成员</button>
                         <button class="btn-small btn-edit" @click="openEditDivisionModal(game.id, division)">编辑</button>
-                        <button class="btn-small btn-danger" @click="deleteDivision(game.id, division.id)">删除</button>
+                        <button class="btn-small btn-danger" @click="deleteDivision(game.id, division)">删除</button>
                       </div>
                     </div>
                   </div>
@@ -114,6 +135,14 @@
               <input v-model="gameForm.end_time" type="datetime-local" class="form-input">
             </div>
             <div class="form-group">
+              <label>竞赛类型</label>
+              <select v-model="gameForm.game_type" class="form-input">
+                <option value="official">正式赛</option>
+                <option value="training">训练场</option>
+                <option value="practice">练习</option>
+              </select>
+            </div>
+            <div class="form-group">
               <label>
                 <input v-model="gameForm.is_public" type="checkbox">
                 公开竞赛
@@ -141,7 +170,12 @@
             </div>
             <div class="form-group">
               <label>邀请码</label>
-              <input v-model="divisionForm.invite_code" type="text" placeholder="可为空，留空表示不限制" class="form-input">
+              <input v-model="divisionForm.invite_code" type="text" placeholder="可为空；写入后用于报名分流" class="form-input">
+            </div>
+            <div class="form-group">
+              <label>学校范围</label>
+              <input v-model="divisionForm.school_scope" type="text" placeholder="留空=全局；可填「高校」或具体校名" class="form-input">
+              <small class="form-hint">与邀请码一起校验；写入后列表应能回读。</small>
             </div>
             <div class="form-group">
               <label>描述</label>
@@ -245,7 +279,7 @@
               </td>
               <td>
                 <button class="btn-small btn-edit" @click="editChallenge(challenge)">编辑</button>
-                <button class="btn-small btn-danger" @click="deleteChallenge(challenge.id, challenge.game_id)">删除</button>
+                <button class="btn-small btn-danger" @click="deleteChallenge(challenge.id, challenge.game_id, challenge.title)">删除</button>
               </td>
             </tr>
           </tbody>
@@ -312,12 +346,19 @@
               </div>
             </div>
 
+            <!-- 动态 Flag 模板（动态附件 / 动态容器） -->
+            <div v-if="[2, 3].includes(challengeForm.challenge_type)" class="form-group">
+              <label>动态 Flag 模板 *</label>
+              <input v-model="challengeForm.flag_template" type="text" placeholder="flag{{{team_hash}}}" class="form-input">
+              <small class="form-hint">动态题必填；静态 Flag 字段可作为兜底答案。</small>
+            </div>
+
             <!-- 容器相关配置 -->
             <div v-if="[1, 3].includes(challengeForm.challenge_type)" class="container-config">
               <h4>🐳 容器配置</h4>
               <div class="form-row">
                 <div class="form-group">
-                  <label>Docker 镜像</label>
+                  <label>Docker 镜像 *</label>
                   <input v-model="challengeForm.docker_image" type="text" placeholder="challenge-image:latest" class="form-input">
                 </div>
                 <div class="form-group">
@@ -335,13 +376,33 @@
                   <input v-model.number="challengeForm.cpu_count" type="number" placeholder="1" class="form-input">
                 </div>
               </div>
+              <div class="form-row">
+                <div class="form-group">
+                  <label>磁盘限制 (MB)</label>
+                  <input v-model.number="challengeForm.storage_limit" type="number" placeholder="1024" class="form-input">
+                </div>
+                <div class="form-group">
+                  <label>网络模式</label>
+                  <select v-model="challengeForm.network_mode" class="form-input">
+                    <option value="Open">Open</option>
+                    <option value="Isolated">Isolated</option>
+                    <option value="Custom">Custom</option>
+                  </select>
+                </div>
+              </div>
+              <div class="form-group">
+                <label>
+                  <input v-model="challengeForm.enable_traffic_capture" type="checkbox">
+                  启用流量捕获（选手须使用 connection_url）
+                </label>
+              </div>
             </div>
 
-            <!-- 附件上传 -->
+            <!-- 附件上传：静态/动态附件题 -->
             <div v-if="[0, 2].includes(challengeForm.challenge_type)" class="attachment-section">
               <h4>📎 题目附件</h4>
               <div class="form-group">
-                <label>上传题目附件 (静态题目)</label>
+                <label>上传题目附件（单文件，建议 &lt; 20MB）</label>
                 <div class="file-upload-box">
                   <input 
                     type="file" 
@@ -350,7 +411,7 @@
                     id="attachment"
                   >
                   <label for="attachment" class="file-label">
-                    点击上传或拖拽文件
+                    点击选择文件
                     <span v-if="challengeForm.attachment_file" style="display: block; margin-top: 8px;">
                       ✓ {{ challengeForm.attachment_file.name }}
                     </span>
@@ -382,13 +443,20 @@
       <div class="card">
         <div class="card-header">
           <h3>⚠️ 作弊检测记录</h3>
-          <div style="display: flex; gap: 10px;">
+          <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
             <select v-model="selectedCheatGameId" class="form-input" style="width: 200px;">
-              <option value="">选择竞赛...</option>
+              <option value="">全部竞赛</option>
               <option v-for="game in games" :key="game.id" :value="game.id">
                 {{ game.title }}
               </option>
             </select>
+            <select v-model="cheatStatusFilter" class="form-input" style="width: 140px;">
+              <option value="">全部状态</option>
+              <option value="pending">待审核</option>
+              <option value="confirmed">已确认</option>
+              <option value="dismissed">已驳回</option>
+            </select>
+            <button class="btn-small" @click="loadCheatRecords(selectedCheatGameId)">刷新</button>
           </div>
         </div>
 
@@ -444,14 +512,17 @@
             </div>
             <div class="cheat-actions">
               <button class="btn-small btn-warning" @click="handleCheatRecord(record, 'review')">
-                🔍 审核
+                🔍 备注
               </button>
-              <button class="btn-small btn-danger" @click="handleCheatRecord(record, 'confirm')">
-                ✓ 确认作弊
-              </button>
-              <button class="btn-small btn-secondary" @click="handleCheatRecord(record, 'dismiss')">
-                ✗ 驳回
-              </button>
+              <template v-if="(record.status || 'pending') === 'pending'">
+                <button class="btn-small btn-danger" @click="handleCheatRecord(record, 'confirm')">
+                  ✓ 确认作弊
+                </button>
+                <button class="btn-small btn-secondary" @click="handleCheatRecord(record, 'dismiss')">
+                  ✗ 驳回
+                </button>
+              </template>
+              <span v-else class="text-muted">已处理，可刷新查看最新状态</span>
             </div>
           </div>
         </div>
@@ -462,13 +533,31 @@
     <div v-show="activeTab === 'scoreboard'" class="tab-content">
       <div class="card">
         <div class="card-header">
-          <h3>🏆 排行榜统计</h3>
-          <select v-model="selectedScoreboardGameId" class="form-input" style="width: 200px;">
-            <option value="">选择竞赛...</option>
-            <option v-for="game in games" :key="game.id" :value="game.id">
-              {{ game.title }}
-            </option>
-          </select>
+          <h3>🏆 排行榜 / 赛事统计</h3>
+          <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+            <select v-model="selectedScoreboardGameId" class="form-input" style="width: 200px;">
+              <option value="">选择竞赛...</option>
+              <option v-for="game in games" :key="game.id" :value="game.id">
+                {{ game.title }}
+              </option>
+            </select>
+            <button
+              class="btn-primary btn-small"
+              :disabled="!selectedScoreboardGameId || exportingScoreboard"
+              @click="exportScoreboardCsv"
+            >导出 CSV</button>
+          </div>
+        </div>
+
+        <div v-if="selectedScoreboardGameId && gameStats" class="game-stats-grid">
+          <div class="stat-chip"><span>参赛人数</span><strong>{{ gameStats.participant_count || gameStats.participation_count || 0 }}</strong></div>
+          <div class="stat-chip"><span>队伍数</span><strong>{{ gameStats.team_count || 0 }}</strong></div>
+          <div class="stat-chip"><span>题目数</span><strong>{{ gameStats.challenge_count || 0 }}</strong></div>
+          <div class="stat-chip"><span>总提交</span><strong>{{ gameStats.total_submissions || 0 }}</strong></div>
+          <div class="stat-chip"><span>正确提交</span><strong>{{ gameStats.correct_submissions || 0 }}</strong></div>
+          <div class="stat-chip"><span>正确率</span><strong>{{ gameStats.correct_rate || 0 }}%</strong></div>
+          <div class="stat-chip"><span>待审作弊</span><strong>{{ gameStats.cheat_pending || 0 }}</strong></div>
+          <div class="stat-chip"><span>已确认作弊</span><strong>{{ gameStats.cheat_confirmed || gameStats.cheat_count || 0 }}</strong></div>
         </div>
 
         <div v-if="selectedScoreboardGameId" class="scoreboard-container">
@@ -501,7 +590,93 @@
       </div>
     </div>
 
-    <!-- 队伍管理 -->
+    <!-- 首解 / 血榜 -->
+    <div v-show="activeTab === 'firstsolve'" class="tab-content">
+      <div class="card">
+        <div class="card-header">
+          <h3>🩸 首解 / 血榜</h3>
+          <select v-model="selectedFirstSolveGameId" class="form-input" style="width: 220px;">
+            <option value="">选择竞赛...</option>
+            <option v-for="game in games" :key="game.id" :value="game.id">{{ game.title }}</option>
+          </select>
+        </div>
+        <div v-if="!selectedFirstSolveGameId" class="empty-state"><p>请选择竞赛查看首解</p></div>
+        <div v-else-if="firstSolves.length === 0" class="empty-state"><p>📭 暂无首解记录</p></div>
+        <table v-else class="data-table">
+          <thead>
+            <tr>
+              <th>时间</th>
+              <th>题目</th>
+              <th>用户</th>
+              <th>队伍</th>
+              <th>血</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="fs in firstSolves" :key="fs.id">
+              <td>{{ formatTime(fs.solved_at) }}</td>
+              <td>{{ fs.challenge_title || ('#' + fs.challenge_id) }}</td>
+              <td>{{ fs.user_name || fs.username || ('#' + fs.user_id) }}</td>
+              <td>{{ fs.team_name || '-' }}</td>
+              <td>{{ fs.blood_level != null ? (['一血','二血','三血'][fs.blood_level] || fs.blood_level) : '-' }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- 锤子聚合 -->
+    <div v-show="activeTab === 'hammer'" class="tab-content">
+      <div class="card">
+        <div class="card-header">
+          <h3>🔨 锤子消息</h3>
+          <div style="display:flex;gap:10px;align-items:center;">
+            <select v-model="selectedHammerGameId" class="form-input" style="width: 220px;">
+              <option value="">全部竞赛</option>
+              <option v-for="game in games" :key="game.id" :value="game.id">{{ game.title }}</option>
+            </select>
+            <button class="btn-small" @click="loadHammerMessages">刷新</button>
+          </div>
+        </div>
+        <div v-if="hammerMessages.length === 0" class="empty-state"><p>📭 暂无锤子消息</p></div>
+        <div v-else class="cheat-list">
+          <div v-for="m in hammerMessages" :key="m.id" class="cheat-card">
+            <div class="cheat-header">
+              <span class="cheat-id">#{{ m.id }}</span>
+              <span class="cheat-type-badge">{{ m.challenge_title || ('题目#' + m.challenge_id) }}</span>
+              <span class="cheat-status-badge" :class="m.is_staff ? 'status-confirmed' : 'status-pending'">
+                {{ m.is_staff ? '裁判' : '选手' }}
+              </span>
+              <span class="cheat-time">{{ formatTime(m.created_at) }}</span>
+            </div>
+            <div class="cheat-content">
+              <strong>{{ m.nickname || ('用户#' + m.user_id) }}</strong>
+              <p>{{ m.content }}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 动态附件包 -->
+    <div v-show="activeTab === 'traffic'" class="tab-content">
+      <div class="card">
+        <TrafficCapturePanel :game-id-prop="selectedGameId || null" />
+      </div>
+    </div>
+
+    <div v-show="activeTab === 'packages'" class="tab-content">
+      <div class="card">
+        <DynamicPackageManager :game-id="selectedGameId || null" />
+      </div>
+    </div>
+
+    <div v-show="activeTab === 'seasons'" class="tab-content">
+      <div class="card">
+        <SeasonManager />
+      </div>
+    </div>
+
     <div v-show="activeTab === 'teams'" class="tab-content">
       <div class="card">
         <div class="card-header" style="align-items:center; gap:12px;">
@@ -554,23 +729,55 @@
   </div>
 </template>
 <script>
+import DynamicPackageManager from './DynamicPackageManager.vue'
+import SeasonManager from './SeasonManager.vue'
+import TrafficCapturePanel from './TrafficCapturePanel.vue'
+import { useMessage } from 'naive-ui'
+import { apiErrorFromPayload } from '@/utils/apiError'
+import { ctfAdmin } from '@/services/admin/ctf'
+import { parseJsonResponse, isApiSuccess } from '@/utils/http'
+
 export default {
   name: 'CtfManagement',
   components: {
+    DynamicPackageManager,
+    SeasonManager,
+    TrafficCapturePanel,
+  },
+  setup() {
+    let message
+    try {
+      message = useMessage()
+    } catch (e) {
+      message = {
+        info: (t) => console.info('[message.info]', t),
+        success: (t) => console.log('[message.success]', t),
+        warning: (t) => console.warn('[message.warning]', t),
+        error: (t) => console.error('[message.error]', t),
+      }
+    }
+    return { message }
   },
   data() {
     return {
       activeTab: 'games',
-      tabs: ['games', 'challenges', 'cheat', 'scoreboard', 'teams'],
+      tabs: ['games', 'challenges', 'packages', 'seasons', 'traffic', 'cheat', 'scoreboard', 'firstsolve', 'hammer', 'teams'],
+      gameTypeFilter: '',
+      showEphemeral: false,
       games: [],
       challenges: [],
       cheatRecords: [],
       scoreboard: [],
       firstSolves: [],
+      hammerMessages: [],
+      selectedHammerGameId: '',
 
       selectedGameId: '',
       selectedCheatGameId: '',
+      cheatStatusFilter: '',
       selectedScoreboardGameId: '',
+      gameStats: null,
+      exportingScoreboard: false,
       selectedFirstSolveGameId: '',
 
       showCreateGameModal: false,
@@ -622,12 +829,20 @@ export default {
     selectedCheatGameId(newVal) {
       this.loadCheatRecords(newVal);
     },
+    cheatStatusFilter() {
+      this.loadCheatRecords(this.selectedCheatGameId);
+    },
     selectedScoreboardGameId(newVal) {
       if (!newVal) {
         this.scoreboard = [];
+        this.gameStats = null;
         return;
       }
       this.loadScoreboard(newVal);
+      this.loadGameStats(newVal);
+    },
+    selectedHammerGameId() {
+      this.loadHammerMessages();
     },
     selectedFirstSolveGameId(newVal) {
       if (!newVal) {
@@ -645,8 +860,11 @@ export default {
         challenges: '🎯 题目管理',
         cheat: '⚠️ 作弊检测',
         scoreboard: '🏆 排行榜',
+        firstsolve: '🩸 首解',
+        hammer: '🔨 锤子',
         traffic: '🚨 流量捕获',
-        teams: '👥 队伍管理'
+        packages: '📦 动态附件包',
+                teams: '👥 队伍管理'
       };
       return labels[tab] || tab;
     },
@@ -674,18 +892,18 @@ export default {
       try {
         const token = localStorage.getItem('neepu_token');
         const res = await fetch(`/api/teams/admin/${teamId}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } });
-        if (res.ok) { alert('已删除'); await this.loadAdminTeams(); }
+        if (res.ok) { this.message.success('已删除'); await this.loadAdminTeams(); }
         else {
           // 尝试解析 JSON，若失败则回退为纯文本显示
           try {
             const d = await res.json();
-            alert('删除失败: ' + (d.msg || JSON.stringify(d)));
+            this.message.error(apiErrorFromPayload(d, '删除失败'));
           } catch (e) {
             const txt = await res.text();
-            alert('删除失败: HTTP ' + res.status + '\n' + (txt.length > 1000 ? txt.slice(0,1000) + '\n...[truncated]' : txt));
+            this.message.error('删除失败: HTTP ' + res.status);
           }
         }
-      } catch (e) { alert('删除失败: ' + e.message); }
+      } catch (e) { this.message.error(e.message || '删除失败'); }
     },
 
     async deleteAllAdminTeams() {
@@ -695,13 +913,13 @@ export default {
         const res = await fetch('/api/teams/admin', { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } });
         try {
           const d = await res.json();
-          if (res.ok) { alert('已删除 ' + (d.deleted || 0) + ' 个队伍'); await this.loadAdminTeams(); }
-          else { alert('删除失败: ' + JSON.stringify(d)); }
+          if (res.ok) { this.message.success('已删除 ' + (d.deleted || 0) + ' 个队伍'); await this.loadAdminTeams(); }
+          else { this.message.error(apiErrorFromPayload(d, '删除失败')); }
         } catch (e) {
           const txt = await res.text();
-          alert('删除失败: HTTP ' + res.status + '\n' + (txt.length > 1000 ? txt.slice(0,1000) + '\n...[truncated]' : txt));
+          this.message.error('删除失败: HTTP ' + res.status);
         }
-      } catch (e) { alert('删除失败: ' + e.message); }
+      } catch (e) { this.message.error(e.message || '删除失败'); }
     },
 
     filteredAdminTeams() {
@@ -731,31 +949,31 @@ export default {
 
     async loadGames() {
       try {
-        console.log('loadGames started');
-        const token = localStorage.getItem('neepu_token');
-        console.log('token:', token ? 'exists' : 'missing');
-        const res = await fetch('/api/ctf/games', { headers: { 'Authorization': `Bearer ${token}` } });
-        console.log('loadGames response:', res.status);
-        if (!res.ok) {
-          if (res.status === 401) {
-            alert('登录已过期，请重新登录');
+        const res = await ctfAdmin.listGames(200, {
+          game_type: this.gameTypeFilter || undefined,
+          include_ephemeral: !!this.showEphemeral,
+        });
+        const parsed = await parseJsonResponse(res);
+        if (!isApiSuccess(parsed)) {
+          if (parsed.status === 401) {
+            this.message.warning('登录已过期，请重新登录');
             try { localStorage.removeItem('neepu_token'); localStorage.removeItem('neepu_user'); } catch (e) {}
             this.$router && this.$router.push('/auth');
             return;
           }
-          // 非 200 的响应，尝试解析 JSON，否则忽略
-          try { const err = await res.json(); console.error('loadGames error', err); } catch (e) { console.error('loadGames error, non-json response'); }
           this.games = [];
+          this.message.error(apiErrorFromPayload(parsed.data, '加载竞赛列表失败'));
           return;
         }
-        const data = await res.json();
-        console.log('loadGames data:', data);
-        this.games = data.data?.items || [];
-        console.log('games loaded:', this.games.length);
+        const raw = parsed.data?.data;
+        this.games = Array.isArray(raw) ? raw : (raw?.items || []);
         if (!this.selectedGameId && this.games.length > 0 && this.activeTab === 'challenges') {
           this.selectedGameId = this.games[0].id;
         }
-      } catch (e) { console.error('加载竞赛列表失败:', e); }
+      } catch (e) {
+        this.games = [];
+        this.message.error(e.message || '加载竞赛列表失败');
+      }
     },
 
     async toggleGameDivisions(gameId) {
@@ -770,16 +988,18 @@ export default {
     async loadGameDivisions(gameId) {
       try {
         this.loadingDivisions[gameId] = true;
-        const res = await fetch(`/api/competitions/${gameId}/divisions`);
-        if (!res.ok) {
-          console.error('loadGameDivisions failed', res.status);
+        const res = await ctfAdmin.listDivisions(gameId);
+        const parsed = await parseJsonResponse(res);
+        if (!isApiSuccess(parsed)) {
+          this.message.error(apiErrorFromPayload(parsed.data, '加载分组失败'));
           this.gameDivisions[gameId] = [];
           return;
         }
-        const data = await res.json();
-        this.gameDivisions[gameId] = data.data || [];
+        const rows = parsed.data?.data || parsed.data || [];
+        this.gameDivisions[gameId] = Array.isArray(rows) ? rows.filter(d => d && d.id !== -1) : [];
       } catch (e) {
         console.error('loadGameDivisions error', e);
+        this.message.error(e.message || '加载分组失败');
         this.gameDivisions[gameId] = [];
       } finally {
         this.loadingDivisions[gameId] = false;
@@ -799,6 +1019,7 @@ export default {
       this.divisionForm = {
         name: division.name || '',
         invite_code: division.invite_code || '',
+        school_scope: division.school_scope || '',
         description: division.description || ''
       };
       this.showDivisionModal = true;
@@ -813,83 +1034,87 @@ export default {
 
     async saveDivision() {
       if (!this.editingGameId) return;
-      if (!this.divisionForm.name) {
-        alert('分组名称不能为空');
+      if (!String(this.divisionForm.name || '').trim()) {
+        this.message.warning('分组名称不能为空');
         return;
       }
       try {
-        const token = localStorage.getItem('neepu_token');
-        const payload = {
-          name: this.divisionForm.name,
-          invite_code: this.divisionForm.invite_code || null,
-          description: this.divisionForm.description || null
-        };
         const gameId = this.editingGameId;
+        const payload = {
+          name: String(this.divisionForm.name).trim(),
+          invite_code: String(this.divisionForm.invite_code || '').trim() || null,
+          school_scope: String(this.divisionForm.school_scope || '').trim() || null,
+          description: String(this.divisionForm.description || '').trim() || null,
+        };
         let res;
         if (this.editingDivision && this.editingDivision.id) {
-          res = await fetch(`/api/competitions/admin/${this.editingGameId}/divisions/${this.editingDivision.id}`,
-            { method: 'PUT', headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+          res = await ctfAdmin.updateDivision(gameId, this.editingDivision.id, payload);
         } else {
-          res = await fetch(`/api/competitions/admin/${this.editingGameId}/divisions/create`,
-            { method: 'POST', headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+          res = await ctfAdmin.createDivision(gameId, payload);
         }
-        if (res.ok) {
-          const d = await res.json();
-          const updated = d.data || null;
-          if (this.expandedGameId !== gameId) {
-            this.expandedGameId = gameId;
-          }
-          if (!this.gameDivisions[gameId]) {
-            this.gameDivisions[gameId] = [];
-          }
-          if (updated && updated.id) {
-            const list = this.gameDivisions[gameId];
-            const idx = list.findIndex(x => x.id === updated.id);
-            if (idx >= 0) list.splice(idx, 1, updated);
-            else list.unshift(updated);
-          }
-          this.closeDivisionModal();
-          await this.loadGameDivisions(gameId);
-        } else {
-          const d = await res.json();
-          alert('保存失败: ' + (d.msg || d.message || JSON.stringify(d)));
+        const parsed = await parseJsonResponse(res);
+        if (!isApiSuccess(parsed)) {
+          this.message.error(apiErrorFromPayload(parsed.data, '保存失败'));
+          return;
         }
+        const updated = parsed.data?.data || parsed.data || null;
+        if (updated) {
+          if (payload.invite_code && updated.invite_code !== payload.invite_code) {
+            this.message.warning('已保存，但邀请码回读不一致，请刷新核对');
+          }
+          if ((payload.school_scope || null) !== (updated.school_scope || null)) {
+            this.message.warning('已保存，但学校范围回读不一致，请刷新核对');
+          }
+        }
+        if (this.expandedGameId !== gameId) this.expandedGameId = gameId;
+        this.message.success(this.editingDivision ? '分组已更新' : '分组已创建');
+        this.closeDivisionModal();
+        await this.loadGameDivisions(gameId);
       } catch (e) {
-        alert('保存失败: ' + e.message);
+        this.message.error(e.message || '保存失败');
       }
     },
 
-    async deleteDivision(gameId, divisionId) {
-      if (!confirm('确认删除该分组？')) return;
+    async deleteDivision(gameId, division) {
+      const name = (division && division.name) || ('#' + (division && division.id));
+      const divisionId = division && division.id;
+      if (!divisionId || divisionId < 0) {
+        this.message.warning('该条目不是可删除的赛道');
+        return;
+      }
+      if (!confirm('确认删除分组「' + name + '」？此操作不可恢复。')) return;
       try {
-        const token = localStorage.getItem('neepu_token');
-        const res = await fetch(`/api/competitions/admin/${gameId}/divisions/${divisionId}`,
-          { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } });
-        if (res.ok) {
+        const res = await ctfAdmin.deleteDivision(gameId, divisionId);
+        const parsed = await parseJsonResponse(res);
+        if (isApiSuccess(parsed)) {
+          this.message.success('已删除「' + name + '」');
           await this.loadGameDivisions(gameId);
         } else {
-          const d = await res.json();
-          alert('删除失败: ' + (d.msg || d.message || JSON.stringify(d)));
+          this.message.error(apiErrorFromPayload(parsed.data, '删除失败'));
         }
-      } catch (e) { alert('删除失败: ' + e.message); }
+      } catch (e) {
+        this.message.error(e.message || '删除失败');
+      }
     },
 
     async viewDivisionMembers(gameId, division) {
+      if (!division?.id || division.id < 0) {
+        this.message.warning('公开赛聚合视图无成员明细，请先创建真实赛道');
+        return;
+      }
       try {
-        const token = localStorage.getItem('neepu_token');
-        const res = await fetch(`/api/competitions/admin/${gameId}/divisions/${division.id}/members`,
-          { headers: { 'Authorization': `Bearer ${token}` } });
-        if (!res.ok) {
-          const d = await res.json();
-          alert('获取成员失败: ' + (d.msg || d.message || JSON.stringify(d)));
+        const res = await ctfAdmin.listDivisionMembers(gameId, division.id);
+        const parsed = await parseJsonResponse(res);
+        if (!isApiSuccess(parsed)) {
+          this.message.error(apiErrorFromPayload(parsed.data, '获取成员失败'));
           return;
         }
-        const data = await res.json();
-        this.divisionMembers = data.data?.members || [];
-        this.currentDivisionName = division.name || '';
+        const body = parsed.data?.data || parsed.data || {};
+        this.divisionMembers = body.members || [];
+        this.currentDivisionName = division.name || body.division?.name || '';
         this.showDivisionMembersModal = true;
       } catch (e) {
-        alert('获取成员失败: ' + e.message);
+        this.message.error(e.message || '获取成员失败');
       }
     },
 
@@ -903,7 +1128,7 @@ export default {
       if (!text) return;
       try {
         await navigator.clipboard.writeText(text);
-        alert('已复制');
+        this.message.success('已复制');
       } catch (e) {
         const input = document.createElement('input');
         input.value = text;
@@ -911,78 +1136,72 @@ export default {
         input.select();
         document.execCommand('copy');
         document.body.removeChild(input);
-        alert('已复制');
+        this.message.success('已复制');
       }
     },
 
     async editGame(game) {
       this.editingGame = game;
-      this.gameForm = { title: game.title, start_time: game.start_time, end_time: game.end_time, is_public: game.is_public };
+      this.gameForm = { title: game.title, start_time: game.start_time, end_time: game.end_time, is_public: game.is_public, game_type: game.game_type || 'official' };
       this.showCreateGameModal = true;
     },
 
     async deleteGame(gameId) {
       if (!confirm('确认删除此比赛？')) return;
       try {
-        const token = localStorage.getItem('neepu_token');
-        const res = await fetch(`/api/admin/games/${gameId}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } });
-        if (res.ok) {
-          alert('已删除');
+        const res = await ctfAdmin.deleteGame(gameId);
+        const parsed = await parseJsonResponse(res);
+        if (isApiSuccess(parsed)) {
+          this.message.success('已删除');
           await this.loadGames();
         } else {
-          const d = await res.json(); alert('删除失败: ' + JSON.stringify(d));
+          this.message.error(apiErrorFromPayload(parsed.data, '删除失败'));
         }
-      } catch (e) { alert('删除失败: ' + e.message); }
+      } catch (e) { this.message.error(e.message || '删除失败'); }
     },
 
     async archiveGame(game) {
       if (!confirm(`确认归档 "${game.title}" ？归档后将不能加入和计分。`)) return;
       try {
-        const token = localStorage.getItem('neepu_token');
-        const res = await fetch(`/api/admin/games/${game.id}/archive`, { 
-          method: 'POST', 
-          headers: { 
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
-        });
-        if (res.ok) {
-          alert('已归档');
+        const res = await ctfAdmin.archiveGame(game.id);
+        const parsed = await parseJsonResponse(res);
+        if (isApiSuccess(parsed)) {
+          this.message.success('已归档');
           await this.loadGames();
         } else {
-          const d = await res.json(); alert('归档失败: ' + (d.msg || JSON.stringify(d)));
+          this.message.error(apiErrorFromPayload(parsed.data, '归档失败'));
         }
-      } catch (e) { alert('归档失败: ' + e.message); }
+      } catch (e) { this.message.error(e.message || '归档失败'); }
     },
 
     async saveGame() {
-      // 创建或更新比赛
+      // 创建或更新比赛（主路径 /api/competitions/admin/*）
       try {
-        const token = localStorage.getItem('neepu_token');
         const payload = {
           title: this.gameForm.title,
           start_time: this.gameForm.start_time,
           end_time: this.gameForm.end_time,
-          is_public: !!this.gameForm.is_public
+          is_public: !!this.gameForm.is_public,
+          game_type: this.gameForm.game_type || 'official'
         };
         let res;
         if (this.editingGame && this.editingGame.id) {
-          res = await fetch(`/api/admin/games/${this.editingGame.id}`, { method: 'PUT', headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+          res = await ctfAdmin.updateGame(this.editingGame.id, payload);
         } else {
-          res = await fetch('/api/admin/games', { method: 'POST', headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+          res = await ctfAdmin.createGame(payload);
         }
-
-        if (res.ok) {
+        const parsed = await parseJsonResponse(res);
+        if (isApiSuccess(parsed)) {
           this.showCreateGameModal = false;
           this.editingGame = null;
           this.gameForm = this.getEmptyGameForm();
           await this.loadGames();
+          this.message.success('已保存');
         } else {
-          const d = await res.json();
-          alert('保存失败: ' + (d.error || d.msg || JSON.stringify(d)));
+          this.message.error(apiErrorFromPayload(parsed.data, '保存失败'));
         }
       } catch (e) {
-        alert('保存失败: ' + e.message);
+        this.message.error(e.message || '保存失败');
       }
     },
 
@@ -994,135 +1213,133 @@ export default {
     async viewAttachment(challenge) {
       try {
         const id = challenge.attachment_id || (challenge.attachment && challenge.attachment.id) || (this.challengeForm && this.challengeForm.attachment_meta && this.challengeForm.attachment_meta.id);
-        if (!id) return alert('未找到附件 ID');
+        if (!id) { this.message.warning('未找到附件 ID'); return };
         // open the resource content endpoint in a new tab for preview/download
         const url = `/api/resources/${id}/content`;
         window.open(url, '_blank');
       } catch (e) {
         console.error('viewAttachment error', e);
-        alert('无法打开附件');
+        this.message.error('无法打开附件');
       }
     },
 
     async saveChallenge() {
       try {
         if (!this.selectedGameId && !(this.editingChallenge && this.editingChallenge.game_id)) {
-          alert('请选择所属竞赛');
+          this.message.warning('请选择所属竞赛');
           return;
         }
         const gameId = this.selectedGameId || (this.editingChallenge && this.editingChallenge.game_id);
-        const token = localStorage.getItem('neepu_token');
+        const t = Number(this.challengeForm.challenge_type || 0);
+        if (!String(this.challengeForm.title || '').trim() || !String(this.challengeForm.category || '').trim()) {
+          this.message.warning('请填写题目名称与分类');
+          return;
+        }
+        if (!String(this.challengeForm.flag || '').trim() && ![2, 3].includes(t)) {
+          this.message.warning('请填写 Flag 答案');
+          return;
+        }
+        if ([1, 3].includes(t) && !String(this.challengeForm.docker_image || '').trim()) {
+          this.message.warning('容器题必须填写 Docker 镜像');
+          return;
+        }
+        if ([2, 3].includes(t) && !String(this.challengeForm.flag_template || '').trim()) {
+          this.message.warning('动态题必须填写 Flag 模板');
+          return;
+        }
+        if (this.challengeForm.attachment_file && this.challengeForm.attachment_file.size > 20 * 1024 * 1024) {
+          this.message.warning('附件过大（上限约 20MB）');
+          return;
+        }
 
-        // If updating (PUT) and there's no file attachment, send JSON to avoid multipart PUT issues
-        const hasAttachment = !!this.challengeForm.attachment_file;
+        const fields = [
+          'title', 'category', 'original_points', 'min_score_rate', 'difficulty', 'flag', 'flag_template',
+          'description', 'challenge_type', 'submission_limit', 'docker_image', 'docker_port',
+          'memory_limit', 'cpu_count', 'storage_limit', 'network_mode',
+        ];
+        const payload = {};
+        for (const k of fields) {
+          if (this.challengeForm[k] !== undefined && this.challengeForm[k] !== null && this.challengeForm[k] !== '') {
+            payload[k] = this.challengeForm[k];
+          }
+        }
+        payload.disable_blood_bonus = !!this.challengeForm.disable_blood_bonus;
+        payload.enable_traffic_capture = !!this.challengeForm.enable_traffic_capture;
+        if (!payload.flag && payload.flag_template) payload.flag = 'dynamic';
+
         const isUpdate = !!(this.editingChallenge && this.editingChallenge.id);
-        const url = isUpdate ? `/api/admin/challenges/games/${gameId}/challenges/${this.editingChallenge.id}` : `/api/admin/challenges/games/${gameId}/challenges`;
-        const method = isUpdate ? 'PUT' : 'POST';
+        let challengeId = isUpdate ? this.editingChallenge.id : null;
 
-        let res;
-        if (!hasAttachment) {
-          // send JSON payload when no file is present (both create and update)
-          const payload = {};
-          for (const k of ['title','category','original_points','min_score_rate','difficulty','flag','description','challenge_type','submission_limit','disable_blood_bonus','docker_image','docker_port','memory_limit','cpu_count']) {
-            if (this.challengeForm[k] !== undefined && this.challengeForm[k] !== null) payload[k] = this.challengeForm[k];
+        if (isUpdate) {
+          const res = await ctfAdmin.updateChallenge(gameId, challengeId, payload);
+          const parsed = await parseJsonResponse(res);
+          if (!isApiSuccess(parsed)) {
+            this.message.error(apiErrorFromPayload(parsed.data, '保存失败'));
+            return;
           }
-          // ensure booleans are preserved
-          payload.disable_blood_bonus = !!this.challengeForm.disable_blood_bonus;
-
-          res = await fetch(url, { method, headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
         } else {
-          // create (POST) with attachment or update with attachment
-          if (!isUpdate) {
-            // create with multipart POST
-            const form = new FormData();
-            for (const k of ['title','category','original_points','min_score_rate','difficulty','flag','description','challenge_type','submission_limit','docker_image','docker_port','memory_limit','cpu_count']) {
-              if (this.challengeForm[k] !== undefined && this.challengeForm[k] !== null) form.append(k, this.challengeForm[k]);
-            }
-            form.append('disable_blood_bonus', this.challengeForm.disable_blood_bonus ? 'true' : 'false');
-            if (this.challengeForm.attachment_file) form.append('attachment', this.challengeForm.attachment_file);
+          const res = await ctfAdmin.createChallenge(gameId, payload);
+          const parsed = await parseJsonResponse(res);
+          if (!isApiSuccess(parsed)) {
+            this.message.error(apiErrorFromPayload(parsed.data, '保存失败'));
+            return;
+          }
+          challengeId = parsed.data?.data?.id || parsed.data?.id;
+          if (!challengeId) {
+            this.message.error('创建成功但未返回题目 ID');
+            return;
+          }
+        }
 
-            res = await fetch(url, { method, headers: { 'Authorization': `Bearer ${token}` }, body: form });
+        if (this.challengeForm.attachment_file) {
+          if (![0, 2].includes(t)) {
+            this.message.warning('当前题型不支持附件，已跳过上传');
           } else {
-            // For updates with an attachment: first update metadata via JSON PUT, then upload file via the attachments API
-            const payload = {};
-            for (const k of ['title','category','original_points','min_score_rate','difficulty','flag','description','challenge_type','submission_limit','disable_blood_bonus','docker_image','docker_port','memory_limit','cpu_count']) {
-              if (this.challengeForm[k] !== undefined && this.challengeForm[k] !== null) payload[k] = this.challengeForm[k];
+            const form = new FormData();
+            form.append('file', this.challengeForm.attachment_file);
+            const attachRes = await ctfAdmin.uploadChallengeAttachment(gameId, challengeId, form);
+            const attachParsed = await parseJsonResponse(attachRes);
+            if (!isApiSuccess(attachParsed)) {
+              this.message.error(apiErrorFromPayload(attachParsed.data, '题目已保存，但附件上传失败'));
+              await this.loadChallenges(gameId);
+              return;
             }
-            payload.disable_blood_bonus = !!this.challengeForm.disable_blood_bonus;
-
-            const metaRes = await fetch(url, { method: 'PUT', headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-            if (!metaRes.ok) {
-              res = metaRes; // propagate error handling below
-            } else {
-              // upload file to attachments endpoint; backend expects field name 'file'
-              const attachForm = new FormData();
-              attachForm.append('file', this.challengeForm.attachment_file);
-              const attachUrl = `/api/admin/challenges/games/${gameId}/challenges/${this.editingChallenge.id}/attachments`;
-              const attachRes = await fetch(attachUrl, { method: 'POST', headers: { 'Authorization': `Bearer ${token}` }, body: attachForm });
-              res = attachRes;
-            }
-          }
-        }
-        if (res.ok) {
-          alert('题目已保存');
-          this.showCreateChallengeModal = false;
-          this.editingChallenge = null;
-          this.challengeForm = this.getEmptyChallengeForms();
-          // 重新加载题目列表
-          if (this.selectedGameId) {
-            await this.loadChallenges(this.selectedGameId);
+            this.message.success('题目与附件已保存');
           }
         } else {
-          if (res.status === 401) {
-            alert('登录已过期，请重新登录');
-            try { localStorage.removeItem('neepu_token'); localStorage.removeItem('neepu_user'); } catch (e) {}
-            this.$router && this.$router.push('/auth');
-            return;
-          }
-          if (res.status === 403) {
-            alert('需要管理员权限或登录已过期，请重新登录');
-            try { localStorage.removeItem('neepu_token'); localStorage.removeItem('neepu_user'); } catch (e) {}
-            this.$router && this.$router.push('/auth');
-            return;
-          }
-          // 安全地读取响应：先克隆为文本，再尝试解析 JSON，避免读取流两次导致错误
-          try {
-            const txt = await res.clone().text();
-            try {
-              const d = JSON.parse(txt);
-              alert('保存失败: ' + (d.msg || d.message || JSON.stringify(d)));
-            } catch (e2) {
-              alert('保存失败: HTTP ' + res.status + '\n' + (txt.length > 1000 ? txt.slice(0,1000) + '\n...[truncated]' : txt));
-            }
-          } catch (e3) {
-            alert('保存失败: 无法读取响应: ' + e3.message);
-          }
+          this.message.success('题目已保存');
         }
+
+        this.showCreateChallengeModal = false;
+        this.editingChallenge = null;
+        this.challengeForm = this.getEmptyChallengeForms();
+        if (gameId) await this.loadChallenges(gameId);
       } catch (e) {
-        alert('保存失败: ' + e.message);
+        this.message.error(e.message || '保存失败');
       }
     },
 
-    async deleteChallenge(challengeId, gameId) {
-      if (!confirm('确认删除此题目？')) return;
+    async deleteChallenge(challengeId, gameId, title) {
+      const name = title || ('#' + challengeId);
+      if (!confirm('确认删除题目「' + name + '」？此操作不可恢复。')) return;
       try {
-        const token = localStorage.getItem('neepu_token');
         const gid = gameId || this.selectedGameId;
-        const res = await fetch(`/api/admin/challenges/games/${gid}/challenges/${challengeId}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } });
-        if (res.ok) {
-          alert('已删除');
+        const res = await ctfAdmin.deleteChallenge(gid, challengeId);
+        const parsed = await parseJsonResponse(res);
+        if (isApiSuccess(parsed)) {
+          this.message.success('已删除「' + name + '」');
+          await this.loadChallenges(gid);
           await this.loadGames();
         } else {
-          if (res.status === 403) {
-            alert('需要管理员权限或登录已过期，请重新登录');
-            try { localStorage.removeItem('neepu_token'); localStorage.removeItem('neepu_user'); } catch (e) {}
-            this.$router && this.$router.push('/auth');
+          if (parsed.status === 403) {
+            this.message.warning('需要管理员权限或登录已过期，请重新登录');
             return;
           }
-          const d = await res.json();
-          alert('删除失败: ' + JSON.stringify(d));
+          this.message.error(apiErrorFromPayload(parsed.data, '删除失败'));
         }
-      } catch (e) { alert('删除失败: ' + e.message); }
+      } catch (e) {
+        this.message.error(e.message || '删除失败');
+      }
     },
 
     async editChallenge(challenge) {
@@ -1139,10 +1356,11 @@ export default {
           this.challengeForm = Object.assign(this.getEmptyChallengeForms(), {
             title: c.title || '',
             category: c.category || '',
-            original_points: c.original_points || 1000,
+            original_points: c.original_points || c.points || 1000,
             min_score_rate: c.min_score_rate || 0.25,
             difficulty: c.difficulty || 5.0,
             flag: c.flag || '',
+            flag_template: c.flag_template || '',
             description: c.description || '',
             challenge_type: c.challenge_type || 0,
             submission_limit: c.submission_limit || 0,
@@ -1150,9 +1368,12 @@ export default {
             docker_port: c.docker_port || 80,
             memory_limit: c.memory_limit || 256,
             cpu_count: c.cpu_count || 1,
+            storage_limit: c.storage_limit || 1024,
+            network_mode: c.network_mode || 'Open',
+            enable_traffic_capture: !!c.enable_traffic_capture,
             disable_blood_bonus: !!c.disable_blood_bonus,
             attachment_file: null,
-            attachment_meta: c.attachment || null
+            attachment_meta: c.attachment || (c.attachment_id ? { id: c.attachment_id, filename: '附件#' + c.attachment_id } : null)
           });
         } else {
           // fallback to using provided challenge object
@@ -1163,6 +1384,7 @@ export default {
             min_score_rate: challenge.min_score_rate || 0.25,
             difficulty: challenge.difficulty || 5.0,
             flag: '',
+            flag_template: challenge.flag_template || '',
             description: challenge.description || '',
             challenge_type: challenge.challenge_type || 0,
             submission_limit: challenge.submission_limit || 0,
@@ -1170,6 +1392,9 @@ export default {
             docker_port: challenge.docker_port || 80,
             memory_limit: challenge.memory_limit || 256,
             cpu_count: challenge.cpu_count || 1,
+            storage_limit: challenge.storage_limit || 1024,
+            network_mode: challenge.network_mode || 'Open',
+            enable_traffic_capture: !!challenge.enable_traffic_capture,
             disable_blood_bonus: !!challenge.disable_blood_bonus,
             attachment_file: null,
             attachment_meta: null
@@ -1220,16 +1445,16 @@ export default {
 
     async loadChallenges(gameId) {
       try {
-        const token = localStorage.getItem('neepu_token');
         console.debug('loadChallenges: requesting', gameId);
-        const res = await fetch(`/api/ctf/games/${gameId}/challenges`, { headers: { 'Authorization': `Bearer ${token}` } });
-        if (!res.ok) {
-          console.error('loadChallenges failed', res.status);
+        const res = await ctfAdmin.listAdminChallenges(gameId);
+        const parsed = await parseJsonResponse(res);
+        if (!isApiSuccess(parsed)) {
+          console.error('loadChallenges failed', parsed.status);
           this.challenges = [];
           return;
         }
-        const data = await res.json();
-        this.challenges = data.data?.items || [];
+        const body = parsed.data?.data || parsed.data;
+        this.challenges = body?.items || body?.challenges || (Array.isArray(body) ? body : []);
       } catch (e) {
         console.error('加载题目列表失败:', e);
         this.challenges = [];
@@ -1238,33 +1463,98 @@ export default {
 
     async loadScoreboard(gameId) {
       try {
-        const token = localStorage.getItem('neepu_token');
-        const res = await fetch(`/api/ctf/games/${gameId}/scoreboard`, { headers: { 'Authorization': `Bearer ${token}` } });
-        if (!res.ok) {
-          console.error('loadScoreboard failed', res.status);
+        const res = await ctfAdmin.getScoreboard(gameId);
+        const parsed = await parseJsonResponse(res);
+        if (!isApiSuccess(parsed)) {
+          console.error('loadScoreboard failed', parsed.status);
           this.scoreboard = [];
           return;
         }
-        const data = await res.json();
-        this.scoreboard = data.data?.rankings || [];
+        const body = parsed.data?.data || parsed.data;
+        this.scoreboard = body?.rankings || body?.items || [];
       } catch (e) {
         console.error('加载排行榜失败:', e);
         this.scoreboard = [];
       }
     },
 
+    async loadGameStats(gameId) {
+      try {
+        const res = await ctfAdmin.getGameStats(gameId);
+        const parsed = await parseJsonResponse(res);
+        if (!isApiSuccess(parsed)) {
+          this.gameStats = null;
+          this.message.error(apiErrorFromPayload(parsed.data, '加载赛事统计失败'));
+          return;
+        }
+        const body = parsed.data?.data || parsed.data || {};
+        this.gameStats = body.statistics || body;
+      } catch (e) {
+        this.gameStats = null;
+        this.message.error(e.message || '加载赛事统计失败');
+      }
+    },
+
+    async exportScoreboardCsv() {
+      if (!this.selectedScoreboardGameId) {
+        this.message.warning('请先选择竞赛');
+        return;
+      }
+      this.exportingScoreboard = true;
+      try {
+        const res = await ctfAdmin.exportScoreboard(this.selectedScoreboardGameId);
+        if (!res.ok) {
+          const parsed = await parseJsonResponse(res);
+          this.message.error(apiErrorFromPayload(parsed.data, '导出失败'));
+          return;
+        }
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `scoreboard_${this.selectedScoreboardGameId}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+        this.message.success('已导出排行榜 CSV');
+      } catch (e) {
+        this.message.error(e.message || '导出失败');
+      } finally {
+        this.exportingScoreboard = false;
+      }
+    },
+
+    async loadHammerMessages() {
+      try {
+        let params = 'page=1&per_page=50';
+        if (this.selectedHammerGameId) params += `&game_id=${this.selectedHammerGameId}`;
+        const res = await ctfAdmin.listHammerMessages(params);
+        const parsed = await parseJsonResponse(res);
+        if (!isApiSuccess(parsed)) {
+          this.hammerMessages = [];
+          this.message.error(apiErrorFromPayload(parsed.data, '加载锤子消息失败'));
+          return;
+        }
+        this.hammerMessages = parsed.data?.data?.items || parsed.data?.items || [];
+      } catch (e) {
+        this.hammerMessages = [];
+        this.message.error(e.message || '加载锤子消息失败');
+      }
+    },
+
     async loadFirstSolves(gameId) {
       try {
-        const token = localStorage.getItem('neepu_token');
-        const res = await fetch(`/api/ctf/games/${gameId}/first-solves`, { headers: { 'Authorization': `Bearer ${token}` } });
-        if (!res.ok) {
-          console.error('loadFirstSolves failed', res.status);
+        const res = await ctfAdmin.listFirstSolves(gameId);
+        const parsed = await parseJsonResponse(res);
+        if (!isApiSuccess(parsed)) {
+          console.error('loadFirstSolves failed', parsed.status);
           this.firstSolves = [];
           return;
         }
-        const data = await res.json();
-        // 增强数据：添加题目标题
-        this.firstSolves = (data.data || []).map(fs => ({
+        const body = parsed.data?.data || parsed.data;
+        const rows = body?.items || body || [];
+        this.firstSolves = (Array.isArray(rows) ? rows : []).map(fs => ({
           ...fs,
           challenge_title: fs.challenge_title || `题目 ${fs.challenge_id}`
         }));
@@ -1276,19 +1566,17 @@ export default {
 
     async loadCheatRecords(gameId = '') {
       try {
-        const token = localStorage.getItem('neepu_token');
-        let url = '/api/ctf/admin/cheat-detection?page=1&per_page=50';
-        if (gameId) {
-          url += `&game_id=${gameId}`;
-        }
-        const res = await fetch(url, { headers: { 'Authorization': `Bearer ${token}` } });
-        if (!res.ok) {
-          console.error('loadCheatRecords failed', res.status);
+        let params = 'page=1&per_page=50';
+        if (gameId) params += `&game_id=${gameId}`;
+        if (this.cheatStatusFilter) params += `&status=${this.cheatStatusFilter}`;
+        const res = await ctfAdmin.listCheatRecords(params);
+        const parsed = await parseJsonResponse(res);
+        if (!isApiSuccess(parsed)) {
+          console.error('loadCheatRecords failed', parsed.status);
           this.cheatRecords = [];
           return;
         }
-        const data = await res.json();
-        this.cheatRecords = data.data?.items || [];
+        this.cheatRecords = parsed.data?.data?.items || parsed.data?.items || [];
       } catch (e) {
         console.error('加载作弊记录失败:', e);
         this.cheatRecords = [];
@@ -1296,21 +1584,14 @@ export default {
     },
 
     async handleCheatRecord(record, action) {
-      const token = localStorage.getItem('neepu_token');
-      let url = `/api/ctf/admin/cheat-records/${record.id}`;
-      let method = 'POST';
       let payload = {};
-      
       if (action === 'review') {
-        url += '/review';
         const note = prompt('请输入审核备注：');
         if (note === null) return;
         payload = { admin_note: note };
       } else if (action === 'confirm') {
-        url += '/confirm';
         payload = {};
       } else if (action === 'dismiss') {
-        url += '/dismiss';
         const note = prompt('请输入驳回原因：');
         if (note === null) return;
         payload = { admin_note: note };
@@ -1318,27 +1599,23 @@ export default {
         console.error('Unknown action:', action);
         return;
       }
-      
+
       try {
-        const res = await fetch(url, {
-          method,
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify(payload)
-        });
-        
-        if (res.ok) {
+        let res;
+        if (action === 'review') res = await ctfAdmin.reviewCheatRecord(record.id, payload);
+        else if (action === 'confirm') res = await ctfAdmin.confirmCheatRecord(record.id, payload);
+        else res = await ctfAdmin.dismissCheatRecord(record.id, payload);
+
+        const parsed = await parseJsonResponse(res);
+        if (isApiSuccess(parsed)) {
           const actionLabel = { review: '审核', confirm: '确认', dismiss: '驳回' }[action];
-          alert(`已${actionLabel}此作弊记录`);
+          this.message.success(`已${actionLabel}此作弊记录`);
           await this.loadCheatRecords(this.selectedCheatGameId);
         } else {
-          const err = await res.json();
-          alert(`操作失败: ${err.message || '未知错误'}`);
+          this.message.error(apiErrorFromPayload(parsed.data, '操作失败'));
         }
       } catch (e) {
-        alert(`操作失败: ${e.message}`);
+        this.message.error(e.message || '操作失败');
       }
     },
 
@@ -1361,12 +1638,38 @@ export default {
       return map[type] || '未知类型';
     },
 
-    getEmptyGameForm() { return { title: '', start_time: '', end_time: '', is_public: true }; },
-    getEmptyDivisionForm() { return { name: '', invite_code: '', description: '' }; },
-    getEmptyChallengeForms() { return { title: '', category: '', original_points: 1000, min_score_rate: 0.25, difficulty: 5.0, flag: '', description: '', challenge_type: 0, submission_limit: 0, docker_image: '', docker_port: 80, memory_limit: 256, cpu_count: 1, disable_blood_bonus: false, attachment_file: null }; }
+    getEmptyGameForm() { return { title: '', start_time: '', end_time: '', is_public: true, game_type: 'official' }; },
+    gameTypeLabel(game) {
+      const t = (game && game.game_type) || 'official';
+      if (game && game.is_ephemeral) return '探针';
+      if (t === 'training') return '训练';
+      if (t === 'practice') return '练习';
+      return '正式';
+    },
+    gameTypeBadgeClass(game) {
+      if (game && game.is_ephemeral) return 'badge-gray';
+      const t = (game && game.game_type) || 'official';
+      if (t === 'training' || t === 'practice') return 'badge-blue';
+      return 'badge-green';
+    },
+    getEmptyDivisionForm() { return { name: '', invite_code: '', school_scope: '', description: '' }; },
+    getEmptyChallengeForms() {
+      return {
+        title: '', category: '', original_points: 1000, min_score_rate: 0.25, difficulty: 5.0,
+        flag: '', flag_template: '', description: '', challenge_type: 0, submission_limit: 0,
+        docker_image: '', docker_port: 80, memory_limit: 256, cpu_count: 1,
+        storage_limit: 1024, network_mode: 'Open', enable_traffic_capture: false,
+        disable_blood_bonus: false, attachment_file: null, attachment_meta: null,
+      };
+    }
   },
 
   mounted() {
+    const qTab = this.$route?.query?.tab;
+    if (qTab && this.tabs.includes(qTab)) this.activeTab = qTab;
+    const qGid = this.$route?.query?.game_id;
+    if (qGid) this.selectedGameId = Number(qGid);
+
     console.log('CtfManagement mounted');
     try {
       this.gameForm = this.getEmptyGameForm();
@@ -1380,8 +1683,38 @@ export default {
 };
 </script>
 <style>
+.form-hint {
+  display: block;
+  margin-top: 4px;
+  font-size: 12px;
+  color: #888;
+}
+.game-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 20px;
+  align-items: center;
+  padding: 0 4px 14px;
+}
+.game-filters .filter-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: #555;
+}
+.game-filters .filter-select {
+  width: auto;
+  min-width: 120px;
+  padding: 4px 8px;
+}
+.game-filters .filter-meta {
+  margin-left: auto;
+  font-size: 12px;
+  color: #888;
+}
 .ctf-management {
-  padding: 20px;
+  padding: var(--fib-21);
 }
 
 .tabs {
@@ -1423,14 +1756,14 @@ export default {
 }
 
 .card {
-  background: white;
+  background: var(--gradient-card-bg, var(--card-bg));
   border-radius: 8px;
   box-shadow: 0 2px 8px rgba(0,0,0,0.1);
   overflow: hidden;
 }
 
 .card-header {
-  padding: 20px;
+  padding: var(--fib-21);
   border-bottom: 1px solid #e0e0e0;
   display: flex;
   justify-content: space-between;
@@ -1445,7 +1778,7 @@ export default {
 .data-table {
   width: 100%;
   border-collapse: collapse;
-  background: white;
+  background: var(--gradient-card-bg, var(--card-bg));
 }
 
 .data-table thead {
@@ -1519,7 +1852,7 @@ export default {
 }
 
 .modal {
-  background: white;
+  background: var(--gradient-card-bg, var(--card-bg));
   border-radius: 8px;
   max-width: 500px;
   width: 90%;
@@ -1532,7 +1865,7 @@ export default {
 }
 
 .modal-header {
-  padding: 20px;
+  padding: var(--fib-21);
   border-bottom: 1px solid #e0e0e0;
   display: flex;
   justify-content: space-between;
@@ -1552,7 +1885,7 @@ export default {
 }
 
 .modal-body {
-  padding: 20px;
+  padding: var(--fib-21);
 }
 
 .form-group {
@@ -1596,7 +1929,7 @@ export default {
   position: relative;
   border: 2px dashed #ddd;
   border-radius: 4px;
-  padding: 20px;
+  padding: var(--fib-21);
   text-align: center;
   cursor: pointer;
   transition: all 0.3s;
@@ -1632,7 +1965,7 @@ export default {
 }
 
 .modal-footer {
-  padding: 20px;
+  padding: var(--fib-21);
   border-top: 1px solid #e0e0e0;
   display: flex;
   gap: 10px;
@@ -1668,7 +2001,7 @@ export default {
 }
 
 .cheat-list {
-  padding: 20px;
+  padding: var(--fib-21);
 }
 
 .cheat-card {
@@ -1762,7 +2095,7 @@ export default {
   flex: 1;
   min-width: 150px;
   padding: 12px;
-  background: white;
+  background: var(--gradient-card-bg, var(--card-bg));
   border-radius: 4px;
   border-left: 3px solid #0066cc;
 }
@@ -1827,7 +2160,7 @@ export default {
 }
 
 .submission-info {
-  background: white;
+  background: var(--gradient-card-bg, var(--card-bg));
   padding: 12px;
   border-radius: 4px;
   margin-bottom: 12px;
@@ -1844,8 +2177,25 @@ export default {
   flex-wrap: wrap;
 }
 
+.game-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 10px;
+  margin: 0 0 16px;
+}
+.stat-chip {
+  padding: 10px 12px;
+  background: #f7f8fa;
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.stat-chip span { font-size: 12px; color: #888; }
+.stat-chip strong { font-size: 18px; color: #222; }
 .scoreboard-container {
-  padding: 20px;
+
+  padding: var(--fib-21);
 }
 
 .game-divisions-section {
@@ -1872,7 +2222,7 @@ export default {
   align-items: center;
   justify-content: space-between;
   padding: 10px 12px;
-  background: #fff;
+  background: var(--gradient-card-bg, var(--card-bg));
   border: 1px solid #eee;
   border-radius: 6px;
   margin-bottom: 8px;

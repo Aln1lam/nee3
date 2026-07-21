@@ -41,12 +41,18 @@ node_modules/
 .next/
 out/
 .nuxt/
-dist/
+frontend/dist/
 
 # Testing
 .pytest_cache/
 .coverage
 htmlcov/
+e2e/node_modules/
+e2e/test-results/
+e2e/playwright-report/
+e2e/e2e-report/
+e2e/blob-report/
+e2e/playwright/.cache/
 
 # Database
 *.db
@@ -68,3 +74,7 @@ Thumbs.db
 
 # Project specific
 instance/
+
+# External reference / historical bundles (not part of runtime)
+GZCTF-develop/
+archives/

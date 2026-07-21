@@ -1,4 +1,9 @@
 <template>
+  <!--
+    LEGACY / 未挂现网路由。
+    现网管理：/admin/* → AdminPanel + AdminContent + CtfManagement。
+    本文件仅保留兼容；API 已对齐到 competitions/ctf/admin 主路径。
+  -->
   <div>
     <h2>管理面板</h2>
     <div v-if="!isAdmin" class="admin-alert">
@@ -276,23 +281,31 @@ export default {
       errorMsg.value = ''
       if (!isAdmin.value) return
       loading.value = true
+      // LEGACY：本组件未挂入现网 router（管理走 AdminPanel + CtfManagement）。
+      // 对齐真实 API，避免打不存在的 /api/admin/submissions。
       try {
-        const r1 = await axios.get('/api/admin/submissions')
-        subs.value = r1.data.items || []
+        const r1 = await axios.get('/api/admin/first-solves', { params: { page: 1, per_page: 50 } })
+        const items = r1.data?.data?.items || r1.data?.items || []
+        subs.value = items
       } catch (e) {
         console.error(e)
-        if (e.response && (e.response.status === 401 || e.response.status === 403)) errorMsg.value = '无权限访问提交记录'
+        if (e.response && (e.response.status === 401 || e.response.status === 403)) errorMsg.value = '无权限访问提交/首解记录'
+        subs.value = []
       }
       try {
-        const r2 = await axios.get('/api/admin/challenges')
-        challenges.value = r2.data.items || []
+        // 无全局 /api/admin/challenges 列表；需按赛拉取。此处仅清空，避免 404。
+        challenges.value = []
       } catch (e) {
         console.error(e)
-        if (e.response && (e.response.status === 401 || e.response.status === 403)) errorMsg.value = '无权限访问题目管理'
       }
       try {
-        const r3 = await axios.get('/api/admin/games')
-        games.value = (r3.data.items || []).map(g => ({ ...g, start_time: g.start_time ? new Date(g.start_time) : null, end_time: g.end_time ? new Date(g.end_time) : null }))
+        const r3 = await axios.get('/api/competitions/', { params: { include_ephemeral: 1 } })
+        const items = r3.data?.data?.items || r3.data?.data || r3.data?.items || []
+        games.value = (Array.isArray(items) ? items : []).map(g => ({
+          ...g,
+          start_time: g.start_time ? new Date(g.start_time) : null,
+          end_time: g.end_time ? new Date(g.end_time) : null,
+        }))
         gameOptions.value = games.value.map(g => ({ label: g.title, value: g.id }))
       } catch (e) {
         console.error(e)
@@ -630,7 +643,7 @@ export default {
 .game-divisions-section { margin-top: 16px; padding: 12px; background: #f5f5f5; border-radius: 6px; border-left: 4px solid #1890ff; }
 .divisions-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
 .divisions-header h4 { margin: 0; }
-.division-item { padding: 10px; background: white; border: 1px solid #eee; border-radius: 4px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; }
+.division-item { padding: 10px; background: var(--gradient-card-bg, var(--card-bg)); border: 1px solid #eee; border-radius: 4px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; }
 .division-info-inline { flex: 1; }
 .division-meta { font-size: 12px; color: #999; display: inline-block; margin-left: 12px; }
 .division-actions { display: flex; gap: 8px; }

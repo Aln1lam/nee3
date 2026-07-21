@@ -7,7 +7,7 @@
 from functools import wraps
 from flask import request, make_response
 from flask_jwt_extended import get_jwt_identity
-from .rate_limiter import rate_limiter
+from .rate_limiter import rate_limiter, get_active_limiter, configure_redis_rate_limiter
 
 
 def rate_limit(
@@ -64,9 +64,10 @@ def rate_limit(
                 key = request.remote_addr
             
             # 检查速率限制
-            if not rate_limiter.is_allowed(key, max_requests, window_seconds):
-                remaining = rate_limiter.get_remaining(key, max_requests, window_seconds)
-                reset_time = rate_limiter.get_reset_time(key, window_seconds)
+            limiter = get_active_limiter()
+            if not limiter.is_allowed(key, max_requests, window_seconds):
+                remaining = limiter.get_remaining(key, max_requests, window_seconds)
+                reset_time = limiter.get_reset_time(key, window_seconds)
                 
                 response = make_response({
                     'error': 'rate_limit_exceeded',
@@ -109,9 +110,10 @@ def submission_rate_limit():
             
             key = f"submission:{user_id}"
             
-            if not rate_limiter.is_allowed(key, max_requests=5, window_seconds=60):
-                remaining = rate_limiter.get_remaining(key, 5, 60)
-                reset_time = rate_limiter.get_reset_time(key, 60)
+            limiter = get_active_limiter()
+            if not limiter.is_allowed(key, max_requests=5, window_seconds=60):
+                remaining = limiter.get_remaining(key, 5, 60)
+                reset_time = limiter.get_reset_time(key, 60)
                 
                 response = make_response({
                     'error': 'submission_rate_limit_exceeded',
@@ -148,9 +150,10 @@ def login_rate_limit():
         def wrapper(*args, **kwargs):
             key = f"login:{request.remote_addr}"
             
-            if not rate_limiter.is_allowed(key, max_requests=5, window_seconds=60):
-                remaining = rate_limiter.get_remaining(key, 5, 60)
-                reset_time = rate_limiter.get_reset_time(key, 60)
+            limiter = get_active_limiter()
+            if not limiter.is_allowed(key, max_requests=5, window_seconds=60):
+                remaining = limiter.get_remaining(key, 5, 60)
+                reset_time = limiter.get_reset_time(key, 60)
                 
                 response = make_response({
                     'error': 'login_rate_limit_exceeded',
@@ -198,7 +201,8 @@ def custom_rate_limit(
             user_id = get_jwt_identity()
             key = f"{key_prefix}:{user_id or request.remote_addr}"
             
-            if not rate_limiter.is_allowed(key, max_requests, window_seconds):
+            limiter = get_active_limiter()
+            if not limiter.is_allowed(key, max_requests, window_seconds):
                 return {
                     'error': 'rate_limit_exceeded',
                     'message': f'Rate limit exceeded for {key_prefix}'

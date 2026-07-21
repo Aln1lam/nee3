@@ -1,108 +1,193 @@
-/* Global styles to make layout and typography scale predictably across browser zoom levels */
+/* Global styles — CTF 靶场字体与基础层 */
 
-/* Monaspace 字体 - 用于英文和非中文 */
-@font-face {
-  font-family: 'Monaspace Neon';
-  src: url('/fonts/MonospaceNeon-Regular.ttf') format('opentype');
-  font-weight: 400;
-  font-style: normal;
+:root {
+  font-size: 16px;
 }
 
-@font-face {
-  font-family: 'Monaspace Neon';
-  src: url('/fonts/MonospaceNeon-Medium.ttf') format('opentype');
-  font-weight: 500;
-  font-style: normal;
+/* 圆角 + 字体 token */
+:root {
+  --radius-xs: 6px;
+  --radius-sm: 8px;
+  --radius-md: 8px;
+  --radius-lg: 10px;
+  --radius-xl: 10px;
+  --radius-pill: 10px;
+  --card-radius: 10px;
+
+  /* 二次元 UI：圆润正文字体；mono 仅 Flag/代码 */
+  --font-ui: 'M PLUS Rounded 1c', 'Noto Sans SC', 'PingFang SC', 'Microsoft YaHei UI', sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', Consolas, monospace;
+  --font-display: var(--font-ui);
+  --font-hacker: var(--font-mono);
+
+  /* 西电靶场字号比例（Tailwind 默认） */
+  --text-xs: 0.75rem;
+  --text-xs--line-height: 1rem;
+  --text-sm: 0.875rem;
+  --text-sm--line-height: 1.25rem;
+  --text-base: 1rem;
+  --text-base--line-height: 1.5rem;
+  --text-lg: 1.125rem;
+  --text-lg--line-height: 1.75rem;
+  --text-xl: 1.25rem;
+  --text-xl--line-height: 1.75rem;
+  --text-2xl: 1.5rem;
+  --text-2xl--line-height: 2rem;
+  --text-3xl: 1.875rem;
+  --text-3xl--line-height: 2.25rem;
 }
 
-@font-face {
-  font-family: 'Monaspace Neon';
-  src: url('/fonts/MonospaceNeon-Bold.ttf') format('opentype');
-  font-weight: 700;
-  font-style: normal;
+html {
+  box-sizing: border-box;
+  -webkit-text-size-adjust: 100%;
+  margin: 0;
+  padding: 0;
 }
 
-/* 落霞字体 - 用于中文 */
-@font-face {
-  font-family: 'LXGW WenKai';
-  src: url('/fonts/LXGWWenKai-Regular.ttf') format('truetype');
-  font-weight: 400;
-  font-style: normal;
+*, *::before, *::after {
+  box-sizing: inherit;
 }
 
-@font-face {
-  font-family: 'LXGW WenKai';
-  src: url('/fonts/LXGWWenKai-Medium.ttf') format('truetype');
-  font-weight: 500;
-  font-style: normal;
+body {
+  margin: 0;
+  font-family: var(--font-ui) !important;
+  font-size: var(--text-base);
+  line-height: var(--text-base--line-height);
+  color: var(--text);
+  background: transparent;
+  min-height: 100vh;
 }
 
-@font-face {
-  font-family: 'LXGW WenKai';
-  src: url('/fonts/LXGWWenKai-Light.ttf') format('truetype');
-  font-weight: 300;
-  font-style: normal;
+#app {
+  font-family: var(--font-ui) !important;
 }
 
-@font-face {
-  font-family: 'LXGW WenKai Mono';
-  src: url('/fonts/LXGWWenKaiMono-Regular.ttf') format('truetype');
-  font-weight: 400;
-  font-style: normal;
+html[data-theme="dark"] body,
+html[data-theme="dark"] #app,
+html[data-theme="light"] body,
+html[data-theme="light"] #app {
+  color: var(--text) !important;
+  background: transparent !important;
+  font-family: var(--font-ui) !important;
 }
 
-:root{
-  /* Keep a sensible rem base; browser zoom will scale rems proportionally */
-  font-size:16px;
-}
-
-/* Use border-box everywhere so padding/border don't affect measured widths unexpectedly */
-html{box-sizing:border-box;-webkit-text-size-adjust:100%}
-*,*::before,*::after{box-sizing:inherit}
-
-body{
-  margin:0;
-  font-family: 'Monaspace Neon', 'LXGW WenKai', monospace;
-  font-size:1rem; /* equals 16px from :root */
-  line-height:1.45;
-  color:var(--text);
-}
-
-/* 英文和代码使用等宽字体 */
 code, pre, kbd, samp {
-  font-family: 'Monaspace Neon', 'LXGW WenKai Mono', monospace;
+  font-family: var(--font-mono);
 }
 
-/* 输入框和文本区域也用等宽 */
 input, textarea, select {
-  font-family: 'Monaspace Neon', 'LXGW WenKai Mono', monospace !important;
+  font-family: var(--font-ui) !important;
 }
 
-/* 确保 Naive UI 输入框也使用正确的字体 */
 :deep(.n-input input),
 :deep(.n-input textarea),
 :deep(.n-input-group input),
 :deep(.n-select),
 :deep(.n-cascader),
 :deep(.n-tree-select) {
-  font-family: 'Monaspace Neon', 'LXGW WenKai Mono', monospace !important;
+  font-family: var(--font-ui) !important;
 }
 
-/* Naive UI Card 透明度设置 */
-:deep(.n-card) {
-  background-color: rgba(255, 255, 255, 0.3) !important;
-  color: var(--text) !important;
+.markdown-body {
+  line-height: var(--text-base--line-height);
+  font-size: var(--text-base);
+  color: var(--text);
+  word-break: break-word;
+}
+
+.markdown-body h1,
+.markdown-body h2,
+.markdown-body h3 {
+  font-weight: 700;
+  color: var(--text);
+  margin: 1.25em 0 0.5em;
+}
+
+.markdown-body code {
+  background: var(--code-bg);
+  padding: 2px 6px;
+  border-radius: var(--card-radius);
+  font-size: 0.9em;
+}
+
+.markdown-body pre {
+  background: var(--code-bg);
+  padding: 12px 16px;
+  border-radius: var(--card-radius);
+  overflow-x: auto;
+  border: 1px solid var(--border);
+}
+
+.markdown-body pre code {
+  background: transparent;
+  padding: 0;
+}
+
+.markdown-body a {
+  color: var(--primary);
+}
+
+.glass-card {
+  background: var(--gradient-card-bg, var(--card-bg));
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--gradient-card-border, var(--border));
+  border-radius: var(--card-radius, 10px);
+  box-shadow: var(--gradient-card-shadow, var(--shadow-lg));
+  transition:
+    transform var(--transition-base, 250ms),
+    box-shadow var(--transition-base, 250ms),
+    border-color var(--transition-fast, 200ms);
+}
+
+.glass-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--gradient-card-shadow-hover, var(--shadow-lg));
+}
+
+:root[data-theme="light"] .n-card,
+:root:not([data-theme]) .n-card,
+:root[data-theme="dark"] .n-card {
+  background: var(--gradient-card-bg, var(--card-bg)) !important;
+  border: 1px solid var(--gradient-card-border, var(--border)) !important;
+  box-shadow: var(--gradient-card-shadow, var(--shadow-lg)) !important;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
 }
 
 :deep(.n-card__content) {
-  background-color: rgba(255, 255, 255, 0.3) !important;
+  background-color: transparent !important;
   color: var(--text) !important;
 }
 
-/* Small utility to keep controls visually consistent when zooming */
-.u-btn-small{padding:0.375rem 0.625rem;font-size:0.875rem}
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.25s ease, transform 0.25s ease;
+}
 
-/* Prevent large unexpected text resizing on mobile/zoom */
-html, body { -ms-text-size-adjust: 100%; }
+.fade-enter-from {
+  opacity: 0;
+  transform: translateY(8px);
+}
 
-/* Components can still use rem/em for sizes; this file ensures their baseline behaves consistently */
+.fade-leave-to {
+  opacity: 0;
+  transform: translateY(-4px);
+}
+
+.page-container {
+  max-width: none;
+  width: 100%;
+  margin: 0;
+  padding: var(--space-3, 24px) var(--space-3, 24px) var(--space-5, 40px);
+  box-sizing: border-box;
+}
+
+html, body {
+  -ms-text-size-adjust: 100%;
+}
+
+.u-btn-small {
+  padding: 0.375rem 0.625rem;
+  font-size: 0.875rem;
+}

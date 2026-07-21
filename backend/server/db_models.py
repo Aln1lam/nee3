@@ -49,6 +49,7 @@ class User(db.Model):
     avatar_resource_id = db.Column(db.Integer, db.ForeignKey("file_resource.id"), nullable=True)
     team_id = db.Column(db.Integer, db.ForeignKey("team.id"))
     is_admin = db.Column(db.Boolean, default=False)
+    is_moderator = db.Column(db.Boolean, default=False)  # 赛事协管：可审作弊/看统计，不可删库级操作
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     email_verified = db.Column(db.Boolean, default=False)
     email_notifications = db.Column(db.Boolean, default=True)
@@ -75,6 +76,7 @@ class User(db.Model):
             'avatar_resource_id': self.avatar_resource_id,
             'team_id': self.team_id,
             'is_admin': bool(self.is_admin),
+            'is_moderator': bool(getattr(self, 'is_moderator', False)),
             'email_verified': bool(self.email_verified),
             'email_notifications': bool(self.email_notifications),
             'created_at': self.created_at.isoformat() if self.created_at else None,
@@ -88,14 +90,16 @@ class Team(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     users = db.relationship("User", backref="team", lazy=True)
     
-    def to_dict(self):
-        return {
+    def to_dict(self, include_invite=False):
+        data = {
             'id': self.id,
             'name': self.name,
-            'invite_code': self.invite_code,
             'members_count': len(self.users),
             'created_at': self.created_at.isoformat() if self.created_at else None,
         }
+        if include_invite:
+            data['invite_code'] = self.invite_code
+        return data
 
 
 class School(db.Model):
@@ -151,6 +155,9 @@ class CtfGame(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     season_id = db.Column(db.Integer, db.ForeignKey("ctf_season.id"), nullable=True)  # 新增：关联赛季
     title = db.Column(db.String(128), nullable=False)
+    description = db.Column(db.Text, nullable=True)
+    summary = db.Column(db.String(512), nullable=True)
+    poster_url = db.Column(db.String(1024), nullable=True)
     start_time = db.Column(db.DateTime, nullable=False)
     end_time = db.Column(db.DateTime, nullable=False)
     is_public = db.Column(db.Boolean, default=True)
@@ -158,12 +165,16 @@ class CtfGame(db.Model):
     game_type = db.Column(db.String(32), default="official")  # official, practice, training
     archived_at = db.Column(db.DateTime, nullable=True)  # 归档时间
     team_hash_salt = db.Column(db.String(128), nullable=True)  # 动态flag生成时的salt
+    enable_traffic_capture = db.Column(db.Boolean, default=False)  # 是否捕获动态容器流量
     participations = db.relationship("CtfParticipation", backref="game", lazy=True)
 
     def to_dict(self):
         return {
             'id': self.id,
             'title': self.title,
+            'description': self.description,
+            'summary': self.summary,
+            'poster_url': self.poster_url,
             'start_time': self.start_time.isoformat() if self.start_time else None,
             'end_time': self.end_time.isoformat() if self.end_time else None,
             'is_public': self.is_public,
@@ -171,6 +182,7 @@ class CtfGame(db.Model):
             'game_type': self.game_type,
             'season_id': self.season_id,
             'archived_at': self.archived_at.isoformat() if self.archived_at else None,
+            'enable_traffic_capture': bool(self.enable_traffic_capture),
         }
 
 
@@ -224,7 +236,7 @@ class CtfParticipation(db.Model):
     __tablename__ = 'ctf_participation'
     id = db.Column(db.Integer, primary_key=True)
     game_id = db.Column(db.Integer, db.ForeignKey("ctf_game.id"), nullable=False)
-    team_id = db.Column(db.Integer, db.ForeignKey("team.id"), nullable=False)
+    team_id = db.Column(db.Integer, db.ForeignKey("team.id"), nullable=True)
     division_id = db.Column(db.Integer, db.ForeignKey("ctf_division.id"), nullable=True)  # 新增：赛道
     # participation is at team level; individual users are represented in `CtfParticipatingUser`
     status = db.Column(db.String(32), default="pending")  # pending, confirmed, rejected
@@ -236,17 +248,19 @@ class CtfParticipation(db.Model):
     team = db.relationship("Team", backref="ctf_participations", lazy=True)
     members = db.relationship("CtfParticipatingUser", backref="participation", lazy=True, cascade="all, delete-orphan")
 
-    def to_dict(self):
-        return {
+    def to_dict(self, include_token=False):
+        data = {
             'id': self.id,
             'game_id': self.game_id,
             'team_id': self.team_id,
             'division_id': self.division_id,
             'status': self.status,
-            'token': self.token,
             'joined_at': self.joined_at.isoformat() if self.joined_at else None,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None,
         }
+        if include_token:
+            data['token'] = self.token
+        return data
 
 
 class CtfParticipatingUser(db.Model):
@@ -256,7 +270,7 @@ class CtfParticipatingUser(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
     game_id = db.Column(db.Integer, db.ForeignKey("ctf_game.id"), nullable=False)
-    team_id = db.Column(db.Integer, db.ForeignKey("team.id"), nullable=False)
+    team_id = db.Column(db.Integer, db.ForeignKey("team.id"), nullable=True)
     participation_id = db.Column(db.Integer, db.ForeignKey("ctf_participation.id"), nullable=False)
     division_id = db.Column(db.Integer, db.ForeignKey("ctf_division.id"), nullable=True)  # 新增：赛道（可选）
     joined_at = db.Column(db.DateTime, default=datetime.utcnow)
@@ -495,13 +509,31 @@ class SystemConfig(db.Model):
             rec = cls(key=key, value=value)
             db.session.add(rec)
         db.session.commit()
+        try:
+            from backend.server.cache_invalidation import invalidate_system_config_cache
+            invalidate_system_config_cache()
+        except Exception:
+            pass
+        if key in ("maintenance_mode", "maintenance_message"):
+            try:
+                from backend.services.maintenance_service import invalidate_maintenance_cache
+                invalidate_maintenance_cache()
+            except Exception:
+                pass
         return rec
 
     @classmethod
     def init_defaults(cls):
         defaults = {
-            'site_name': 'NEEPU CTF',
+            'site_name': 'NEEPU CTF 终端',
+            'site_description': '东北电力大学 NEEPU CTF 终端 — 能源电力网络安全竞赛与训练平台',
+            'maintenance_mode': 'false',
+            'maintenance_message': '系统正在维护中，敬请期待...',
             'allow_registration': 'true',
+            'allow_teams': 'true',
+            'allow_games': 'true',
+            'require_email_verification': 'true',
+            'captcha_required': 'false',
         }
         for k, v in defaults.items():
             if not cls.query.filter_by(key=k).first():
@@ -525,19 +557,21 @@ class CtfDivision(db.Model):
     sort_order = db.Column(db.Integer, default=0)  # 新增：排序
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
-    def to_dict(self):
-        return {
+    def to_dict(self, include_invite=False):
+        data = {
             'id': self.id,
             'game_id': self.game_id,
             'season_id': self.season_id,
             'name': self.name,
-            'invite_code': self.invite_code,
             'school_scope': self.school_scope,
             'is_template': self.is_template,
             'description': self.description,
             'sort_order': self.sort_order,
             'created_at': self.created_at.isoformat() if self.created_at else None,
         }
+        if include_invite:
+            data['invite_code'] = self.invite_code
+        return data
 
 
 class CtfChallenge(db.Model):
@@ -604,7 +638,17 @@ class CtfChallenge(db.Model):
             'memory_limit': self.memory_limit,
             'cpu_count': self.cpu_count,
             'flag_template': self.flag_template,
+            'enable_traffic_capture': bool(self.enable_traffic_capture),
+            'storage_limit': self.storage_limit,
+            'network_mode': self.network_mode or 'Open',
         }
+
+    def to_public_dict(self):
+        """返回面向选手的题目信息，不包含 flag 与模板"""
+        data = self.to_dict()
+        data.pop('flag', None)
+        data.pop('flag_template', None)
+        return data
 
     @property
     def points(self):
@@ -625,6 +669,10 @@ class CtfChallengeSubmission(db.Model):
     points_earned = db.Column(db.Integer, default=0)
     status = db.Column(db.Integer, default=0)  # 0=ACCEPTED, 1=WRONG, 2=DUPLICATE, 3=CHEAT
     submitted_at = db.Column(db.DateTime, default=datetime.utcnow)
+    client_ip = db.Column(db.String(64), nullable=True)  # 提交来源 IP（审计）
+    duration_ms = db.Column(db.Integer, nullable=True)  # 解题耗时毫秒（客户端上报或容器启动起算）
+    # 仅正确提交写入；UNIQUE 防止同队/同人重复计分（错误提交保持 NULL）
+    correct_dedupe_key = db.Column(db.String(64), nullable=True, unique=True)
 
     def to_dict(self):
         return {
@@ -639,6 +687,8 @@ class CtfChallengeSubmission(db.Model):
             'points_earned': self.points_earned,
             'status': self.status,
             'submitted_at': self.submitted_at.isoformat() if self.submitted_at else None,
+            'client_ip': self.client_ip,
+            'duration_ms': self.duration_ms,
         }
 
     # Relationship backrefs for convenience
@@ -716,7 +766,7 @@ class CtfScoreboard(db.Model):
     game_id = db.Column(db.Integer, db.ForeignKey("ctf_game.id"), nullable=False)
     division_id = db.Column(db.Integer, db.ForeignKey("ctf_division.id"), nullable=True)  # 新增：赛道
     season_id = db.Column(db.Integer, db.ForeignKey("ctf_season.id"), nullable=True)  # 新增：赛季（冗余便于查询）
-    team_id = db.Column(db.Integer, db.ForeignKey("team.id"), nullable=False)  # 必须有队伍
+    team_id = db.Column(db.Integer, db.ForeignKey("team.id"), nullable=True)
     user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=True)
     total_points = db.Column(db.Integer, default=0)
     solved_challenges = db.Column(db.Integer, default=0)  # 已解决的题目数
@@ -751,7 +801,10 @@ class CtfScoreboard(db.Model):
 class CtfSolves(db.Model):
     """首解/二解/三解记录 - 不可变事实源"""
     __tablename__ = 'ctf_solves'
-    
+    __table_args__ = (
+        db.UniqueConstraint('challenge_id', 'blood_level', name='uq_ctf_solves_challenge_blood'),
+    )
+
     id = db.Column(db.Integer, primary_key=True)
     game_id = db.Column(db.Integer, db.ForeignKey("ctf_game.id"), nullable=False)
     challenge_id = db.Column(db.Integer, db.ForeignKey("ctf_challenge.id"), nullable=False)
@@ -787,6 +840,10 @@ class CtfCheatInfo(db.Model):
     target_user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
     similarity = db.Column(db.Float, default=0.0)
     detection_time = db.Column(db.DateTime, default=datetime.utcnow)
+    status = db.Column(db.String(32), default='pending')  # pending / confirmed / dismissed
+    admin_note = db.Column(db.Text, nullable=True)
+    reviewed_at = db.Column(db.DateTime, nullable=True)
+    reviewed_by = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=True)
     
     def to_dict(self):
         return {
@@ -796,7 +853,11 @@ class CtfCheatInfo(db.Model):
             'source_user_id': self.source_user_id,
             'target_user_id': self.target_user_id,
             'similarity': self.similarity,
-            'detection_time': self.detection_time.isoformat() if self.detection_time else None
+            'detection_time': self.detection_time.isoformat() if self.detection_time else None,
+            'status': self.status or 'pending',
+            'admin_note': self.admin_note,
+            'reviewed_at': self.reviewed_at.isoformat() if self.reviewed_at else None,
+            'reviewed_by': self.reviewed_by,
         }
 
 
@@ -832,14 +893,16 @@ class CtfChallengeHint(db.Model):
     penalty_points = db.Column(db.Integer, default=0)  # 查看提示的扣分
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
-    def to_dict(self):
-        return {
+    def to_dict(self, include_text=False):
+        data = {
             'id': self.id,
             'challenge_id': self.challenge_id,
-            'hint_text': self.hint_text,
             'penalty_points': self.penalty_points,
             'created_at': self.created_at.isoformat() if self.created_at else None
         }
+        if include_text:
+            data['hint_text'] = self.hint_text
+        return data
 
 
 class CtfUserHintAccess(db.Model):
@@ -857,6 +920,32 @@ class CtfUserHintAccess(db.Model):
             'user_id': self.user_id,
             'hint_id': self.hint_id,
             'accessed_at': self.accessed_at.isoformat() if self.accessed_at else None
+        }
+
+
+class CtfHammerMessage(db.Model):
+    """题目锤子反馈 — 选手与出题人/裁判沟通"""
+    __tablename__ = 'ctf_hammer_message'
+
+    id = db.Column(db.Integer, primary_key=True)
+    challenge_id = db.Column(db.Integer, db.ForeignKey("ctf_challenge.id"), nullable=False)
+    game_id = db.Column(db.Integer, db.ForeignKey("ctf_game.id"), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
+    content = db.Column(db.Text, nullable=False)
+    is_staff = db.Column(db.Boolean, default=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    def to_dict(self):
+        user = User.query.get(self.user_id)
+        return {
+            'id': self.id,
+            'challenge_id': self.challenge_id,
+            'game_id': self.game_id,
+            'user_id': self.user_id,
+            'nickname': user.nickname if user else '用户',
+            'content': self.content,
+            'is_staff': self.is_staff,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
         }
 
 
@@ -949,13 +1038,13 @@ class TeamSeasonStats(db.Model):
 
 
 class PcapCapture(db.Model):
-    """流量包捕获记录 - 保存流量捕获的元数据，参考GZCTF的设计"""
+    """流量包捕获记录 - 保存流量捕获的元数据"""
     __tablename__ = 'pcap_capture'
     
     id = db.Column(db.Integer, primary_key=True)
     challenge_id = db.Column(db.Integer, db.ForeignKey("ctf_challenge.id"), nullable=False)
     instance_id = db.Column(db.Integer, db.ForeignKey("ctf_game_instance.id"), nullable=False)
-    team_id = db.Column(db.Integer, db.ForeignKey("team.id"), nullable=False)
+    team_id = db.Column(db.Integer, db.ForeignKey("team.id"), nullable=True)
     user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
     
     # 流量捕获文件的存储路径（相对于 captures 目录或数据库存储）
@@ -992,5 +1081,34 @@ class PcapCapture(db.Model):
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'started_at': self.started_at.isoformat() if self.started_at else None,
             'completed_at': self.completed_at.isoformat() if self.completed_at else None,
+        }
+
+
+class CtfDynamicPackage(db.Model):
+    """动态附件包变体：同一题目多份 ZIP，按队伍哈希分配"""
+    __tablename__ = 'ctf_dynamic_package'
+
+    id = db.Column(db.Integer, primary_key=True)
+    challenge_id = db.Column(db.Integer, db.ForeignKey("ctf_challenge.id"), nullable=False, index=True)
+    variant_id = db.Column(db.Integer, default=0)
+    filename = db.Column(db.String(512), nullable=False)
+    storage_key = db.Column(db.String(1024), nullable=False)
+    file_hash = db.Column(db.String(128), nullable=True)
+    file_size = db.Column(db.Integer, default=0)
+    is_active = db.Column(db.Boolean, default=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    challenge = db.relationship("CtfChallenge", backref="dynamic_packages", lazy=True)
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'challenge_id': self.challenge_id,
+            'variant_id': self.variant_id,
+            'filename': self.filename,
+            'file_hash': self.file_hash,
+            'file_size': self.file_size,
+            'is_active': bool(self.is_active),
+            'created_at': self.created_at.isoformat() if self.created_at else None,
         }
 

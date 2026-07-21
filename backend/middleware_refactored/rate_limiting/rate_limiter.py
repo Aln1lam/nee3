@@ -171,3 +171,19 @@ class RateLimiter:
 
 # 全局速率限制器实例
 rate_limiter = RateLimiter()
+_redis_rate_limiter = None
+
+
+def configure_redis_rate_limiter(redis_client) -> None:
+    """配置 Redis 后端速率限制（应用启动时调用）"""
+    global _redis_rate_limiter
+    if redis_client:
+        from .redis_rate_limiter import RedisRateLimiter
+        _redis_rate_limiter = RedisRateLimiter(redis_client)
+    else:
+        _redis_rate_limiter = None
+
+
+def get_active_limiter():
+    """返回当前可用的速率限制器（优先 Redis）"""
+    return _redis_rate_limiter or rate_limiter

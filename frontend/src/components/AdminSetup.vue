@@ -1,6 +1,6 @@
 <template>
-  <div class="admin-setup">
-    <div class="setup-card">
+  <div class="admin-setup-shell">
+    <div class="matrix-panel setup-card">
       <h2>🔧 管理员设置助手</h2>
       
       <!-- 检查当前用户 -->
@@ -226,25 +226,10 @@ export default {
 </script>
 
 <style scoped>
-.admin-setup {
-  min-height: 100vh;
-  background: var(--light-page-bg);
-  padding: 40px 20px;
-}
-
-.setup-card {
-  max-width: 600px;
-  margin: 0 auto;
-  background: white;
-  border-radius: 12px;
-  padding: 30px;
-  box-shadow: var(--card-shadow);
-}
-
 .setup-card h2 {
   margin-top: 0;
-  color: var(--card-accent);
-  border-bottom: 3px solid var(--card-accent);
+  color: var(--primary);
+  border-bottom: 2px solid rgba(var(--primary-rgb), 0.35);
   padding-bottom: 12px;
   margin-bottom: 25px;
 }
@@ -262,8 +247,8 @@ export default {
 .section h3 {
   margin-top: 0;
   margin-bottom: 15px;
-  color: #333;
-  font-size: 16px;
+  color: var(--text);
+  font-size: var(--text-base);
 }
 
 .btn-primary, .btn-danger {
@@ -302,11 +287,13 @@ export default {
 }
 
 .user-info {
-  background: #f5f5f5;
-  border-left: 4px solid var(--card-accent);
+  background: var(--hover);
+  border-left: none;
+  box-shadow: inset 3px 0 0 0 var(--primary);
   padding: 15px;
-  border-radius: 6px;
+  border-radius: var(--card-radius, 10px);
   margin-top: 12px;
+  overflow: hidden;
 }
 
 .info-item {
@@ -324,7 +311,7 @@ export default {
 }
 
 .info-item .value {
-  color: #333;
+  color: var(--text);
 }
 
 .badge {
@@ -373,17 +360,19 @@ export default {
 }
 
 .info-box {
-  background: rgba(0, 196, 140, 0.1);
-  border-left: 4px solid var(--card-accent);
+  background: rgba(var(--primary-rgb), 0.1);
+  border-left: none;
+  box-shadow: inset 3px 0 0 0 var(--primary);
   padding: 15px;
-  border-radius: 6px;
+  border-radius: var(--card-radius, 10px);
   margin-top: 20px;
+  overflow: hidden;
 }
 
 .info-box h4 {
   margin-top: 0;
   margin-bottom: 10px;
-  color: #333;
+  color: var(--text);
 }
 
 .info-box ol {
@@ -393,8 +382,8 @@ export default {
 
 .info-box li {
   margin-bottom: 6px;
-  color: #666;
-  font-size: 13px;
+  color: var(--muted);
+  font-size: var(--text-sm);
 }
 
 .message {

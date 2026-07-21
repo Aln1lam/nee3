@@ -1,0 +1,2 @@
+    async function selectChallenge(ch) {
+      selectedChallenge.value = ch

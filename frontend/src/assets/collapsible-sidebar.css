@@ -1,0 +1,360 @@
+/* 可折叠侧栏：Wiki / Games / SidebarLayout / Training / Bulletin 共用 */
+
+.layout-with-sidebar,
+.training-layout,
+.bulletin-layout,
+.matrix-shell,
+.matrix-layout {
+  --sidebar-width: 248px;
+  --sidebar-inset-x: var(--fib-13, 13px);
+  --sidebar-code-col: 36px;
+  --sidebar-row-gap: var(--fib-8, 8px);
+}
+
+/* ── 侧栏头部：与 /training 一致 ── */
+.sidebar-head-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--fib-8, 8px);
+}
+
+.sidebar-title {
+  font-weight: 700;
+  color: var(--primary);
+  text-decoration: none;
+  font-size: 1rem;
+}
+
+.sidebar-title:hover {
+  text-decoration: underline;
+}
+
+.group-label,
+.wiki-section-title {
+  font-size: var(--text-xs);
+  color: var(--muted);
+  margin: var(--fib-13, 13px) 0 var(--fib-8, 8px);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.sidebar-item {
+  width: 100%;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+
+.sidebar-item:hover,
+.sidebar-item.active,
+.sidebar-layout__link.active,
+.sidebar-layout__link:hover {
+  background: rgba(var(--primary-rgb), 0.12);
+  border-color: rgba(var(--primary-rgb), 0.35);
+  color: var(--primary);
+}
+
+.sidebar-item:hover .item-code,
+.sidebar-item.active .item-code,
+.sidebar-layout__link.active .link-code,
+.sidebar-layout__link:hover .link-code {
+  color: var(--primary);
+}
+
+.item-title {
+  font-size: var(--text-sm);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.item-count {
+  font-size: var(--text-xs);
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.sidebar-links {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.matrix-shell--no-sidebar .sidebar-collapse-trigger {
+  display: none;
+}
+
+.matrix-shell--no-sidebar .matrix-main {
+  width: 100%;
+}
+
+.layout-with-sidebar {
+  display: flex;
+  width: 100%;
+  margin: 0;
+  min-height: calc(100vh - var(--nav-height, 72px) - 52px);
+  position: relative;
+  align-items: stretch;
+}
+
+.layout-with-sidebar .sidebar-rail,
+.matrix-layout__sidebar {
+  width: var(--sidebar-width, 256px);
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--glass-sidebar-bg, var(--sidebar-bg));
+  border-right: 1px solid var(--glass-sidebar-border, var(--border));
+  border-radius: 0 var(--radius-xl) var(--radius-xl) 0;
+  padding: 20px var(--sidebar-inset-x);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  box-sizing: border-box;
+  overflow: hidden;
+  transition:
+    width 0.32s cubic-bezier(0.4, 0, 0.2, 1),
+    padding 0.32s cubic-bezier(0.4, 0, 0.2, 1),
+    opacity 0.24s ease,
+    border-color 0.32s ease;
+}
+
+.layout-with-sidebar.sidebar-collapsed .sidebar-rail {
+  width: 0;
+  padding-left: 0;
+  padding-right: 0;
+  opacity: 0;
+  border-right-color: transparent;
+  pointer-events: none;
+}
+
+.layout-with-sidebar .sidebar-rail-head,
+.training-sidebar .sidebar-head,
+.bulletin-sidebar .sidebar-head {
+  flex-shrink: 0;
+  overflow: visible;
+  min-width: 0;
+  padding: 0;
+  margin: 0;
+}
+
+.layout-with-sidebar.sidebar-collapsed .sidebar-rail-head {
+  min-width: 0;
+}
+
+.layout-with-sidebar .sidebar-rail-prompt,
+.sidebar-prompt,
+.sidebar-layout__prompt {
+  margin: 0 0 8px;
+  padding: 0;
+  font-size: var(--text-xs);
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  font-family: var(--font-ui);
+  white-space: nowrap;
+}
+
+.layout-with-sidebar .sidebar-rail-title {
+  margin: 0;
+  font-size: 1rem;
+  color: var(--primary);
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.layout-with-sidebar .sidebar-rail-sub {
+  margin: 4px 0 16px;
+  font-size: var(--text-xs);
+  letter-spacing: 0.1em;
+  color: var(--muted);
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.layout-with-sidebar .sidebar-rail-nav {
+  flex: 1;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.layout-with-sidebar .sidebar-rail-footer {
+  flex-shrink: 0;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.layout-with-sidebar .sidebar-rail-footer .sidebar-link {
+  display: grid;
+  grid-template-columns: 36px 1fr;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1px solid transparent;
+  border-radius: var(--card-radius);
+  color: var(--muted);
+  text-decoration: none;
+  font-size: var(--text-sm);
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+
+.layout-with-sidebar .sidebar-rail-footer .sidebar-link:hover {
+  background: var(--hover);
+  border-color: var(--border);
+  color: var(--text);
+}
+
+.layout-with-sidebar .sidebar-main {
+  flex: 1;
+  min-width: 0;
+  transition: padding 0.32s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.sidebar-collapse-trigger {
+  position: absolute;
+  left: calc(var(--sidebar-width, 256px) - 14px);
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 25;
+  width: 28px;
+  height: 52px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 0 var(--radius-lg) var(--radius-lg) 0;
+  background: var(--gradient-card-bg, var(--card-bg));
+  color: var(--muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 2px 0 10px rgba(15, 23, 42, 0.06);
+  transition:
+    left 0.32s cubic-bezier(0.4, 0, 0.2, 1),
+    color 0.15s,
+    border-color 0.15s,
+    background 0.15s;
+}
+
+.sidebar-collapse-trigger:hover {
+  color: var(--primary);
+  border-color: rgba(var(--primary-rgb), 0.35);
+}
+
+.layout-with-sidebar.sidebar-collapsed .sidebar-collapse-trigger {
+  left: 0;
+  border-radius: 0 var(--radius-lg) var(--radius-lg) 0;
+}
+
+.sidebar-collapse-trigger .chevron {
+  display: inline-block;
+  font-size: 18px;
+  line-height: 1;
+  transition: transform 0.32s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.sidebar-collapse-trigger .chevron.is-collapsed {
+  transform: rotate(180deg);
+}
+
+@media (max-width: 768px) {
+  .layout-with-sidebar {
+    flex-direction: column;
+    min-height: auto;
+  }
+
+  .layout-with-sidebar .sidebar-rail {
+    width: 100%;
+    max-height: none;
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .layout-with-sidebar.sidebar-collapsed .sidebar-rail {
+    display: none;
+  }
+
+  .sidebar-collapse-trigger {
+    position: static;
+    transform: none;
+    width: calc(100% - 32px);
+    height: 36px;
+    margin: 12px 16px 0;
+    border-radius: var(--radius-lg);
+  }
+
+  .layout-with-sidebar.sidebar-collapsed .sidebar-collapse-trigger {
+    width: calc(100% - 32px);
+    margin-bottom: 0;
+  }
+}
+
+/* ── 侧栏导航行：全站 layout-with-sidebar 与 /training 一致 ── */
+.sidebar-nav-row,
+.layout-with-sidebar .sidebar-item,
+.layout-with-sidebar .sidebar-link,
+.layout-with-sidebar .sidebar-layout__link,
+.layout-with-sidebar .wiki-link,
+.matrix-nav-link,
+.matrix-sidebar-footer .sidebar-link {
+  display: grid;
+  grid-template-columns: var(--sidebar-code-col) minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: var(--sidebar-row-gap);
+  width: 100%;
+  padding: 10px 0;
+  border: 1px solid transparent;
+  border-radius: var(--card-radius);
+  background: transparent;
+  color: var(--muted);
+  font-size: var(--text-sm);
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+  box-sizing: border-box;
+  margin: 0;
+  font: inherit;
+  appearance: none;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+
+.layout-with-sidebar button.sidebar-item,
+.layout-with-sidebar a.sidebar-item,
+.layout-with-sidebar button.sidebar-link,
+.layout-with-sidebar a.sidebar-link,
+.layout-with-sidebar button.game-list-item,
+.layout-with-sidebar button.sidebar-item.game-list-item {
+  display: grid !important;
+}
+
+.sidebar-nav-row--2,
+.layout-with-sidebar .sidebar-rail-footer .sidebar-link,
+.layout-with-sidebar .sidebar-layout__link,
+.layout-with-sidebar .wiki-link,
+.matrix-sidebar-footer .sidebar-link {
+  grid-template-columns: var(--sidebar-code-col) minmax(0, 1fr);
+}
+
+.sidebar-code,
+.link-code,
+.item-code {
+  justify-self: start;
+  text-align: left;
+  font-size: var(--text-xs);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--color-accent, #D97706);
+}
+
+.layout-with-sidebar .group-label,
+.layout-with-sidebar .sidebar-desc {
+  padding: 0;
+}

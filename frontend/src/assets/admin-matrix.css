@@ -1,0 +1,580 @@
+/**
+ * NEEPU 运维面板主题层 — 跟随全局 dark/light CSS 变量
+ */
+.admin-panel {
+  --ops-bg: var(--page-bg);
+  --ops-surface: var(--card-bg);
+  --ops-surface-2: var(--code-bg);
+  --ops-border: var(--border);
+  --ops-text: var(--text);
+  --ops-muted: var(--muted);
+  --ops-primary: var(--primary);
+  --ops-accent: var(--color-accent);
+  --ops-danger: var(--error);
+  --ops-info: var(--info);
+  --ops-radius: var(--card-radius, 10px);
+  --ops-on-primary: var(--on-primary-text, #fff);
+  --ops-overlay: var(--overlay);
+  --ops-hover: var(--hover);
+}
+
+.admin-panel h2,
+.admin-panel h3,
+.admin-panel h4 {
+  color: var(--ops-text) !important;
+  border-bottom-color: var(--ops-border) !important;
+}
+
+.admin-panel .action-bar,
+.admin-panel .filter-bar,
+.admin-panel .toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 16px;
+  align-items: center;
+}
+
+.admin-panel .search-input,
+.admin-panel .form-input,
+.admin-panel .form-textarea,
+.admin-panel input[type="text"],
+.admin-panel input[type="email"],
+.admin-panel input[type="password"],
+.admin-panel input[type="number"],
+.admin-panel input[type="datetime-local"],
+.admin-panel select,
+.admin-panel textarea {
+  background: var(--ops-surface) !important;
+  border: 1px solid var(--ops-border) !important;
+  border-radius: var(--ops-radius) !important;
+  color: var(--ops-text) !important;
+  padding: 8px 12px !important;
+  font-size: 13px !important;
+  font-family: inherit !important;
+  box-sizing: border-box;
+}
+
+.admin-panel .search-input:focus,
+.admin-panel .form-input:focus,
+.admin-panel .form-textarea:focus,
+.admin-panel input:focus,
+.admin-panel select:focus,
+.admin-panel textarea:focus {
+  outline: none !important;
+  border-color: var(--ops-primary) !important;
+  box-shadow: 0 0 0 2px rgba(var(--primary-rgb), 0.15) !important;
+}
+
+.admin-panel .form-input:disabled,
+.admin-panel input:disabled {
+  opacity: 0.6;
+  background: var(--ops-surface-2) !important;
+}
+
+.admin-panel .help-text {
+  color: var(--ops-muted) !important;
+  font-size: 11px !important;
+  margin-top: 4px !important;
+}
+
+.admin-panel label,
+.admin-panel .form-group label {
+  color: var(--ops-muted) !important;
+  font-size: 11px !important;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-weight: 600 !important;
+}
+
+.admin-panel .checkbox-label {
+  text-transform: none !important;
+  color: var(--ops-text) !important;
+  font-size: 13px !important;
+}
+
+.admin-panel .btn-primary,
+.admin-panel button.btn-primary {
+  background-color: #1A9B6E !important;
+  background-image: none !important;
+  color: #FFFFFF !important;
+  border: 1px solid #15803D !important;
+  border-radius: var(--ops-radius) !important;
+  font-weight: 600 !important;
+  cursor: pointer;
+}
+
+html[data-theme="dark"] .admin-panel .btn-primary,
+html[data-theme="dark"] .admin-panel button.btn-primary {
+  background-color: #2DB58A !important;
+  color: #0B0C14 !important;
+  border-color: #2DB58A !important;
+}
+
+.admin-panel .btn-secondary,
+.admin-panel .btn-cancel,
+.admin-panel button.btn-secondary {
+  background-color: #FFFFFF !important;
+  background-image: none !important;
+  color: #0F172A !important;
+  border: 1px solid rgba(15, 23, 42, 0.18) !important;
+  border-radius: var(--ops-radius) !important;
+  cursor: pointer;
+}
+
+html[data-theme="dark"] .admin-panel .btn-secondary,
+html[data-theme="dark"] .admin-panel .btn-cancel,
+html[data-theme="dark"] .admin-panel button.btn-secondary {
+  background-color: rgba(22, 24, 31, 0.92) !important;
+  color: #E2E8F0 !important;
+  border-color: rgba(148, 163, 184, 0.35) !important;
+}
+
+.admin-panel .btn-danger,
+.admin-panel button.btn-danger {
+  background: rgba(220, 38, 38, 0.12) !important;
+  color: var(--ops-danger) !important;
+  border: 1px solid rgba(220, 38, 38, 0.35) !important;
+  border-radius: var(--ops-radius) !important;
+  cursor: pointer;
+  font-weight: 600 !important;
+}
+
+.admin-panel .btn-small.btn-edit {
+  background-color: rgba(26, 155, 110, 0.14) !important;
+  background-image: none !important;
+  color: #0F766E !important;
+  border: 1px solid rgba(26, 155, 110, 0.45) !important;
+  border-radius: var(--ops-radius) !important;
+  cursor: pointer;
+  font-weight: 600 !important;
+}
+
+html[data-theme="dark"] .admin-panel .btn-small.btn-edit {
+  background-color: rgba(45, 181, 138, 0.18) !important;
+  color: #6EE7B7 !important;
+  border-color: rgba(45, 181, 138, 0.45) !important;
+}
+
+.admin-panel .btn-small:not(.btn-edit):not(.delete):not(.btn-danger):not(.btn-warning):not(.btn-info):not(.btn-primary) {
+  background-color: transparent !important;
+  background-image: none !important;
+  color: var(--ops-text) !important;
+  border: 1px solid var(--ops-border) !important;
+  border-radius: var(--ops-radius) !important;
+  cursor: pointer;
+}
+
+.admin-panel .btn-small.delete,
+.admin-panel .btn-small.btn-danger {
+  background: rgba(220, 38, 38, 0.12) !important;
+  color: var(--ops-danger) !important;
+  border-color: rgba(220, 38, 38, 0.35) !important;
+}
+
+.admin-panel .btn-small.btn-warning {
+  background: rgba(217, 119, 6, 0.12) !important;
+  color: var(--ops-accent) !important;
+  border-color: rgba(217, 119, 6, 0.35) !important;
+}
+
+.admin-panel .btn-small.btn-info {
+  background: rgba(59, 130, 246, 0.1) !important;
+  color: #2563EB !important;
+  border-color: rgba(59, 130, 246, 0.28) !important;
+}
+
+html[data-theme="dark"] .admin-panel .btn-small.btn-info {
+  color: #93C5FD !important;
+}
+
+.admin-panel .btn-primary:hover,
+.admin-panel .btn-secondary:hover,
+.admin-panel .btn-small:hover {
+  filter: brightness(1.06);
+  transform: none !important;
+}
+
+.admin-panel .users-table,
+.admin-panel .data-table,
+.admin-panel table {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--ops-surface) !important;
+  border: 1px solid var(--ops-border) !important;
+  border-radius: var(--ops-radius) !important;
+  overflow: hidden;
+  box-shadow: none !important;
+  margin-bottom: 16px;
+}
+
+.admin-panel .users-table thead,
+.admin-panel .data-table thead,
+.admin-panel table thead {
+  background: var(--ops-hover) !important;
+  border-bottom: 1px solid var(--ops-border) !important;
+}
+
+.admin-panel .users-table th,
+.admin-panel .data-table th,
+.admin-panel table th {
+  padding: 10px 12px !important;
+  text-align: left;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  color: var(--ops-muted) !important;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.admin-panel .users-table td,
+.admin-panel .data-table td,
+.admin-panel table td {
+  padding: 10px 12px !important;
+  border-bottom: 1px solid var(--ops-border) !important;
+  font-size: 13px !important;
+  color: var(--ops-text) !important;
+}
+
+.admin-panel .users-table tbody tr:hover,
+.admin-panel .data-table tbody tr:hover,
+.admin-panel table tbody tr:hover {
+  background: var(--ops-hover) !important;
+}
+
+.admin-panel .settings-card,
+.admin-panel .card,
+.admin-panel .stat-card {
+  background: var(--ops-surface) !important;
+  border: 1px solid var(--ops-border) !important;
+  border-radius: var(--ops-radius) !important;
+  padding: 16px 18px !important;
+  margin-bottom: 16px;
+  box-shadow: none !important;
+}
+
+.admin-panel .card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--ops-border);
+}
+
+.admin-panel .badge,
+.admin-panel .badge-blue,
+.admin-panel .badge-green,
+.admin-panel .badge-gray,
+.admin-panel .badge-success,
+.admin-panel .badge-yellow {
+  display: inline-block;
+  padding: 2px 8px !important;
+  border-radius: var(--ops-radius) !important;
+  font-size: 10px !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.04em;
+  border: 1px solid var(--ops-border);
+  background: rgba(var(--primary-rgb), 0.1) !important;
+  color: var(--ops-primary) !important;
+}
+
+.admin-panel .badge.admin {
+  background: rgba(217, 119, 6, 0.12) !important;
+  color: var(--ops-accent) !important;
+  border-color: rgba(217, 119, 6, 0.35) !important;
+}
+
+.admin-panel .badge.user {
+  background: rgba(var(--primary-rgb), 0.1) !important;
+  color: var(--ops-primary) !important;
+}
+
+.admin-panel .badge-blue { color: #2563EB !important; background: rgba(59,130,246,0.1) !important; }
+html[data-theme="dark"] .admin-panel .badge-blue { color: #93C5FD !important; background: rgba(59,130,246,0.12) !important; }
+.admin-panel .badge-green { color: var(--ops-primary) !important; }
+.admin-panel .badge-gray { color: var(--ops-muted) !important; background: var(--ops-hover) !important; }
+
+.admin-panel .tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-bottom: 16px;
+  border-bottom: 1px solid var(--ops-border);
+  padding-bottom: 8px;
+}
+
+.admin-panel .tab-btn {
+  padding: 8px 14px !important;
+  background: transparent !important;
+  border: 1px solid transparent !important;
+  border-radius: var(--ops-radius) !important;
+  color: var(--ops-muted) !important;
+  cursor: pointer;
+  font-size: 12px !important;
+  font-family: inherit !important;
+}
+
+.admin-panel .tab-btn.active,
+.admin-panel .tab-btn:hover {
+  color: var(--ops-primary) !important;
+  border-color: var(--ops-border) !important;
+  background: var(--ops-hover) !important;
+}
+
+.admin-panel .pagination {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.admin-panel .pagination button {
+  padding: 6px 12px !important;
+  background: transparent !important;
+  border: 1px solid var(--ops-border) !important;
+  color: var(--ops-text) !important;
+  border-radius: var(--ops-radius) !important;
+  cursor: pointer;
+}
+
+.admin-panel .pagination button:hover:not(:disabled) {
+  border-color: var(--ops-primary) !important;
+  color: var(--ops-primary) !important;
+}
+
+.admin-panel .modal-overlay {
+  background: var(--ops-overlay) !important;
+  backdrop-filter: blur(4px);
+}
+
+.admin-panel .modal-content,
+.admin-panel .modal {
+  background: var(--ops-surface) !important;
+  border: 1px solid var(--ops-border) !important;
+  border-radius: var(--ops-radius) !important;
+  color: var(--ops-text) !important;
+  box-shadow: none !important;
+}
+
+.admin-panel .modal-header {
+  border-bottom: 1px solid var(--ops-border);
+  padding-bottom: 10px;
+  margin-bottom: 12px;
+}
+
+.admin-panel .btn-close {
+  background: transparent !important;
+  border: none !important;
+  color: var(--ops-muted) !important;
+  font-size: 20px;
+  cursor: pointer;
+}
+
+.admin-panel .status-message.success {
+  background: rgba(var(--primary-rgb), 0.1) !important;
+  color: var(--ops-primary) !important;
+  border: 1px solid var(--ops-border) !important;
+}
+
+.admin-panel .status-message.error {
+  background: rgba(220, 38, 38, 0.1) !important;
+  color: var(--ops-danger) !important;
+  border: 1px solid rgba(220, 38, 38, 0.28) !important;
+}
+
+.admin-panel .status-message.info {
+  background: rgba(59, 130, 246, 0.1) !important;
+  color: #2563EB !important;
+  border: 1px solid rgba(59, 130, 246, 0.28) !important;
+}
+
+html[data-theme="dark"] .admin-panel .status-message.info {
+  color: #93C5FD !important;
+}
+
+.admin-panel .empty-state,
+.admin-panel .text-muted {
+  color: var(--ops-muted) !important;
+}
+
+.admin-panel .division-item,
+.admin-panel .game-divisions-section,
+.admin-panel .code-pill {
+  background: var(--ops-surface-2) !important;
+  border: 1px solid var(--ops-border) !important;
+  border-radius: var(--ops-radius) !important;
+  color: var(--ops-text) !important;
+}
+
+.admin-panel .code-pill {
+  padding: 2px 8px;
+  font-family: inherit;
+  color: var(--ops-accent) !important;
+}
+
+.admin-panel .settings-actions {
+  border-top-color: var(--ops-border) !important;
+}
+
+.admin-panel .n-card,
+.admin-panel .n-data-table {
+  --n-border-radius: var(--card-radius, 10px) !important;
+}
+
+.admin-panel .btn-small {
+  padding: 6px 10px !important;
+  font-size: 12px !important;
+}
+
+.admin-panel .btn-primary,
+.admin-panel .btn-secondary {
+  padding: 8px 14px !important;
+  font-size: 13px !important;
+  font-family: inherit !important;
+}
+
+.admin-panel .dashboard,
+.admin-panel .metrics-grid,
+.admin-panel .chart-container,
+.admin-panel .n-card {
+  background: var(--ops-surface) !important;
+  color: var(--ops-text) !important;
+  border-color: var(--ops-border) !important;
+  border-radius: var(--ops-radius) !important;
+  box-shadow: none !important;
+}
+
+.admin-panel .metric-card,
+.admin-panel .stat-card {
+  background: var(--ops-surface) !important;
+  border: 1px solid var(--ops-border) !important;
+  border-radius: var(--ops-radius) !important;
+}
+
+.admin-panel .content-area {
+  align-items: flex-start;
+}
+
+.admin-panel .dashboard {
+  max-width: 100%;
+}
+
+.admin-panel .content-management .tab-btn {
+  color: var(--ops-muted) !important;
+  background: transparent !important;
+  border: 1px solid transparent !important;
+}
+
+.admin-panel .content-management .tab-btn.active,
+.admin-panel .content-management .tab-btn:hover {
+  color: var(--ops-primary) !important;
+  background: var(--ops-hover) !important;
+  border-color: var(--ops-border) !important;
+}
+
+.admin-panel .carousel-management .form-grid input[type="text"],
+.admin-panel .carousel-management .form-grid input[type="number"] {
+  background: var(--ops-surface) !important;
+  border: 1px solid var(--ops-border) !important;
+  color: var(--ops-text) !important;
+}
+
+.admin-panel .carousel-management .form-panel {
+  background: var(--ops-surface) !important;
+  border-color: var(--ops-border) !important;
+  color: var(--ops-text) !important;
+}
+
+.admin-panel .carousel-management .slides-table {
+  background: var(--ops-surface) !important;
+  color: var(--ops-text) !important;
+}
+
+.admin-panel .carousel-management .slides-table th {
+  color: var(--ops-muted) !important;
+}
+
+.admin-panel .carousel-management .hint {
+  color: var(--ops-muted) !important;
+}
+
+.admin-panel .metrics-grid {
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+}
+
+.admin-panel .menu-section {
+  width: 100%;
+}
+
+.admin-panel .user-management,
+.admin-panel .system-settings,
+.admin-panel .ctf-management,
+.admin-panel .log-audit,
+.admin-panel .content-management {
+  width: 100%;
+}
+
+
+/* anime-ui: dashboard chart clamp + 卡片圆角 */
+.admin-panel .chart,
+.dashboard .chart {
+  overflow: hidden;
+  max-height: 280px;
+}
+.admin-panel .chart-container,
+.dashboard .chart-container,
+.admin-panel .active-users,
+.dashboard .active-users {
+  border-radius: var(--card-radius, 12px);
+  box-shadow: var(--gradient-card-shadow);
+  background: var(--gradient-card-bg, var(--card-bg));
+  border: 1px solid var(--gradient-card-border, var(--border));
+  /* No border-left accent — it square-cuts past border-radius ("顶出卡片") */
+  border-left-width: 1px;
+  padding: var(--fib-21, 21px);
+  margin-bottom: var(--fib-21, 21px);
+  overflow: hidden;
+  box-sizing: border-box;
+}
+.admin-panel .bar-chart,
+.dashboard .bar-chart {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--fib-8, 8px);
+  height: 200px;
+  max-height: 200px;
+  overflow: hidden;
+  padding-top: var(--fib-13, 13px);
+}
+.admin-panel .bar-chart .bar-item,
+.dashboard .bar-chart .bar-item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  min-width: 0;
+  height: 100%;
+}
+.admin-panel .bar-chart .bar,
+.dashboard .bar-chart .bar {
+  width: 61.8%;
+  max-width: 28px;
+  max-height: 160px !important;
+  border-radius: var(--radius-sm, 8px) var(--radius-sm, 8px) 0 0;
+  background: linear-gradient(180deg, var(--color-depth, #60A5FA), var(--primary));
+}
+.admin-panel .users-table .badge,
+.dashboard .users-table .badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2rem;
+  padding: 2px 10px;
+  border-radius: var(--radius-pill, 10px);
+  background: rgba(var(--primary-rgb), 0.12);
+  color: var(--primary);
+  font-family: var(--font-ui);
+  font-weight: 600;
+}

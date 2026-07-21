@@ -1,0 +1,1216 @@
+/**
+ * 黄金分割布局节奏 — φ ≈ 1.618
+ * 间距：Fibonacci 8 → 13 → 21 → 34 → 55 → 89 → 144
+ * 主区 / 侧区：61.8% : 38.2%
+ */
+
+:root {
+  --phi: 1.618033988749895;
+  --phi-minor: 0.618033988749895;
+  --phi-major: 61.803%;
+
+  --fib-8: 8px;
+  --fib-13: 13px;
+  --fib-21: 21px;
+  --fib-34: 34px;
+  --fib-55: 55px;
+  --fib-89: 89px;
+  --fib-144: 144px;
+  --fib-233: 233px;
+
+  --space-gutter: var(--fib-21);
+  --space-gutter-lg: var(--fib-34);
+  --space-section: var(--fib-55);
+
+  --card-grid-min-golden: 324px;
+  --card-min-height-golden: calc(var(--card-grid-min-golden) / var(--phi));
+  --card-padding-y-golden: var(--fib-21);
+  --card-padding-x-golden: var(--fib-34);
+
+  --hero-panel-width: min(372px, calc(38.2vw));
+  --prose-max-golden: 61.8ch;
+}
+
+/* ── 卡片网格：统一最小宽与间距 ── */
+.feature-grid,
+.game-quick-list,
+.games-grid,
+.choose-grid,
+.user-grid,
+.stat-grid,
+.metrics-grid {
+  gap: var(--space-gutter);
+}
+
+.feature-grid,
+.game-quick-list,
+.games-grid,
+.choose-grid,
+.user-grid {
+  grid-template-columns: repeat(auto-fill, minmax(var(--card-grid-min-golden), 1fr));
+}
+
+.landing-page .feature-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+@media (min-width: 768px) {
+  .landing-page .feature-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: var(--space-gutter-lg);
+  }
+}
+
+.feature-card,
+.game-quick-list .quick-card,
+.stat-card,
+.metrics-grid .metric-card {
+  min-height: var(--card-min-height-golden);
+  padding: var(--card-padding-y-golden) var(--card-padding-x-golden);
+  box-sizing: border-box;
+}
+
+.training-main .game-quick-list .quick-card {
+  aspect-ratio: var(--phi);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.matrix-panel,
+.bulletin-item,
+.quick-card.linux-cmd-btn {
+  padding: var(--card-padding-y-golden) var(--card-padding-x-golden);
+}
+
+/* ── 首页 Hero：φ 分栏 ── */
+.landing-page .landing-shell {
+  padding: 0 clamp(var(--fib-21), 3.82vw, var(--fib-55)) var(--fib-34);
+}
+
+.landing-page .landing-hero {
+  gap: var(--space-gutter-lg);
+  padding: clamp(var(--fib-34), 7.64vh, var(--fib-89)) 0;
+}
+
+@media (min-width: 900px) {
+  .landing-page .landing-hero {
+    grid-template-columns: minmax(0, 1.618fr) minmax(260px, var(--hero-panel-width)) minmax(0, 1fr);
+    gap: var(--space-section);
+    align-items: center;
+  }
+
+  .landing-page .hero-copy {
+    grid-column: 1;
+    max-width: var(--prose-max-golden);
+  }
+
+  .landing-page .hero-panel {
+    grid-column: 2;
+    max-width: var(--hero-panel-width);
+    justify-self: center;
+  }
+}
+
+.landing-page .hero-copy {
+  min-height: clamp(var(--fib-233), 38.2vh, calc(var(--fib-144) * var(--phi)));
+}
+
+.landing-page .hero-title {
+  font-size: clamp(2.618rem, 4.5vw + 0.8rem, calc(2.618rem * var(--phi)));
+  line-height: 1.12;
+}
+
+.landing-page .hero-desc {
+  margin-top: var(--fib-21);
+  max-width: var(--prose-max-golden);
+}
+
+.landing-page .hero-panel {
+  gap: var(--fib-13);
+  padding: var(--fib-21);
+}
+
+.landing-page .panel-head {
+  margin: calc(var(--fib-21) * -1) calc(var(--fib-21) * -1) var(--fib-8);
+  padding: var(--fib-13) var(--fib-21);
+}
+
+.landing-page .quick-card {
+  padding: var(--fib-13) var(--fib-13);
+  gap: var(--fib-13);
+}
+
+.landing-page .quick-label {
+  font-size: var(--text-base);
+}
+
+.landing-page .shortcut-nav {
+  gap: var(--fib-13);
+  padding-top: var(--fib-13);
+  margin-top: var(--fib-8);
+}
+
+.landing-page .shortcut-link {
+  padding: var(--fib-13);
+}
+
+.landing-page .feature-grid {
+  margin-top: var(--fib-21);
+  gap: var(--space-gutter-lg);
+}
+
+.landing-page .feature-card {
+  aspect-ratio: var(--phi);
+  min-height: calc(var(--card-grid-min-golden) / var(--phi));
+  padding: var(--fib-34) var(--fib-21);
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+}
+
+.landing-page .feature-title {
+  margin: var(--fib-13) 0 var(--fib-8);
+}
+
+.landing-page .landing-footer {
+  margin-top: var(--fib-34);
+  padding-top: var(--fib-21);
+  gap: var(--fib-13);
+}
+
+/* ── 侧栏 + 主区：内容区内边距 φ 节奏 ── */
+.training-main:not(.training-main--game),
+.bulletin-main,
+.admin-main,
+.home-main,
+.game-admin__main {
+  padding: var(--space-gutter-lg);
+}
+
+/* Wiki 主区：收紧左右留白，让列表网格铺满可用宽度 */
+.wiki-main {
+  padding: var(--fib-21) var(--fib-21);
+}
+
+@media (min-width: 1200px) {
+  .training-main:not(.training-main--game),
+  .bulletin-main,
+  .admin-main,
+  .home-main {
+    padding: var(--space-section) clamp(var(--fib-34), 4vw, var(--fib-55));
+  }
+
+  .wiki-main {
+    padding: var(--fib-21) var(--fib-34);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .landing-page .feature-card,
+  .landing-page .quick-card {
+    transition: transform 0.22s ease, box-shadow 0.22s ease, border-color 0.22s ease;
+  }
+
+  .landing-page .feature-card:hover,
+  .landing-page .quick-card:hover {
+    transform: translateY(calc(var(--fib-8) * -0.5));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .landing-page .feature-card:hover,
+  .landing-page .quick-card:hover {
+    transform: none;
+  }
+}
+
+/* ══════════════════════════════════════════════════════════
+   全局 φ 布局 — 各页面统一间距 / 分栏 / 卡片比例
+   ══════════════════════════════════════════════════════════ */
+
+/* ── 页面壳内边距 ── */
+.page-wrap,
+.page-container,
+.myprofile-wrap,
+.game-detail-page,
+.games-cover,
+.competition-main,
+.scoreboard-layout,
+.teams-main,
+.list-panel,
+.manage-panel,
+.welcome-panel,
+.dashboard,
+.user-list-shell,
+.dev-components {
+  padding: var(--space-gutter-lg);
+  box-sizing: border-box;
+}
+
+@media (min-width: 1200px) {
+  .page-wrap,
+  .page-container,
+  .myprofile-wrap,
+  .game-detail-page,
+  .games-cover,
+  .competition-main,
+  .scoreboard-layout,
+  .teams-main,
+  .list-panel,
+  .manage-panel,
+  .welcome-panel,
+  .dashboard,
+  .user-list-shell,
+  .dev-components {
+    padding: var(--space-section) clamp(var(--fib-34), 4vw, var(--fib-55));
+  }
+}
+
+.myprofile-wrap {
+  max-width: none;
+  width: 100%;
+  margin: 0;
+}
+
+/* ── 统计 / 指标网格 ── */
+.stat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(calc(var(--card-grid-min-golden) / var(--phi)), 1fr));
+  margin-bottom: var(--fib-34);
+}
+
+.metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(var(--card-grid-min-golden), 1fr));
+  gap: var(--space-gutter-lg);
+  margin-bottom: var(--fib-34);
+}
+
+.stat-card,
+.metrics-grid .metric-card {
+  aspect-ratio: var(--phi);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-gutter);
+  margin-bottom: var(--fib-21);
+}
+
+.stat-box {
+  padding: var(--card-padding-y-golden) var(--card-padding-x-golden);
+  min-height: var(--fib-89);
+  box-sizing: border-box;
+}
+
+/* ── 图表 / 双栏内容区 ── */
+.charts-section {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-gutter-lg);
+  margin-bottom: var(--fib-34);
+}
+
+@media (min-width: 900px) {
+  .charts-section {
+    grid-template-columns: repeat(auto-fit, minmax(calc(var(--card-grid-min-golden) / var(--phi-minor)), 1fr));
+  }
+}
+
+.charts-row {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-gutter);
+}
+
+@media (min-width: 768px) {
+  .charts-row {
+    grid-template-columns: minmax(0, 1.618fr) minmax(0, 1fr);
+  }
+}
+
+.chart-container,
+.active-users {
+  padding: var(--card-padding-y-golden) var(--card-padding-x-golden);
+  box-sizing: border-box;
+}
+
+.profile-content-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-gutter-lg);
+}
+
+@media (min-width: 768px) {
+  .profile-content-grid {
+    grid-template-columns: minmax(0, 1.618fr) minmax(0, 1fr);
+  }
+}
+
+.profile-header {
+  gap: var(--space-gutter-lg);
+}
+
+.profile-stats {
+  gap: var(--space-gutter-lg);
+}
+
+/* ── 赛事详情 φ 分栏 ── */
+.detail-layout {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-gutter-lg);
+  max-width: none;
+  width: 100%;
+  margin: 0;
+  align-items: start;
+}
+
+@media (min-width: 900px) {
+  .detail-layout {
+    grid-template-columns: minmax(0, 1.618fr) minmax(260px, 1fr);
+    gap: var(--space-section);
+  }
+}
+
+/* ── 用户卡片网格 ── */
+.user-card.matrix-panel {
+  min-height: var(--fib-89);
+}
+
+.search-bar {
+  margin-bottom: var(--fib-21);
+}
+
+/* ── 个人工作台 /home（248px 侧栏，与 /training 一致）── */
+.home-page.home-wrap {
+  min-height: var(--workspace-height);
+  box-sizing: border-box;
+  width: 100%;
+  max-width: none;
+}
+
+.home-page .home-main {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-gutter-lg);
+  width: 100%;
+  max-width: none;
+}
+
+.home-page .large-hero {
+  width: 100%;
+}
+
+.home-page .large-hero .carousel {
+  border-radius: var(--card-radius);
+  overflow: hidden;
+  position: relative;
+  min-height: 200px;
+  background: linear-gradient(135deg, rgba(var(--primary-rgb), 0.12), rgba(236, 72, 153, 0.08));
+}
+
+.home-page .large-hero .carousel,
+.home-page .large-hero .slide img {
+  height: clamp(var(--fib-233), 38.2vh, calc(var(--fib-233) * var(--phi-minor)));
+}
+
+.home-page .home-bottom-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-gutter-lg);
+}
+
+@media (min-width: 900px) {
+  .home-page .home-bottom-grid {
+    grid-template-columns: minmax(0, 1.618fr) minmax(280px, 1fr);
+  }
+}
+
+.home-page .sidebar-card,
+.home-page .calendar-card,
+.home-page .announce-card {
+  border-radius: var(--card-radius);
+}
+
+.home-page .mini-calendar {
+  padding: var(--fib-13);
+}
+
+.home-page .announcement-item {
+  padding: var(--fib-13);
+}
+
+.home-page .days-grid {
+  gap: var(--fib-8);
+}
+
+.home-page .day {
+  min-height: var(--fib-55);
+  padding: var(--fib-8);
+  border-radius: var(--card-radius);
+}
+
+@media (max-width: 899px) {
+  .home-page .home-bottom-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .stats-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .charts-row {
+    grid-template-columns: 1fr;
+  }
+
+  .profile-content-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .detail-layout {
+    grid-template-columns: 1fr;
+    gap: var(--space-gutter-lg);
+  }
+
+  .page-wrap,
+  .page-container,
+  .myprofile-wrap,
+  .game-detail-page,
+  .dashboard,
+  .home-page.home-wrap {
+    padding: var(--fib-21);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .feature-card,
+  .game-quick-list .quick-card,
+  .stat-card,
+  .metrics-grid .metric-card,
+  .user-card.matrix-panel {
+    transition: transform 0.22s ease, box-shadow 0.22s ease, border-color 0.22s ease;
+  }
+
+  .feature-card:hover,
+  .game-quick-list .quick-card:hover,
+  .stat-card:hover,
+  .metrics-grid .metric-card:hover {
+    transform: translateY(calc(var(--fib-8) * -0.5));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .feature-card:hover,
+  .game-quick-list .quick-card:hover,
+  .stat-card:hover,
+  .metrics-grid .metric-card:hover {
+    transform: none;
+  }
+}
+
+/* ══════════════════════════════════════════════════════════
+   认证辅助页 / 表格页 / 编辑器 / 赛事日历 — 主题统一
+   ══════════════════════════════════════════════════════════ */
+
+.auth-aux-page {
+  min-height: calc(100vh - var(--nav-height, 72px));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-gutter-lg);
+  box-sizing: border-box;
+}
+
+.auth-aux-shell {
+  width: min(420px, 100%);
+  max-width: calc(420px * var(--phi));
+}
+
+.auth-aux-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--fib-21);
+}
+
+.auth-aux-head {
+  display: flex;
+  flex-direction: column;
+  gap: var(--fib-13);
+}
+
+.auth-aux-title {
+  margin: 0;
+  font-size: var(--text-xl);
+  font-weight: 700;
+  color: var(--text);
+}
+
+.auth-aux-desc {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--muted);
+  line-height: var(--text-sm--line-height);
+}
+
+.auth-aux-page .form-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--fib-8);
+  text-align: left;
+}
+
+.auth-aux-page .form-group label {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--text);
+}
+
+.auth-aux-page .form-group input {
+  padding: var(--fib-13);
+  border: 1px solid var(--border);
+  border-radius: var(--card-radius);
+  background: var(--card-bg);
+  color: var(--text);
+  font-family: inherit;
+}
+
+.auth-aux-page .btn-primary,
+.auth-aux-page .btn-secondary {
+  width: 100%;
+  padding: var(--fib-13);
+  border-radius: var(--card-radius);
+  border: 1px solid transparent;
+  cursor: pointer;
+  font-family: inherit;
+  font-weight: 600;
+}
+
+.auth-aux-page .btn-primary {
+  background: var(--primary);
+  color: var(--primary-contrast, #fff);
+}
+
+.auth-aux-page .btn-secondary {
+  background: var(--hover);
+  color: var(--text);
+  border-color: var(--border);
+}
+
+.auth-aux-page .links {
+  padding-top: var(--fib-13);
+  border-top: 1px solid var(--border);
+}
+
+.auth-aux-page .links a {
+  color: var(--primary);
+  text-decoration: none;
+  font-size: var(--text-sm);
+}
+
+.auth-aux-page .error-msg {
+  color: var(--accent-red, #f83030);
+  font-size: var(--text-sm);
+}
+
+.auth-aux-page .success-state,
+.auth-aux-page .status {
+  display: flex;
+  flex-direction: column;
+  gap: var(--fib-13);
+  align-items: center;
+  text-align: center;
+}
+
+/* ── 排行榜 ── */
+.scoreboard-layout {
+  width: 100%;
+}
+
+.scoreboard-panel {
+  overflow: hidden;
+}
+
+.scoreboard-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--fib-13);
+  margin-bottom: var(--fib-21);
+}
+
+.scoreboard-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.scoreboard-table th,
+.scoreboard-table td {
+  padding: var(--fib-13);
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+}
+
+.scoreboard-table th {
+  font-size: var(--text-xs);
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.scoreboard-row.top3 {
+  background: rgba(var(--primary-rgb), 0.06);
+  font-weight: 600;
+}
+
+.scoreboard-row:hover {
+  background: var(--hover);
+}
+
+/* ── 赛事日历 Events ── */
+.events-root {
+  padding: var(--space-gutter-lg);
+  box-sizing: border-box;
+  min-height: var(--workspace-height);
+}
+
+.events-layout {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-gutter-lg);
+  align-items: start;
+}
+
+@media (min-width: 900px) {
+  .events-layout {
+    grid-template-columns: minmax(0, 1.618fr) minmax(280px, 1fr);
+  }
+}
+
+.events-main,
+.events-side .n-card {
+  border: 1px solid var(--gradient-card-border, var(--border));
+  border-radius: var(--card-radius);
+  background: var(--gradient-card-bg, var(--card-bg));
+  box-shadow: var(--gradient-card-shadow);
+}
+
+.events-main {
+  padding: var(--card-padding-y-golden) var(--card-padding-x-golden);
+}
+
+.calendar-grid {
+  gap: var(--fib-8);
+}
+
+.cal-cell {
+  min-height: var(--fib-89);
+  border: 1px solid var(--border);
+  padding: var(--fib-8);
+  background: var(--card-bg);
+  border-radius: var(--card-radius);
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+
+.cal-cell:hover {
+  background: rgba(var(--primary-rgb), 0.05);
+  border-color: rgba(var(--primary-rgb), 0.28);
+}
+
+.cal-cell.head {
+  background: rgba(var(--primary-rgb), 0.08);
+  font-weight: 700;
+  text-align: center;
+  color: var(--primary);
+  letter-spacing: 0.06em;
+  font-family: var(--font-ui);
+  min-height: auto;
+}
+
+.evt {
+  background: rgba(var(--primary-rgb), 0.14);
+  color: var(--text);
+  padding: 4px 8px;
+  margin-bottom: 4px;
+  border-radius: var(--radius-pill, 10px);
+  cursor: pointer;
+  font-size: var(--text-xs);
+  font-weight: 600;
+  font-family: var(--font-ui);
+  border-left: 3px solid var(--primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  transition: transform 0.2s ease, background 0.2s ease;
+}
+
+.evt:hover {
+  background: rgba(var(--primary-rgb), 0.22);
+  transform: translateY(-1px);
+}
+
+.calendar-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--fib-21);
+  gap: var(--fib-13);
+}
+
+.calendar-header {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--fib-13);
+  margin-bottom: var(--fib-13);
+  font-family: var(--font-ui);
+  font-weight: 700;
+  color: var(--text);
+}
+
+.calendar-header button {
+  min-width: 34px;
+  height: 34px;
+  border: 1px solid rgba(var(--primary-rgb), 0.22);
+  background: rgba(var(--primary-rgb), 0.08);
+  color: var(--text);
+  border-radius: var(--radius-pill, 10px);
+  cursor: pointer;
+  font-size: 16px;
+  transition: background 0.2s, transform 0.2s;
+}
+
+.calendar-header button:hover {
+  background: rgba(var(--primary-rgb), 0.16);
+  color: var(--primary);
+  transform: translateY(-1px);
+}
+
+.events-side .list-item {
+  padding: var(--fib-13);
+  border-radius: var(--card-radius);
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s;
+}
+
+.events-side .list-item:hover {
+  background: rgba(var(--primary-rgb), 0.06);
+  border-color: rgba(var(--primary-rgb), 0.2);
+}
+
+.events-side .list-title {
+  font-weight: 700;
+  font-family: var(--font-ui);
+  color: var(--text);
+}
+
+.events-side .list-time {
+  margin-top: 4px;
+  font-size: var(--text-xs);
+  color: var(--muted);
+}
+
+/* ── 归档 ── */
+.archive-list {
+  display: grid;
+  gap: var(--space-gutter);
+}
+
+.archive-item {
+  padding: var(--card-padding-y-golden) var(--card-padding-x-golden);
+  border: 1px solid var(--gradient-card-border, var(--border));
+  border-radius: var(--card-radius);
+  background: var(--gradient-card-bg, var(--card-bg));
+  cursor: pointer;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.archive-item:hover {
+  border-color: var(--primary);
+  box-shadow: var(--gradient-card-shadow-hover, var(--gradient-card-shadow));
+}
+
+/* ── 管理员初始化 ── */
+.admin-setup-shell {
+  min-height: var(--workspace-height);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: var(--space-section) var(--space-gutter-lg);
+  box-sizing: border-box;
+}
+
+.admin-setup-shell .setup-card {
+  width: min(100%, calc(480px * var(--phi-minor)));
+  max-width: 720px;
+  overflow: hidden;
+  /* Kill global [class*="card"] left/top accent overlays that poke past radius */
+  --card-left-accent-width: 0px;
+  --card-top-accent-height: 0px;
+  --card-accent-fill-height: 0px;
+  background-image: none !important;
+}
+
+.admin-setup-shell .setup-card::before,
+.admin-setup-shell .setup-card::after {
+  /* matrix-panel 1px hairline + card accent pseudos — clip or drop */
+  display: none !important;
+}
+
+.admin-setup-shell .section {
+  margin-bottom: var(--fib-21);
+  padding-bottom: var(--fib-21);
+  border-bottom: 1px solid var(--border);
+}
+
+.admin-setup-shell .user-info,
+.admin-setup-shell .info-box {
+  background: var(--hover);
+  /* Inset accent stays inside radius — border-left square-cuts corners */
+  border-left: none !important;
+  box-shadow: inset 3px 0 0 0 var(--primary) !important;
+  padding: var(--fib-13);
+  border-radius: var(--card-radius);
+  overflow: hidden;
+}
+
+.admin-setup-shell .search-box {
+  display: flex;
+  align-items: stretch;
+  gap: var(--fib-8, 8px);
+}
+
+.admin-setup-shell .search-input,
+.admin-setup-shell .search-box .btn-primary {
+  height: var(--fib-34, 34px);
+  min-height: var(--fib-34, 34px);
+  box-sizing: border-box;
+  border-radius: var(--radius-sm, 8px);
+}
+
+/* ── 账号设置 ── */
+.account-page .account-panel,
+.account-panel.matrix-panel {
+  padding: var(--card-padding-y-golden) var(--card-padding-x-golden);
+}
+
+/* ── Wiki 编辑器 / 文章 ── */
+.wiki-editor-page,
+.article-editor-page {
+  padding: var(--space-gutter-lg);
+  box-sizing: border-box;
+  width: 100%;
+  max-width: none;
+}
+
+.wiki-editor-page .editor-wrap,
+.article-editor-page .editor-wrap {
+  border: 1px solid var(--border);
+  border-radius: var(--card-radius);
+  overflow: hidden;
+}
+
+/* ── 题目详情页 ── */
+.challenge-page {
+  padding: var(--space-gutter-lg);
+  box-sizing: border-box;
+  min-height: var(--workspace-height);
+}
+
+.challenge-page .layout {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-gutter-lg);
+  max-width: none;
+  width: 100%;
+  margin: 0;
+}
+
+@media (min-width: 900px) {
+  .challenge-page .layout {
+    grid-template-columns: minmax(0, 1.618fr) minmax(260px, 1fr);
+  }
+}
+
+.challenge-page .panel,
+.challenge-page .n-card {
+  border: 1px solid var(--gradient-card-border, var(--border));
+  border-radius: var(--card-radius);
+  background: var(--gradient-card-bg, var(--card-bg));
+}
+
+/* ── 赛事做题 legacy 容器 ── */
+.competitions-container {
+  padding: var(--space-gutter-lg);
+  box-sizing: border-box;
+  min-height: var(--workspace-height);
+}
+
+.competitions-container .games-grid,
+.competitions-container .game-grid {
+  grid-template-columns: repeat(auto-fill, minmax(var(--card-grid-min-golden), 1fr));
+  gap: var(--space-gutter-lg);
+}
+
+/* ── 数据表格面板 ── */
+.matrix-data-panel {
+  padding: var(--card-padding-y-golden) var(--card-padding-x-golden);
+}
+
+.matrix-data-panel .table-wrapper {
+  margin-top: var(--fib-21);
+}
+
+/* ── 全局战队双栏 ── */
+.teams-page-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-gutter-lg);
+}
+
+@media (min-width: 900px) {
+  .teams-page-grid {
+    grid-template-columns: minmax(0, 1.618fr) minmax(280px, 1fr);
+  }
+}
+
+.teams-page-grid .matrix-panel {
+  height: 100%;
+}
+
+/* ── 错误页 ── */
+.error-page {
+  padding: var(--space-section) var(--space-gutter-lg);
+  min-height: var(--workspace-height);
+  box-sizing: border-box;
+}
+
+/* ── Bulletin / Teams 主区（覆盖 scoped）── */
+.bulletin-main,
+.teams-main {
+  padding: var(--space-gutter-lg);
+}
+
+.sidebar-rail-head,
+.bulletin-sidebar {
+  padding: var(--fib-21) var(--fib-13);
+}
+
+.bulletin-item {
+  padding: var(--card-padding-y-golden) var(--card-padding-x-golden);
+}
+
+/* ── GamesHub 网格 ── */
+.games-hub .other-grid,
+.games-layout .other-grid {
+  grid-template-columns: repeat(auto-fill, minmax(var(--card-grid-min-golden), 1fr));
+  gap: var(--space-gutter-lg);
+}
+
+.games-poster-pane {
+  padding: var(--space-gutter-lg);
+}
+
+/* ── 孤儿 legacy 页 ── */
+.legacy-page-notice {
+  font-size: var(--text-xs);
+  color: var(--muted);
+  margin-bottom: var(--fib-13);
+}
+
+/* ── 赛事 legacy 页 Matrix 面板 ── */
+.competition-page .n-card,
+.competition-page .game-card {
+  border: 1px solid var(--gradient-card-border, var(--border));
+  border-radius: var(--card-radius);
+  background: var(--gradient-card-bg, var(--card-bg));
+  box-shadow: var(--gradient-card-shadow);
+}
+
+.competition-page .competitions-list > .n-card {
+  padding: 0;
+}
+
+.competition-page .game-card {
+  padding: var(--card-padding-y-golden) var(--card-padding-x-golden);
+}
+
+/* ── 个人资料编辑 ── */
+.profile-edit-page .matrix-panel {
+  max-width: min(100%, calc(720px * var(--phi)));
+}
+
+.profile-edit-page .profile-edit-container {
+  gap: var(--fib-34);
+}
+
+@media (min-width: 768px) {
+  .profile-edit-page .profile-edit-container {
+    display: grid;
+    grid-template-columns: minmax(140px, 0.382fr) minmax(0, 1.618fr);
+    align-items: start;
+  }
+}
+
+/* ── Wiki / 文章阅读面板（覆盖 scoped）── */
+.page-wrap .article-panel,
+.wiki-editor-page .editor-wrap,
+.article-editor-page .editor-wrap {
+  background: var(--gradient-card-bg, var(--card-bg));
+  border: 1px solid var(--gradient-card-border, var(--border));
+  border-radius: var(--card-radius);
+  box-shadow: var(--gradient-card-shadow);
+  width: 100%;
+  max-width: none !important;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+  box-sizing: border-box;
+}
+
+.page-wrap .article-content--full {
+  width: 100% !important;
+  max-width: none !important;
+}
+
+.wiki-editor-page .vditor-host,
+.article-editor-page .vditor-host {
+  border: 1px solid var(--border);
+  border-radius: var(--card-radius);
+  margin-top: 0;
+  background: var(--card-bg);
+}
+
+/* ── Admin 内边距 φ 节奏（覆盖 scoped padding:20px）── */
+.admin-panel .settings-section,
+.admin-panel .filter-section,
+.admin-panel .form-panel,
+.admin-panel .detail-panel,
+.admin-panel .log-detail,
+.admin-panel .modal-body,
+.admin-panel .chart-wrapper,
+.admin-panel .tab-content {
+  padding: var(--card-padding-y-golden) var(--card-padding-x-golden);
+}
+
+.admin-panel .metrics-grid .metric-card {
+  padding: var(--card-padding-y-golden) var(--card-padding-x-golden);
+  aspect-ratio: var(--phi);
+}
+
+/* ── ContainerChallenge / 题目卡片 ── */
+.container-challenge-page,
+.challenge-card-root {
+  padding: var(--space-gutter-lg);
+  box-sizing: border-box;
+}
+
+/* ── ChallengeWorkspace MatrixShell 做题台 ── */
+.challenge-workspace-matrix.matrix-shell {
+  min-height: var(--workspace-height);
+  height: var(--workspace-height);
+  max-height: var(--workspace-height);
+}
+
+.challenge-workspace-matrix .sidebar-rail {
+  padding: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.challenge-workspace-matrix .matrix-main {
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.challenge-workspace-matrix .matrix-page-head {
+  padding: var(--fib-21) var(--fib-21) var(--fib-13);
+  flex-shrink: 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.challenge-workspace-matrix .challenge-workspace-page {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  overflow: hidden;
+}
+
+.challenge-workspace-matrix .workspace-dock {
+  flex: 1;
+  min-height: 0;
+}
+
+.training-main.training-main--game {
+  padding: 0 !important;
+  overflow: hidden;
+}
+
+.training-main.training-main--game .training-welcome-banner {
+  margin: var(--fib-13);
+}
+
+/* ── 页脚 φ 间距 ── */
+.site-footer {
+  padding: var(--fib-21) var(--fib-21) var(--fib-34);
+}
+
+
+/* anime-ui: games hub — 248px rail + φ 主区，避免「突然变细」 */
+.games-hub.r2s-games,
+.r2s-games {
+  min-height: calc(100vh - var(--nav-height, 72px) - 48px);
+  padding: var(--fib-21, 21px) var(--fib-34, 34px) var(--fib-34, 34px);
+}
+.r2s-games__stage {
+  display: grid;
+  grid-template-columns: 248px minmax(0, 1fr);
+  gap: var(--fib-21, 21px);
+  align-items: stretch;
+  min-height: min(72vh, calc(100vh - var(--nav-height, 72px) - 120px));
+}
+.r2s-games__list-pane {
+  width: 248px;
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+  border-radius: var(--radius-xl, 14px);
+  background: var(--glass-sidebar-bg, var(--card-bg));
+  box-shadow: var(--sidebar-shadow, var(--gradient-card-shadow));
+  padding: var(--fib-21, 21px) var(--fib-13, 13px);
+}
+.r2s-games__list {
+  flex: 1;
+}
+.r2s-games__cover {
+  min-height: 100%;
+  display: flex;
+  align-items: stretch;
+}
+.r2s-games__cover-card {
+  border-radius: var(--card-radius);
+  box-shadow: var(--gradient-card-shadow);
+  overflow: hidden;
+  min-height: 324px;
+  width: 100%;
+  aspect-ratio: var(--phi, 1.618);
+  max-height: none;
+}
+@media (max-width: 900px) {
+  .r2s-games__stage {
+    grid-template-columns: 1fr;
+  }
+  .r2s-games__list-pane {
+    width: 100%;
+  }
+}

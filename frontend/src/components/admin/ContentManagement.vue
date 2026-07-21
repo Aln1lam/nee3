@@ -216,7 +216,7 @@ h2 {
   border: 1px solid rgba(0,0,0,0.1);
   border-radius: 6px;
   font-size: 14px;
-  background: white;
+  background: var(--gradient-card-bg, var(--card-bg));
 }
 
 .search-input {
@@ -254,7 +254,7 @@ h2 {
 .articles-table {
   width: 100%;
   border-collapse: collapse;
-  background: white;
+  background: var(--gradient-card-bg, var(--card-bg));
   border-radius: 8px;
   overflow: hidden;
   box-shadow: var(--card-shadow);
@@ -361,7 +361,7 @@ h2 {
   padding: 8px 12px;
   border: 1px solid var(--card-accent);
   border-radius: 4px;
-  background: white;
+  background: var(--gradient-card-bg, var(--card-bg));
   color: var(--card-accent);
   cursor: pointer;
   transition: all .2s ease;
@@ -391,7 +391,7 @@ h2 {
 }
 
 .modal-content {
-  background: white;
+  background: var(--gradient-card-bg, var(--card-bg));
   padding: 25px;
   border-radius: 10px;
   max-width: 700px;

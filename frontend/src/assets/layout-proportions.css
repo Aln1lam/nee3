@@ -1,0 +1,85 @@
+/**
+ * 西电 Ret2Shell 布局 / 卡片占比
+ * 参考：https://ctf.xidian.edu.cn/training/11
+ * spacing 4px · 侧栏 w-64(256px) · 简介区 max 40vh/320px · 终端占剩余
+ */
+
+:root {
+  --layout-space: 0.25rem;
+
+  /* 侧栏宽：与 /training 一致 248px */
+  --sidebar-width: 248px;
+  --dock-sidebar-width: var(--sidebar-width);
+
+  /* 页面内边距 — Fibonacci 节奏 */
+  --page-gutter-x: var(--fib-21, 21px);
+  --page-gutter-y: var(--fib-21, 21px);
+  --page-gutter-lg-x: var(--fib-34, 34px);
+  --page-gutter-lg-y: var(--fib-34, 34px);
+
+  /* 工作区满高（顶栏以下） */
+  --workspace-height: calc(100vh - var(--nav-height, 72px));
+
+  /* 简介区：西电 max-h-80(320px) + 约 40vh 上限 */
+  --workspace-brief-max-height: min(40vh, calc(var(--layout-space) * 80));
+
+  /* 终端 / Tab 区最小高度 */
+  --workspace-tools-min-height: calc(var(--layout-space) * 80);
+
+  /* 简介右侧操作列 min-w-24 = 96px */
+  --workspace-action-width: calc(var(--layout-space) * 24);
+
+  /* 面板 / 卡片内边距 */
+  --panel-padding: calc(var(--layout-space) * 4);
+  --panel-padding-lg: calc(var(--layout-space) * 6);
+
+  /* 列表卡片网格最小宽：324px ≈ 200×φ */
+  --card-grid-min: var(--card-grid-min-golden, 324px);
+
+  /* 沉浸式工作台：贴边 flat */
+  --dock-radius: 0;
+  --dock-shadow: none;
+  --dock-border-width: 0;
+}
+
+.layout-with-sidebar,
+.sidebar-layout {
+  --sidebar-width: calc(var(--layout-space) * 64);
+}
+
+.training-main:not(.training-main--game),
+.bulletin-main,
+.scoreboard-layout,
+.teams-main,
+.game-detail-page,
+.game-admin__main,
+.myprofile-wrap,
+.dev-components {
+  box-sizing: border-box;
+}
+
+.matrix-panel,
+.article-card,
+.bulletin-item,
+.quick-card,
+.game-card {
+  padding: var(--panel-padding) var(--panel-padding-lg);
+  box-sizing: border-box;
+}
+
+.game-quick-list,
+.games-grid,
+.choose-grid,
+.user-grid {
+  grid-template-columns: repeat(auto-fill, minmax(var(--card-grid-min), 1fr));
+}
+
+.challenge-workspace.workspace-dock,
+.workspace-dock {
+  --dock-sidebar-width: calc(var(--layout-space) * 64);
+}
+
+.app-shell.immersive-mode .challenge-workspace {
+  height: 100%;
+  min-height: 0;
+}

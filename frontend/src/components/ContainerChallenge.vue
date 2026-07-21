@@ -8,7 +8,7 @@
         <span class="points">{{ challenge.original_points }} 分</span>
         <span class="solved">{{ solvedCount }} 队已解</span>
       </div>
-      <div class="description" v-html="challenge.description"></div>
+      <div class="description" v-html="safeDescription"></div>
     </div>
 
     <!-- 容器管理区域 -->
@@ -157,6 +157,15 @@
 </template>
 
 <script>
+import { parseMarkdownSafe } from '../utils/markdown'
+import {
+  getContainerStatus,
+  startContainer as apiStartContainer,
+  stopContainer as apiStopContainer,
+  extendContainer as apiExtendContainer,
+  pickRunningInstance,
+} from '@/services/container'
+
 export default {
   name: 'ContainerChallenge',
   props: {
@@ -206,6 +215,9 @@ export default {
     }
   },
   computed: {
+    safeDescription() {
+      return parseMarkdownSafe(this.challenge?.description || '')
+    },
     canExtend() {
       // 检查是否可以继续延期
       if (!this.containerData) return false
@@ -220,30 +232,14 @@ export default {
     async checkContainerStatus() {
       try {
         this.loadingStatus = true
-        const token = localStorage.getItem('neepu_token')
-        
-        const res = await fetch(`/api/container/status/${this.challengeId}`, {
-          method: 'GET',
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        })
-        
-        const data = await res.json()
-        
-        if (data.success) {
-          this.hasContainer = data.has_container
-          this.containerData = data.data
-          
-          if (this.hasContainer && this.containerData) {
-            this.startTimeRemainingTimer()
-          }
-        } else {
-          this.showMessage(data.message || '检查状态失败', 'error')
-        }
+        const payload = await getContainerStatus(this.challengeId)
+        const running = pickRunningInstance(payload)
+        this.hasContainer = !!running
+        this.containerData = running
+        if (running) this.startTimeRemainingTimer()
       } catch (error) {
         console.error('检查容器状态失败:', error)
-        this.showMessage('检查状态失败：' + error.message, 'error')
+        this.showMessage('检查状态失败：' + (error.response?.data?.msg || error.message), 'error')
       } finally {
         this.loadingStatus = false
       }
@@ -251,39 +247,33 @@ export default {
 
     // ========== 容器启动 ==========
     async startContainerAction() {
+      if (this.isCreatingContainer || this.isStarting) return
       try {
         this.isCreatingContainer = true
-        const token = localStorage.getItem('neepu_token')
-        
-        const res = await fetch(`/api/container/start/${this.challengeId}`, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            team_id: this.teamId
-          })
-        })
-        
-        const data = await res.json()
-        
-        if (data.success && data.action_type === 'manage') {
-          // 容器成功创建
+        const payload = await apiStartContainer(this.challengeId, { asyncMode: false })
+        const running = pickRunningInstance(payload)
+        if (running || payload?.code === 200 || payload?.success) {
           this.hasContainer = true
-          this.containerData = data.data
+          this.containerData = running || (await this._refreshRunning())
           this.startTimeRemainingTimer()
           this.showMessage('✅ 容器启动成功！开始捕获流量...', 'success')
-        } else if (!data.success) {
-          // 请求失败
-          this.showMessage(data.message || '启动失败', 'error')
+        } else {
+          this.showMessage(payload?.msg || payload?.message || '启动失败', 'error')
         }
       } catch (error) {
         console.error('启动容器失败:', error)
-        this.showMessage('启动失败：' + error.message, 'error')
+        this.showMessage('启动失败：' + (error.response?.data?.msg || error.message), 'error')
       } finally {
         this.isCreatingContainer = false
       }
+    },
+
+    async _refreshRunning() {
+      const payload = await getContainerStatus(this.challengeId)
+      const running = pickRunningInstance(payload)
+      this.hasContainer = !!running
+      this.containerData = running
+      return running
     },
 
     // ========== 容器延时 ==========
@@ -295,28 +285,19 @@ export default {
       try {
         this.isExtending = true
         this.showExtendDialog = false
-        
-        const token = localStorage.getItem('neepu_token')
-        
-        const res = await fetch(`/api/container/extend/${this.containerData.instance_id}`, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        })
-        
-        const data = await res.json()
-        
-        if (data.success) {
-          this.containerData.expires_at = data.data.expires_at
-          this.showMessage('✅ 容器已延时1小时', 'success')
+        const id = this.containerData?.instance_id
+        const payload = await apiExtendContainer(id)
+        const d = payload?.data
+        if (payload?.code === 200 || payload?.success || d) {
+          if (d?.expires_at && this.containerData) this.containerData.expires_at = d.expires_at
+          this.showMessage(payload?.msg || '✅ 容器已延时1小时', 'success')
           this.updateTimeRemaining()
         } else {
-          this.showMessage(data.message || '延时失败', 'error')
+          this.showMessage(payload?.msg || payload?.message || '延时失败', 'error')
         }
       } catch (error) {
         console.error('延时容器失败:', error)
-        this.showMessage('延时失败：' + error.message, 'error')
+        this.showMessage('延时失败：' + (error.response?.data?.msg || error.message), 'error')
       } finally {
         this.isExtending = false
       }
@@ -331,29 +312,19 @@ export default {
       try {
         this.isDestroying = true
         this.showDestroyDialog = false
-        
-        const token = localStorage.getItem('neepu_token')
-        
-        const res = await fetch(`/api/container/stop/${this.containerData.instance_id}`, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        })
-        
-        const data = await res.json()
-        
-        if (data.success) {
+        const id = this.containerData?.instance_id
+        const payload = await apiStopContainer(id)
+        if (payload?.code === 200 || payload?.success !== false) {
           this.hasContainer = false
           this.containerData = null
           this.stopTimeRemainingTimer()
           this.showMessage('✅ 容器已销毁', 'success')
         } else {
-          this.showMessage(data.message || '销毁失败', 'error')
+          this.showMessage(payload?.msg || payload?.message || '销毁失败', 'error')
         }
       } catch (error) {
         console.error('销毁容器失败:', error)
-        this.showMessage('销毁失败：' + error.message, 'error')
+        this.showMessage('销毁失败：' + (error.response?.data?.msg || error.message), 'error')
       } finally {
         this.isDestroying = false
       }
@@ -361,6 +332,7 @@ export default {
 
     // ========== Flag提交 ==========
     async submitFlag() {
+      if (this.isSubmitting) return
       if (!this.flagInput.trim()) {
         this.showMessage('请输入Flag', 'error')
         return
@@ -375,8 +347,8 @@ export default {
         this.isSubmitting = true
         const token = localStorage.getItem('neepu_token')
         
-        // 使用容器专用提交接口
-        const res = await fetch('/api/container/submit-flag', {
+        // 统一主提交路径
+        const res = await fetch(`/api/challenges/${this.challengeId}/submit`, {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -384,26 +356,30 @@ export default {
           },
           body: JSON.stringify({
             challenge_id: this.challengeId,
-            flag: this.flagInput
+            flag: this.flagInput,
+            answer: this.flagInput
           })
         })
         
         const data = await res.json()
+        const payload = data?.data || data || {}
+        const correct = !!(payload.is_correct || payload.correct || data.correct)
         
-        if (data.success) {
+        if (data.code === 200 || data.success || payload.is_correct != null) {
           // 记录提交
           this.submissions.unshift({
             answer: this.flagInput,
-            is_correct: data.correct,
+            is_correct: correct,
             submitted_at: new Date().toISOString()
           })
           
-          if (data.correct) {
-            this.showMessage(`✅ 答案正确！获得 ${data.points || 0} 分`, 'success')
-            this.$emit('flag-submitted', { points: data.points })
+          if (correct) {
+            const pts = payload.final_score ?? payload.points_earned ?? data.points || 0
+            this.showMessage(`✅ 答案正确！获得 ${pts} 分`, 'success')
+            this.$emit('flag-submitted', { points: pts })
             
             // 容器已被后端自动销毁
-            if (data.container_closed) {
+            if (payload.container_closed || data.container_closed) {
               this.hasContainer = false
               this.containerData = null
               this.stopTimeRemainingTimer()
@@ -511,13 +487,13 @@ export default {
   display: grid;
   grid-template-columns: 1fr;
   gap: 20px;
-  padding: 20px;
+  padding: var(--fib-21);
 }
 
 .card {
-  background: white;
+  background: var(--gradient-card-bg, var(--card-bg));
   border-radius: 8px;
-  padding: 20px;
+  padding: var(--fib-21);
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   border: 1px solid #eee;
 }
@@ -735,7 +711,7 @@ export default {
   border-radius: 4px;
   cursor: pointer;
   font-size: 14px;
-  background: white;
+  background: var(--gradient-card-bg, var(--card-bg));
   transition: all 0.2s;
 }
 
@@ -978,7 +954,7 @@ button:disabled {
 }
 
 .modal {
-  background: white;
+  background: var(--gradient-card-bg, var(--card-bg));
   border-radius: 8px;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
   max-width: 400px;
@@ -1001,7 +977,7 @@ button:disabled {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 20px;
+  padding: var(--fib-21);
   border-bottom: 1px solid #eee;
 }
 
@@ -1031,7 +1007,7 @@ button:disabled {
 }
 
 .modal-body {
-  padding: 20px;
+  padding: var(--fib-21);
   color: #666;
 }
 
@@ -1054,7 +1030,7 @@ button:disabled {
   display: flex;
   gap: 10px;
   justify-content: flex-end;
-  padding: 20px;
+  padding: var(--fib-21);
   border-top: 1px solid #eee;
 }
 

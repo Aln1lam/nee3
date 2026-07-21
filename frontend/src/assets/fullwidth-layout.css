@@ -1,0 +1,89 @@
+/**
+ * 全站页面铺满视口宽度 — 覆盖各页面 scoped 中的窄栏居中
+ * 表单/弹窗内的小宽度约束（form-narrow、modal 等）不在此列
+ */
+
+.scoreboard-layout,
+.scoreboard-page,
+.game-teams-page,
+.teams-main,
+.list-panel,
+.manage-panel,
+.game-detail-page,
+.detail-topbar,
+.detail-layout,
+.myprofile-wrap,
+.bulletin-main,
+.bulletin-list,
+.bulletin-timeline,
+.game-admin-main,
+.section,
+.admin-layout,
+.wiki-layout,
+.admin-main,
+.wiki-main,
+.admin-content-wrap,
+.admin-content,
+.dev-components,
+.welcome-panel,
+.landing-shell,
+.challenge-shell,
+.page-wrap,
+.article-content--full,
+.article-content--card,
+.article-panel,
+.page-wrap .article-panel,
+.bulletin-article,
+.create-form,
+.preview-section,
+.auth-shell,
+.verify-shell,
+.forgot-shell,
+.reset-shell,
+.user-list-shell,
+.admin-setup-shell {
+  max-width: none !important;
+  width: 100%;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+  box-sizing: border-box;
+}
+
+.account-page {
+  max-width: none !important;
+  width: 100%;
+}
+
+.sidebar-layout {
+  width: 100%;
+  max-width: none !important;
+}
+
+.matrix-layout {
+  width: 100%;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+}
+
+.matrix-layout__main,
+.sidebar-layout__main,
+.sidebar-main {
+  width: 100%;
+  max-width: none !important;
+}
+
+.challenge-workspace-matrix,
+.challenge-workspace-page,
+.challenge-workspace-matrix .matrix-main,
+.challenge-workspace-matrix .sidebar-main {
+  max-width: none !important;
+  width: 100%;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+  box-sizing: border-box;
+}
+
+.home-page {
+  width: 100%;
+  max-width: none !important;
+}

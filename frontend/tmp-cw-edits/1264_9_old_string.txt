@@ -1,0 +1,12 @@
+    return {
+      challenges, challengesLoading, selectedChallenge, searchQuery,
+      activeCategory, categoryTabs, filteredChallenges, activeTab,
+      flagInput, submitting, challengeSolved, flagResult, hintItems, hintsLoading, stats, instance,
+      containerLoading, gameStatusType, descriptionContent, writeupContent,
+      hasContainer, attachmentUrl, splitRatio, isAdmin, showAdminTools, adminActive,
+      challengeTypeLabel, toggleAdminTools,
+      isSolved, bloodRecords, bloodLevelName, bloodLevelShort, currentBloodRecords,
+      selectChallenge, submitFlag, startContainer,
+      copyConn, onTabChange, loadHints, unlockHint, toggleChallengeEnabled,
+      goAdminChallenge, formatStatTime, categoryStyle, categoryChipStyle,
+    }

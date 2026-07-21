@@ -1,83 +1,95 @@
 <template>
-  <div class="page-container">
-    
-    <div class="header-section">
-      <div class="bracket-title">
-        <span class="bracket">[</span>
-        <span class="title-text">提交审计</span>
-        <span class="bracket">]</span>
-      </div>
-      <div class="search-box">
+  <MatrixShell
+    prompt=""
+    title="提交审计"
+    subtitle="SUB · AUDIT"
+    page-prompt="提交记录 · AUDIT"
+    page-title="提交记录"
+    page-desc="按题目 ID 检索 Flag 提交历史"
+    :items="navItems"
+  >
+    <div class="matrix-panel matrix-data-panel">
+      <div class="matrix-page-head">
+        <span class="link-code">SRH</span>
         <n-input-group>
-          <n-input v-model:value="cid" placeholder="Challenge ID..." :style="{ width: 'var(--submission-input-width, 200px)' }" />
-          <n-button type="default" @click="load">检索</n-button>
+          <n-input v-model:value="cid" placeholder="Challenge ID..." style="max-width: 280px" />
+          <n-button type="primary" :loading="loading" @click="load">检索</n-button>
         </n-input-group>
       </div>
+      <n-alert v-if="error" type="error" style="margin-bottom: 12px" :bordered="false">{{ error }}</n-alert>
+      <n-empty v-else-if="!loading && searched && !data.length" description="暂无提交记录" />
+      <div v-else class="table-wrapper">
+        <n-data-table :columns="columns" :data="data" :bordered="false" :single-line="false" :loading="loading" />
+      </div>
     </div>
-
-    <div class="table-wrapper">
-      <n-data-table
-        :columns="columns"
-        :data="data"
-        :bordered="false"
-        :single-line="false"
-      />
-    </div>
-
-  </div>
+  </MatrixShell>
 </template>
 
 <script>
-import { ref, inject, h } from 'vue'
-import { NDataTable, NTag, NInput, NInputGroup, NButton } from 'naive-ui'
+import { ref, inject, h, onMounted } from 'vue'
+import { useRoute } from 'vue-router'
+import { NDataTable, NTag, NInput, NInputGroup, NButton, NAlert, NEmpty, useMessage } from 'naive-ui'
+import { MatrixShell } from '@/components/shared'
+import { getMySubmissions } from '@/services/challenges'
+import { apiErrorMessage } from '@/utils/apiError'
 
 export default {
-  components: { NDataTable, NInput, NInputGroup, NButton },
+  name: 'Submissions',
+  components: { NDataTable, NInput, NInputGroup, NButton, NAlert, NEmpty, MatrixShell },
   setup() {
     const axios = inject('axios')
-    const cid = ref('')
+    const route = useRoute()
+    const message = useMessage()
+    const cid = ref(String(route.query.challenge || route.query.cid || ''))
     const data = ref([])
+    const loading = ref(false)
+    const searched = ref(false)
+    const error = ref('')
+    const navItems = [{ code: 'SUB', label: '提交审计', active: true }]
 
     const columns = [
       { title: 'Time', key: 'created_at', width: 200 },
       { title: 'Flag Payload', key: 'flag', ellipsis: true },
-      { 
-        title: 'Status', 
-        key: 'correct', 
+      {
+        title: 'Status',
+        key: 'correct',
         width: 100,
         render(row) {
           return h(
             NTag,
             { type: row.correct ? 'success' : 'error', bordered: false, size: 'small' },
-            { default: () => row.correct ? 'CORRECT' : 'WRONG' }
+            { default: () => (row.correct ? 'CORRECT' : 'WRONG') },
           )
-        }
-      }
+        },
+      },
     ]
 
     async function load() {
-      if (!cid.value) return
+      if (!cid.value) {
+        message.warning('请输入题目 ID')
+        return
+      }
+      loading.value = true
+      error.value = ''
+      searched.value = true
       try {
-        const res = await axios.get(`/api/games/challenges/${cid.value}/submissions`)
-        data.value = res.data.items || []
+        const raw = await getMySubmissions(cid.value)
+        const payload = raw?.data || raw
+        data.value = payload?.items || []
       } catch (e) {
         data.value = []
-        alert('查询失败')
+        error.value = apiErrorMessage(e, '加载提交记录失败')
+        message.error(error.value)
+      } finally {
+        loading.value = false
       }
     }
 
-    return { cid, data, columns, load }
-  }
+    onMounted(() => {
+      if (cid.value) load()
+    })
+
+    return { cid, data, columns, load, navItems, loading, searched, error, axios }
+  },
 }
 </script>
-
-<style scoped>
-.page-container { padding: var(--submissions-page-padding, 40px); font-family: 'Fira Code', monospace; }
-.header-section { display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--submissions-header-margin-bottom, 30px); }
-.bracket-title { font-size: 1.5rem; font-weight: 700; color: var(--submissions-title-color, #333); }
-.bracket { color: #ccc; }
-
-.table-wrapper {
-  background: var(--submissions-table-bg, #fff); border: var(--submissions-table-border, 1px solid #eee); padding: var(--submissions-table-padding, 20px);
-}
-</style>

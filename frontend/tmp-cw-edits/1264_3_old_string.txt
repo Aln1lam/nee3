@@ -1,0 +1,9 @@
+  components: { NTag, NInput, NButton, NTabs, NTabPane, UiLoadingTips, UiSplitter, UiPopover, UiButton, Terminal, HammerPanel, Article },
+  props: {
+    gameId: { type: [Number, String], required: true },
+    mode: { type: String, default: 'competition' },
+    gameTitle: { type: String, default: '' },
+    gameStatus: { type: String, default: '' },
+    gameArchived: { type: Boolean, default: false },
+    hideGameHeader: { type: Boolean, default: false },
+  },

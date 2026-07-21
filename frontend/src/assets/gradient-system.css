@@ -1,0 +1,370 @@
+/**
+ * NEEPU 全局渐变设计系统
+ * 3–4 主色：Primary · Accent · Depth · Surface
+ * 背景大角度/径向光晕 · 前景卡片弱渐变 · 200–300ms 交互过渡
+ */
+
+/* ── 间距网格（8pt baseline）── */
+:root {
+  --space-1: 8px;
+  --space-2: 16px;
+  --space-3: 24px;
+  --space-4: 32px;
+  --space-5: 40px;
+  --space-6: 48px;
+  --space-7: 56px;
+  --space-8: 64px;
+
+  --transition-fast: 200ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-base: 250ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-slow: 300ms cubic-bezier(0.4, 0, 0.2, 1);
+
+  --text-display: clamp(2rem, 4vw, 3rem);
+  --text-h1: clamp(1.75rem, 3vw, 2.25rem);
+  --text-h2: 1.5rem;
+  --text-h3: 1.25rem;
+  --text-body: 1rem;
+  --text-sm: 0.875rem;
+  --text-xs: 0.75rem;
+
+  --leading-tight: 1.2;
+  --leading-normal: 1.5;
+  --leading-relaxed: 1.75;
+
+  --focus-ring: 0 0 0 3px rgba(var(--primary-rgb), 0.35);
+  --focus-ring-offset: 2px;
+
+  /* 圆角尺度（全局上限 14px） */
+  --radius-xs: 6px;
+  --radius-sm: 8px;
+  --radius-md: 8px;
+  --radius-lg: 10px;
+  --radius-xl: 10px;
+  --radius-pill: 10px;
+  --card-radius: 10px;
+  --noise-texture: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E");
+  --noise-opacity: 0.035;
+}
+
+/* ── 工作区台面：侧栏压主区，主区网格底纹 ── */
+.training-layout,
+.matrix-layout,
+.games-layout,
+.competition-layout,
+.wiki-layout,
+.bulletin-layout,
+.home-page,
+.landing-page {
+  background: var(--page-bg);
+}
+
+.training-sidebar,
+.bulletin-sidebar,
+.matrix-layout__sidebar,
+.games-sidebar,
+.competition-sidebar,
+.layout-with-sidebar .sidebar-rail,
+.home-rail {
+  box-shadow: var(--sidebar-shadow, 4px 0 20px rgba(0, 0, 0, 0.2));
+}
+
+.training-main,
+.matrix-layout__main,
+.games-cover,
+.competition-main,
+.wiki-main,
+.bulletin-main,
+.sidebar-main {
+  position: relative;
+  isolation: isolate;
+  background: var(--main-surface-bg, var(--page-bg));
+}
+
+.home-main {
+  position: relative;
+  isolation: isolate;
+  background: var(--main-surface-bg, var(--page-bg));
+}
+
+.home-main::before,
+.training-main::before,
+.matrix-layout__main::before,
+.games-cover::before,
+.competition-main::before,
+.wiki-main::before,
+.bulletin-main::before,
+.sidebar-main::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(var(--main-surface-grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--main-surface-grid) 1px, transparent 1px);
+  background-size: 32px 32px;
+  opacity: 0.85;
+}
+
+.training-main > *,
+.matrix-shell .sidebar-main > *,
+.matrix-layout__main > *,
+.games-cover > *,
+.competition-main > *,
+.wiki-main > *,
+.bulletin-main > *,
+.sidebar-main > *,
+.home-main > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* ── 页面背景层（渐变 + 光晕 + 噪点）── */
+.gradient-page-bg {
+  position: fixed;
+  inset: 0;
+  z-index: -3;
+  pointer-events: none;
+  background: var(--gradient-page-base);
+}
+
+.gradient-page-bg::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--gradient-page-glow, none);
+  opacity: 1;
+}
+
+/* 边缘轻暗角，增加景深而不压暗全局 */
+.gradient-page-bg::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: var(--noise-texture);
+  background-repeat: repeat;
+  background-size: 180px 180px;
+  opacity: var(--noise-opacity);
+  mix-blend-mode: overlay;
+  pointer-events: none;
+}
+
+/* ── 前景卡片：纯色/弱渐变，与背景分层 ── */
+.gradient-surface,
+.glass-card,
+.matrix-panel,
+.matrix-auth-card,
+.sidebar-layout__side,
+.matrix-layout__sidebar {
+  background: var(--gradient-card-bg) !important;
+  border: 1px solid var(--gradient-card-border) !important;
+  box-shadow: var(--gradient-card-shadow) !important;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+/* Naive UI 卡片 */
+.n-card {
+  background: var(--gradient-card-bg) !important;
+  border: 1px solid var(--gradient-card-border) !important;
+  box-shadow: var(--gradient-card-shadow) !important;
+  transition:
+    transform var(--transition-base),
+    box-shadow var(--transition-base),
+    border-color var(--transition-fast) !important;
+}
+
+.n-card:hover {
+  transform: none;
+  box-shadow: var(--gradient-card-shadow-hover) !important;
+  border-color: var(--gradient-card-border-hover) !important;
+}
+
+/* ── 大标题与留白 ── */
+.page-title,
+.matrix-page-title,
+.account-title {
+  font-size: var(--text-h1) !important;
+  font-weight: 700 !important;
+  line-height: var(--leading-tight) !important;
+  letter-spacing: -0.02em;
+  color: var(--text) !important;
+}
+
+.page-subtitle,
+.matrix-page-desc,
+.account-desc {
+  font-size: var(--text-body);
+  line-height: var(--leading-relaxed);
+  color: var(--muted);
+  margin-top: var(--space-1);
+}
+
+.matrix-page-head,
+.account-page-head,
+.page-header {
+  margin-bottom: var(--space-4);
+  padding-bottom: var(--space-3);
+}
+
+.page-container {
+  padding: var(--space-3) 0 var(--space-5);
+}
+
+/* ── 渐变按钮 ── */
+.gradient-btn,
+.n-button--primary-type,
+.n-button.n-button--primary-type,
+.btn-primary,
+button[type="submit"]:not(.btn-secondary):not(.btn-cancel) {
+  background: var(--gradient-btn-fill) !important;
+  color: var(--on-primary-text, #fff) !important;
+  border: 1px solid transparent !important;
+  border-radius: var(--card-radius, 10px) !important;
+  transition:
+    background var(--transition-base),
+    filter var(--transition-fast),
+    box-shadow var(--transition-base),
+    transform var(--transition-fast) !important;
+}
+
+.gradient-btn:hover,
+.n-button--primary-type:hover,
+.n-button.n-button--primary-type:hover,
+.btn-primary:hover,
+button[type="submit"]:not(.btn-secondary):not(.btn-cancel):hover {
+  background: var(--gradient-btn-fill-hover) !important;
+  filter: brightness(1.06);
+  box-shadow: var(--gradient-btn-glow);
+  transform: translateY(-1px);
+}
+
+.gradient-btn:active,
+.n-button--primary-type:active,
+.btn-primary:active {
+  filter: brightness(0.94);
+  transform: translateY(0);
+  transition-duration: var(--transition-fast);
+}
+
+/* 运维面板按钮由 admin-matrix.css 单独配色，避免渐变白字叠在浅底上不可读 */
+.admin-panel .btn-primary,
+.admin-panel .btn-secondary,
+.admin-panel .btn-small,
+.admin-panel button.btn-primary,
+.admin-panel button.btn-secondary {
+  background-image: none !important;
+}
+
+/* 渐变描边按钮 */
+.gradient-btn-outline,
+.btn-secondary.gradient-outline {
+  background: var(--gradient-card-bg) !important;
+  color: var(--primary) !important;
+  border: 1px solid transparent !important;
+  background-image:
+    var(--gradient-card-bg),
+    var(--gradient-border) !important;
+  background-origin: border-box !important;
+  background-clip: padding-box, border-box !important;
+  transition:
+    color var(--transition-base),
+    filter var(--transition-fast),
+    box-shadow var(--transition-base) !important;
+}
+
+.gradient-btn-outline:hover {
+  filter: brightness(1.08);
+  box-shadow: var(--gradient-btn-glow-soft);
+}
+
+/* ── 渐变标签 ── */
+.gradient-tag,
+.n-tag.n-tag--primary,
+.n-tag--primary {
+  background: var(--gradient-tag-fill) !important;
+  color: var(--gradient-tag-text) !important;
+  border: 1px solid var(--gradient-tag-border) !important;
+  border-radius: var(--card-radius, 10px) !important;
+  font-weight: 600;
+  transition:
+    background var(--transition-base),
+    filter var(--transition-fast) !important;
+}
+
+.gradient-tag:hover,
+.n-tag.n-tag--primary:hover {
+  filter: brightness(1.1);
+}
+
+.gradient-tag-outline {
+  background: transparent !important;
+  color: var(--primary) !important;
+  border: 1px solid transparent !important;
+  background-image:
+    var(--gradient-card-bg),
+    var(--gradient-border) !important;
+  background-origin: border-box !important;
+  background-clip: padding-box, border-box !important;
+}
+
+/* ── 导航 / 链接交互 ── */
+.title-bar-nav a,
+.sidebar-layout__link,
+.matrix-nav-link {
+  transition:
+    background var(--transition-base),
+    color var(--transition-base),
+    border-color var(--transition-base) !important;
+}
+
+.title-bar-nav a.active,
+.sidebar-layout__link.active,
+.matrix-nav-link.active {
+  background: var(--gradient-nav-active) !important;
+}
+
+.title-bar-nav a:hover,
+.sidebar-layout__link:hover,
+.matrix-nav-link:hover {
+  background: var(--gradient-nav-hover) !important;
+}
+
+/* ── 顶栏弱渐变底 ── */
+.title-bar {
+  background: var(--gradient-nav-bg) !important;
+  border-bottom-color: var(--gradient-card-border) !important;
+}
+
+/* ── 可访问性：焦点环 ── */
+:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible,
+.n-button:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+/* ── 卡片标题带弱渐变带 ── */
+.n-card .n-card__header,
+.card-title,
+.sidebar-heading {
+  background: var(--gradient-card-header) !important;
+  color: var(--gradient-card-header-text) !important;
+  transition: background var(--transition-base) !important;
+}
+
+/* ── 页面过渡对齐 250ms ── */
+.fade-enter-active,
+.fade-leave-active {
+  transition:
+    opacity var(--transition-base),
+    transform var(--transition-base) !important;
+}

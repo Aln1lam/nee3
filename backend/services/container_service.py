@@ -9,8 +9,12 @@ import uuid
 from typing import Optional, Dict, List, Tuple
 from datetime import datetime, timedelta
 from backend.server.extensions import db
-from backend.server.db_models import CtfGameInstance, CtfChallenge, User, Team
+from backend.server.db_models import CtfGameInstance, CtfChallenge, User, Team, CtfGame
 import os
+from backend.services.flag_generator import ContainerFlagService, ensure_team_hash_salt
+from backend.server.container_access import build_connection_url
+from backend.server.container_ports import allocate_host_port
+from backend.services.container_traffic import maybe_start_traffic_capture
 
 logger = logging.getLogger(__name__)
 
@@ -37,7 +41,7 @@ class ContainerService:
         except Exception as e:
             logger.error(f"Docker is not available: {e}")
             return False
-    
+
     def create_container(
         self,
         challenge: CtfChallenge,
@@ -63,10 +67,55 @@ class ContainerService:
         
         if not challenge.docker_image:
             return False, None, "Challenge does not have a Docker image configured"
-        
+
+        from backend.services.instance_quota import check_can_start_new_instance
+        ok_quota, quota_msg, existing = check_can_start_new_instance(
+            user, team, challenge_id=challenge.id,
+        )
+        if existing:
+            return True, existing, quota_msg or "instance already running"
+        if not ok_quota:
+            return False, None, quota_msg
+
         try:
             # 生成唯一的容器名称
             container_name = f"ctf-{challenge.id}-{user.id}-{uuid.uuid4().hex[:8]}"
+
+            is_dynamic_container = int(challenge.challenge_type or 0) == 3
+            team_hash_salt = None
+            if challenge.flag_template or is_dynamic_container:
+                from backend.server.db_models import CtfGame
+                game = CtfGame.query.get(challenge.game_id)
+                team_hash_salt = ensure_team_hash_salt(game)
+
+            dynamic_flag = ContainerFlagService.generate_dynamic_flag(
+                flag_template=challenge.flag_template or "flag{[TEAM_HASH]}",
+                challenge_id=challenge.id,
+                user_id=user.id,
+                game_id=challenge.game_id,
+                team_id=team.id if team else user.id,
+                team_hash_salt=team_hash_salt,
+            ) if (challenge.flag_template or is_dynamic_container) else None
+
+            game = CtfGame.query.get(challenge.game_id)
+            capture_enabled = bool(game and game.enable_traffic_capture and is_dynamic_container)
+            host_port = allocate_host_port()
+            if not host_port:
+                return False, None, "无可用端口（10000-20000 已耗尽）"
+
+            env_vars = [
+                f'TEAM_ID={team.id if team else user.id}',
+                f'USER_ID={user.id}',
+                f'CHALLENGE_ID={challenge.id}'
+            ]
+            if dynamic_flag:
+                env_vars.extend([
+                    f'FLAG={dynamic_flag}',
+                ])
+            elif challenge.flag:
+                env_vars.extend([
+                    f'FLAG={challenge.flag}',
+                ])
             
             # 准备容器配置
             container_config = {
@@ -80,11 +129,7 @@ class ContainerService:
                 'storage_opt': {
                     'size': f"{challenge.storage_limit}m"  # 存储限制
                 },
-                'environment': [
-                    f'TEAM_ID={team.id if team else user.id}',
-                    f'USER_ID={user.id}',
-                    f'CHALLENGE_ID={challenge.id}'
-                ],
+                'environment': env_vars,
                 'labels': {
                     'ctf_challenge': str(challenge.id),
                     'ctf_user': str(user.id),
@@ -99,10 +144,11 @@ class ContainerService:
                 network_name = f"ctf-isolated-{challenge.id}"
                 container_config['network_mode'] = network_name
             else:
-                # 使用桥接网络（开放模式）
+                # 使用桥接网络（开放模式）— 端口限定在 10000–20000
                 container_config['network_mode'] = 'bridge'
+                bind_host = '127.0.0.1' if capture_enabled else '0.0.0.0'
                 container_config['ports'] = {
-                    f'{challenge.docker_port}/tcp': None  # 随机映射端口
+                    f'{challenge.docker_port}/tcp': (bind_host, host_port)
                 }
             
             # 创建容器
@@ -116,13 +162,11 @@ class ContainerService:
             connection_url = None
             
             if challenge.network_mode != "Isolated":
-                # 获取映射的端口
-                ports = container.ports
-                if ports and f'{challenge.docker_port}/tcp' in ports:
-                    port_info = ports[f'{challenge.docker_port}/tcp']
-                    if port_info:
-                        mapped_port = port_info[0]['HostPort']
-                        connection_url = f"http://localhost:{mapped_port}"
+                mapped_port = host_port
+                if not capture_enabled:
+                    connection_url = build_connection_url(mapped_port, challenge=challenge)
+                else:
+                    connection_url = build_connection_url(mapped_port, challenge=challenge)
             else:
                 # 隔离网络模式下使用容器内部地址
                 connection_url = f"http://{container_name}:{challenge.docker_port}"
@@ -137,47 +181,94 @@ class ContainerService:
                 port=mapped_port,
                 connection_url=connection_url,
                 is_running=True,
+                dynamic_flag=dynamic_flag,
                 started_at=datetime.utcnow(),
                 expires_at=datetime.utcnow() + timedelta(hours=expire_hours)
             )
             
             db.session.add(instance)
+            db.session.flush()
+
+            if capture_enabled:
+                maybe_start_traffic_capture(challenge, instance, user, team)
             db.session.commit()
             
-            return True, instance, f"Container created successfully at {connection_url}"
+            return True, instance, f"Container created successfully at {instance.connection_url}"
         
         except Exception as e:
             logger.error(f"Failed to create container: {e}")
             return False, None, f"Failed to create container: {str(e)}"
-    
+
+    @staticmethod
+    def _is_missing_container_error(exc: Exception) -> bool:
+        """Docker 容器已不存在（404 / NotFound / No such container）"""
+        if isinstance(exc, docker.errors.NotFound):
+            return True
+        # docker SDK 有时会包一层 APIError，文案含 404
+        msg = str(exc).lower()
+        return "no such container" in msg or "404 client error" in msg or "not found" in msg
+
+    def _mark_instance_stopped(self, instance: CtfGameInstance) -> None:
+        instance.is_running = False
+        try:
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
+            raise
+
     def destroy_container(self, instance: CtfGameInstance) -> Tuple[bool, str]:
         """
-        销毁容器实例
-        
-        Args:
-            instance: CtfGameInstance 对象
-        
-        Returns:
-            (是否成功, 消息)
+        销毁容器实例。
+
+        Docker 侧容器已不存在时视为成功，并清理数据库 is_running，
+        避免定时清理每 30s 对幽灵 container_id 反复报错。
         """
-        
+        cid = (instance.container_id or "")[:12] or "(none)"
+
         if not instance.container_id:
-            return False, "No container ID found"
-        
+            self._mark_instance_stopped(instance)
+            return True, "No container ID; instance marked stopped"
+
+        if not self.client:
+            self._mark_instance_stopped(instance)
+            logger.warning(f"Docker unavailable; marked instance stopped ({cid})")
+            return True, "Docker unavailable; instance marked stopped"
+
         try:
             container = self.client.containers.get(instance.container_id)
-            container.stop(timeout=10)
-            container.remove(force=True)
-            
-            instance.is_running = False
-            db.session.commit()
-            
-            logger.info(f"Container destroyed: {instance.container_id[:12]}")
+            try:
+                container.stop(timeout=10)
+            except Exception as stop_err:
+                if not self._is_missing_container_error(stop_err):
+                    logger.warning(f"Stop container {cid} failed, force remove: {stop_err}")
+                try:
+                    container.kill()
+                except Exception:
+                    pass
+            try:
+                container.remove(force=True)
+            except Exception as remove_err:
+                if not self._is_missing_container_error(remove_err):
+                    logger.warning(f"Remove container {cid} failed: {remove_err}")
+
+            self._mark_instance_stopped(instance)
+            logger.info(f"Container destroyed: {cid}")
             return True, "Container destroyed successfully"
-        
+
         except Exception as e:
-            logger.error(f"Failed to destroy container: {e}")
-            return False, f"Failed to destroy container: {str(e)}"
+            # 容器已在 Docker 中消失：清库即可，不要当失败反复刷日志
+            if self._is_missing_container_error(e):
+                self._mark_instance_stopped(instance)
+                logger.info(f"Container already gone, marked stopped: {cid}")
+                return True, "Container already removed; instance marked stopped"
+
+            # 其它 Docker 错误：仍标记停止，避免选手卡在「幽灵运行中」
+            logger.error(f"Failed to destroy container {cid}: {e}")
+            try:
+                self._mark_instance_stopped(instance)
+            except Exception:
+                pass
+            return True, f"Instance marked stopped (docker error: {e})"
     
     def get_container_status(self, instance: CtfGameInstance) -> Dict:
         """
@@ -236,17 +327,117 @@ class ContainerService:
             ).all()
             
             for instance in expired_instances:
+                cid = instance.container_id or ""
                 success, msg = self.destroy_container(instance)
                 if success:
                     cleaned_count += 1
-                    cleaned_ids.append(instance.container_id)
-                    logger.info(f"Cleaned expired container: {instance.container_id[:12]}")
+                    if cid:
+                        cleaned_ids.append(cid)
+                    logger.info(f"Cleaned expired instance #{instance.id}: {msg}")
+                else:
+                    logger.warning(f"Skip expired instance #{instance.id}: {msg}")
             
             return cleaned_count, cleaned_ids
         
         except Exception as e:
             logger.error(f"Failed to cleanup expired containers: {e}")
             return 0, []
+
+    def reconcile_ghost_instances(self) -> int:
+        """将 Docker 侧已不存在、但 DB 仍 is_running 的实例标为停止。"""
+        if not self.is_available():
+            # 无 Docker 时仍清库，避免前端一直显示运行中
+            rows = CtfGameInstance.query.filter_by(is_running=True).all()
+            for inst in rows:
+                inst.is_running = False
+            if rows:
+                db.session.commit()
+            return len(rows)
+
+        fixed = 0
+        rows = CtfGameInstance.query.filter_by(is_running=True).all()
+        for inst in rows:
+            if not inst.container_id:
+                inst.is_running = False
+                fixed += 1
+                continue
+            try:
+                self.client.containers.get(inst.container_id)
+            except Exception as e:
+                if self._is_missing_container_error(e):
+                    inst.is_running = False
+                    fixed += 1
+                # 其它错误留给 destroy/手动处理
+        if fixed:
+            db.session.commit()
+            logger.info(f"Reconciled {fixed} ghost running instances")
+        return fixed
+
+    def reconcile_orphan_docker_containers(self) -> int:
+        """清理 Docker 中仍在、但 DB 无对应记录的 ctf-* 实例容器。
+
+        仅匹配实例命名：``ctf-{challenge_id}-{user_id}-{hex}``。
+        不处理 ``ctf-isolated-*`` 网络等其它资源。
+        """
+        import re
+
+        if not self.is_available():
+            return 0
+
+        name_re = re.compile(r'^/?ctf-\d+-\d+-[0-9a-f]{6,}$', re.IGNORECASE)
+        known_ids = {
+            row.container_id
+            for row in CtfGameInstance.query.filter(
+                CtfGameInstance.container_id.isnot(None)
+            ).all()
+            if row.container_id
+        }
+        # 短 ID / 长 ID 都算已知
+        known_prefixes = set()
+        for cid in known_ids:
+            known_prefixes.add(cid)
+            if len(cid) >= 12:
+                known_prefixes.add(cid[:12])
+
+        removed = 0
+        try:
+            containers = self.client.containers.list(all=True)
+        except Exception as e:
+            logger.warning(f"List docker containers failed: {e}")
+            return 0
+
+        for c in containers:
+            names = [c.name] + list(getattr(c, 'attrs', {}).get('Names', []) or [])
+            match_name = None
+            for n in names:
+                if n and name_re.match(n):
+                    match_name = n
+                    break
+            if not match_name:
+                continue
+
+            cid = c.id or ''
+            short = cid[:12]
+            if cid in known_prefixes or short in known_prefixes:
+                continue
+            # DB 可能存短 ID
+            if any(k.startswith(short) or short.startswith(k[:12]) for k in known_ids if k):
+                continue
+
+            try:
+                if c.status == 'running':
+                    c.stop(timeout=5)
+                c.remove(force=True)
+                removed += 1
+                logger.info(f"Removed orphan docker container {short} ({match_name})")
+            except Exception as e:
+                if self._is_missing_container_error(e):
+                    continue
+                logger.warning(f"Failed to remove orphan {short}: {e}")
+
+        if removed:
+            logger.info(f"Reconciled {removed} orphan docker containers")
+        return removed
     
     def list_user_containers(self, user_id: int, game_id: Optional[int] = None) -> List[Dict]:
         """

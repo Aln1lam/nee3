@@ -567,7 +567,7 @@ export default {
 
 <style scoped>
 .challenge-admin {
-  padding: 20px;
+  padding: var(--fib-21);
 }
 
 .header-title {

@@ -1,0 +1,23 @@
+[Unit]
+Description=NEEPU CTF API (Gunicorn)
+Documentation=file:/opt/neepu/docs/deploy-single-server.md
+After=network.target mysql.service docker.service
+Wants=mysql.service
+
+[Service]
+Type=simple
+User=www-data
+Group=www-data
+WorkingDirectory=/opt/neepu
+Environment=PATH=/opt/neepu/.venv/bin
+EnvironmentFile=-/opt/neepu/backend/.env
+ExecStart=/opt/neepu/.venv/bin/gunicorn -c /opt/neepu/deploy/gunicorn.conf.py
+Restart=always
+RestartSec=5
+TimeoutStopSec=30
+
+# 容器题需要访问 Docker；将运行用户加入 docker 组：
+#   sudo usermod -aG docker www-data
+
+[Install]
+WantedBy=multi-user.target

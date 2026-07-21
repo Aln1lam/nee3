@@ -1,11 +1,17 @@
 """
 CTF 完整功能 API 路由
-包含：题目管理、排行榜、容器管理、权限控制、作弊检测等
+
+当前仅保留：
+- 排行榜 scoreboard(+timeline/user)
+- notices / health / cleanup
+
+列表、join、submit、hints、instance、题目详情等与 competitions/challenges 重叠的路径一律 410。
 """
 
 from flask import Blueprint, request, jsonify
-from flask_jwt_extended import jwt_required, get_jwt_identity
+from flask_jwt_extended import jwt_required, get_jwt_identity, verify_jwt_in_request
 from datetime import datetime, timedelta
+from sqlalchemy import func
 from backend.server.extensions import db
 from backend.server.db_models import (
     User, Team, CtfGame, CtfChallenge, CtfChallengeSubmission,
@@ -20,8 +26,66 @@ from backend.services.scoring_service import (
     AnswerResult, GamePermission, ChallengeCType
 )
 from backend.services.container_service import container_service
+from backend.services.team_service import ensure_user_has_team
+from backend.server.container_access import normalize_connection_url
+from backend.middleware_refactored import submission_rate_limit, rate_limit
+from backend.services.redis_service import get_redis, ScoreboardCache
+from backend.server.db_retry import run_transaction_with_retry, is_deadlock_error
+from sqlalchemy.exc import DBAPIError, OperationalError, IntegrityError
 
 bp = Blueprint("ctf_api", __name__, url_prefix="/api/ctf")
+
+
+def _ctf_overlapping_gone(successor: str, detail: str):
+    resp = jsonify({
+        "code": 410,
+        "msg": detail,
+        "successor": successor,
+    })
+    resp.status_code = 410
+    resp.headers["Deprecation"] = "true"
+    resp.headers["Link"] = f"<{successor}>; rel=\"successor-version\""
+    resp.headers["X-Deprecated-Endpoint"] = successor
+    return resp
+
+
+@bp.before_request
+def _retire_overlapping_ctf_routes():
+    """
+    仅保留排行榜 / notices / health / cleanup。
+    列表、join、submit、hints、instance、题目详情等与 competitions/challenges 重叠的路径一律 410。
+    """
+    if request.method == "OPTIONS":
+        return None
+    path = request.path or ""
+    if path.endswith("/health") or path.endswith("/cleanup/containers"):
+        return None
+    if "/scoreboard" in path:
+        return None
+    if "/notices" in path:
+        return None
+    if "/submit" in path or "/hints" in path or "start-instance" in path or "/instances/" in path:
+        return _ctf_overlapping_gone(
+            "/api/challenges/",
+            "Gone: use /api/challenges/* for submit/hints/instances",
+        )
+    if "/challenges" in path:
+        return _ctf_overlapping_gone(
+            "/api/challenges/",
+            "Gone: use /api/challenges/* for challenge APIs",
+        )
+    # /games 列表、详情、join、divisions 等
+    return _ctf_overlapping_gone(
+        "/api/competitions/",
+        "Gone: use /api/competitions/* for game list/join/divisions",
+    )
+
+
+def _container_start_rate_key():
+    try:
+        return f"ctf:start:{get_jwt_identity()}"
+    except Exception:
+        return "ctf:start:anon"
 
 
 # ======================== 工具函数 ========================
@@ -46,17 +110,41 @@ def check_jwt():
 
 @bp.route("/games", methods=["GET"])
 def list_games():
-    """获取竞赛列表"""
+    """获取竞赛列表
+
+    Query:
+      include_ephemeral=1  — 包含 E2E/探针测试赛（管理端排查用；默认排除）
+      game_type=official|training|practice  — 按类型过滤（可多值逗号分隔）
+    """
+    from backend.server.game_filters import is_ephemeral_test_game
+
     page = request.args.get('page', 1, type=int)
-    per_page = request.args.get('per_page', 10, type=int)
-    
-    games = CtfGame.query.order_by(CtfGame.start_time.desc()).paginate(
-        page=page, per_page=per_page
+    per_page = request.args.get('per_page', 100, type=int)
+    include_ephemeral = str(request.args.get('include_ephemeral', '0')).lower() in (
+        '1', 'true', 'yes',
     )
-    
+    game_type_raw = (request.args.get('game_type') or '').strip()
+    game_types = [t.strip().lower() for t in game_type_raw.split(',') if t.strip()]
+
+    all_games = CtfGame.query.order_by(CtfGame.start_time.desc()).all()
+    if not include_ephemeral:
+        all_games = [g for g in all_games if not is_ephemeral_test_game(g)]
+    if game_types:
+        all_games = [
+            g for g in all_games
+            if (getattr(g, 'game_type', None) or 'official').lower() in game_types
+        ]
+
+    total = len(all_games)
+    pages = max(1, (total + per_page - 1) // per_page) if per_page else 1
+    page = max(1, min(page, pages))
+    start = (page - 1) * per_page
+    slice_games = all_games[start:start + per_page]
+
     items = []
-    for g in games.items:
+    for g in slice_games:
         dto = g.to_dict()
+        dto['is_ephemeral'] = is_ephemeral_test_game(g)
 
         # 题目数
         dto['challenge_count'] = CtfChallenge.query.filter_by(
@@ -66,24 +154,26 @@ def list_games():
 
         # 参赛人数（公开=参赛用户，非公开=邀请码用户）
         if g.is_public:
-            participation_count = CtfParticipatingUser.query.filter_by(
-                game_id=g.id
-            ).distinct(CtfParticipatingUser.user_id).count()
+            participation_count = db.session.query(
+                func.count(func.distinct(CtfParticipatingUser.user_id))
+            ).filter_by(game_id=g.id).scalar() or 0
         else:
-            participation_count = CtfUserInviteCode.query.filter_by(
-                game_id=g.id
-            ).distinct(CtfUserInviteCode.user_id).count()
+            participation_count = db.session.query(
+                func.count(func.distinct(CtfUserInviteCode.user_id))
+            ).filter_by(game_id=g.id).scalar() or 0
 
         dto['participation_count'] = participation_count
         items.append(dto)
 
     result = {
-        'total': games.total,
-        'pages': games.pages,
+        'total': total,
+        'pages': pages,
         'current_page': page,
-        'items': items
+        'items': items,
+        'include_ephemeral': include_ephemeral,
+        'game_type': game_type_raw or None,
     }
-    
+
     return success_response(result)
 
 
@@ -96,14 +186,14 @@ def get_game_detail(game_id):
     
     user_id = None
     user = None
-    
-    # 如果用户已登录，获取其参赛状态
-    if 'Authorization' in request.headers:
-        try:
-            user_id = get_jwt_identity()
-            user = User.query.get(user_id)
-        except:
-            pass
+
+    try:
+        verify_jwt_in_request(optional=True)
+        user_id = get_jwt_identity()
+        if user_id is not None:
+            user = User.query.get(int(user_id))
+    except Exception:
+        pass
     
     result = game.to_dict()
     
@@ -152,10 +242,10 @@ def join_game(game_id):
     
     if not user:
         return error_response("User not found", 404)
-    
-    # 检查用户是否加入了队伍
-    if not user.team_id:
-        return error_response("You must join a team first before participating in games", 403)
+
+    team = ensure_user_has_team(user)
+    if not team:
+        return error_response("Failed to create solo team", 500)
     
     game = CtfGame.query.get(game_id)
     if not game:
@@ -285,10 +375,28 @@ def join_game(game_id):
 
 @bp.route("/games/<int:game_id>/divisions", methods=["GET"])
 def list_divisions(game_id):
-    """获取竞赛的所有分组"""
+    """获取竞赛的所有分组（邀请码仅对管理员/已参赛用户可见）"""
+    game = CtfGame.query.get(game_id)
+    if not game:
+        return error_response("Game not found", 404)
+
     divisions = CtfDivision.query.filter_by(game_id=game_id).all()
-    
-    result = [d.to_dict() for d in divisions]
+
+    can_see_invite = False
+    try:
+        verify_jwt_in_request(optional=True)
+        uid = get_jwt_identity()
+        if uid is not None:
+            uid = int(uid)
+            user = User.query.get(uid)
+            if user and user.is_admin:
+                can_see_invite = True
+            elif CtfParticipatingUser.query.filter_by(user_id=uid, game_id=game_id).first():
+                can_see_invite = True
+    except Exception:
+        can_see_invite = False
+
+    result = [d.to_dict(include_invite=can_see_invite) for d in divisions]
     return success_response(result)
 
 
@@ -308,7 +416,7 @@ def list_challenges(game_id):
     
     result = []
     for challenge in challenges:
-        data = challenge.to_dict()
+        data = challenge.to_public_dict()
         
         # 添加解题统计
         solved_count = CtfChallengeSubmission.query.filter_by(
@@ -348,11 +456,24 @@ def get_challenge_detail(challenge_id):
     ):
         return error_response("Permission denied", 403)
     
-    result = challenge.to_dict()
+    user = User.query.get(user_id)
+    include_sensitive = bool(user and user.is_admin)
+    result = challenge.to_dict() if include_sensitive else challenge.to_public_dict()
     
-    # 添加提示
+    # 添加提示（未购买不返回全文）
     hints = CtfChallengeHint.query.filter_by(challenge_id=challenge_id).all()
-    result['hints'] = [h.to_dict() for h in hints]
+    accessed_ids = {
+        a.hint_id
+        for a in CtfUserHintAccess.query.filter_by(user_id=user_id).all()
+    }
+    hint_list = []
+    for h in hints:
+        accessed = include_sensitive or (h.id in accessed_ids)
+        hd = h.to_dict(include_text=accessed)
+        hd['accessed'] = h.id in accessed_ids
+        hd['is_accessed'] = hd['accessed']
+        hint_list.append(hd)
+    result['hints'] = hint_list
     
     # 添加用户是否已解
     solved = CtfChallengeSubmission.query.filter_by(
@@ -376,6 +497,7 @@ def get_challenge_detail(challenge_id):
 
 @bp.route("/challenges/<int:challenge_id>/submit", methods=["POST"])
 @jwt_required()
+@submission_rate_limit()
 def submit_flag(challenge_id):
     """提交 Flag"""
     user_id = get_jwt_identity()
@@ -397,109 +519,155 @@ def submit_flag(challenge_id):
     if not PermissionService.has_submission_permission(user_id, challenge.game_id, challenge_id):
         return error_response("Permission denied", 403)
     
-    # 检查提交限制
-    if challenge.submission_limit > 0:
-        attempts = CtfChallengeSubmission.query.filter_by(
-            user_id=user_id,
-            challenge_id=challenge_id
-        ).count()
-        
-        if attempts >= challenge.submission_limit:
-            return error_response("Submission limit exceeded", 400)
-    
-    # 验证答案
-    is_correct, status = FlagValidationService.validate_flag(
-        answer,
-        challenge_id,
-        user_id,
-        challenge.game_id
-    )
-    
-    # 记录提交
-    submission = CtfChallengeSubmission(
-        user_id=user_id,
-        team_id=user.team_id,
-        challenge_id=challenge_id,
-        game_id=challenge.game_id,
-        answer=answer,
-        is_correct=is_correct,
-        status=status
-    )
-    
-    if is_correct:
-        # 计算分数
-        solved_count = CtfChallengeSubmission.query.filter_by(
-            challenge_id=challenge_id,
-            is_correct=True
-        ).count()
-        
-        score = ScoringService.calculate_dynamic_score(
-            challenge.original_points,
-            solved_count,
-            challenge.min_score_rate,
-            challenge.difficulty
+    # 验证答案并持久化（死锁时自动重试整个事务）
+    def _persist_submission():
+        from backend.services.submit_lock import (
+            lock_challenge_row,
+            submission_owner_key,
+            redis_submit_lock,
+            correct_submission_dedupe_key,
         )
-        
-        # 检查是否获得血液奖励
-        blood_level = ScoringService.record_first_solve(
-            challenge.game_id,
-            challenge_id,
-            user_id,
-            user.team_id
-        )
-        
-        if blood_level is not None and not challenge.disable_blood_bonus:
-            score_with_bonus, bonus_multiplier = ScoringService.calculate_blood_bonus(
-                score, blood_level=blood_level
+
+        owner_key = submission_owner_key(user)
+        with redis_submit_lock(challenge_id, owner_key) as got_lock:
+            if not got_lock:
+                raise RuntimeError("submit_busy")
+
+            locked = lock_challenge_row(challenge_id)
+            if not locked:
+                return None, 1
+
+            # 提交次数限制放在锁内
+            if locked.submission_limit > 0:
+                attempts = CtfChallengeSubmission.query.filter_by(
+                    user_id=user_id,
+                    challenge_id=challenge_id
+                ).count()
+                if attempts >= locked.submission_limit:
+                    raise RuntimeError("submit_limit")
+
+            is_correct, status = FlagValidationService.validate_flag(
+                answer,
+                challenge_id,
+                user_id,
+                challenge.game_id,
             )
-            submission.points_earned = score_with_bonus
-        else:
-            submission.points_earned = score
-        
-        # 更新排行榜
-        ScoringService.update_scoreboard(
-            challenge.game_id,
-            user_id,
-            user.team_id
-        )
-        
-        # 记录公告
-        blood_names = ['一血', '二血', '三血']
-        if blood_level is not None:
-            notice = CtfGameNotice(
+
+            if status == 2:  # DUPLICATE
+                return None, status
+
+            submission = CtfChallengeSubmission(
+                user_id=user_id,
+                team_id=user.team_id,
+                challenge_id=challenge_id,
                 game_id=challenge.game_id,
-                notice_type=blood_level + 1,
-                title=f"{blood_names[blood_level]} - {user.username} 解决了 {challenge.title}",
-                content=f"用户 {user.username} 获得了{blood_names[blood_level]}"
+                answer=answer,
+                is_correct=is_correct,
+                status=status,
+                correct_dedupe_key=(
+                    correct_submission_dedupe_key(challenge_id, user) if is_correct else None
+                ),
             )
-            db.session.add(notice)
-        
-        # 如果检测到作弊
-        if status == AnswerResult.CHEAT_DETECTED:
-            similar_users = CheatDetectionService.detect_similar_flags(
-                answer, challenge_id, user_id
-            )
-            
-            for similar_user_id, similarity in similar_users:
-                cheat_info = CtfCheatInfo(
-                    game_id=challenge.game_id,
-                    submission_id=submission.id,
-                    source_user_id=user_id,
-                    target_user_id=similar_user_id,
-                    similarity=similarity
+
+            if is_correct:
+                solved_count = CtfChallengeSubmission.query.filter_by(
+                    challenge_id=challenge_id,
+                    is_correct=True,
+                ).count()
+
+                score = ScoringService.calculate_dynamic_score(
+                    challenge.original_points,
+                    solved_count,
+                    challenge.min_score_rate,
+                    challenge.difficulty,
                 )
-                db.session.add(cheat_info)
+
+                blood_level = ScoringService.record_first_solve(
+                    challenge.game_id,
+                    challenge_id,
+                    user_id,
+                    user.team_id,
+                )
+
+                if blood_level is not None and not challenge.disable_blood_bonus:
+                    score_with_bonus, _bonus_multiplier = ScoringService.calculate_blood_bonus(
+                        score, blood_level=blood_level
+                    )
+                    submission.points_earned = score_with_bonus
+                else:
+                    submission.points_earned = score
+
+                ScoringService.update_scoreboard(
+                    challenge.game_id,
+                    user_id,
+                    user.team_id,
+                )
+
+                blood_names = ['一血', '二血', '三血']
+                if blood_level is not None:
+                    notice = CtfGameNotice(
+                        game_id=challenge.game_id,
+                        notice_type=blood_level + 1,
+                        title=f"{blood_names[blood_level]} - {user.username} 解决了 {challenge.title}",
+                        content=f"用户 {user.username} 获得了{blood_names[blood_level]}",
+                    )
+                    db.session.add(notice)
+
+                if status == AnswerResult.CHEAT_DETECTED:
+                    similar_users = CheatDetectionService.detect_similar_flags(
+                        answer, challenge_id, user_id
+                    )
+                    db.session.add(submission)
+                    db.session.flush()
+                    for similar_user_id, similarity in similar_users:
+                        cheat_info = CtfCheatInfo(
+                            game_id=challenge.game_id,
+                            submission_id=submission.id,
+                            source_user_id=user_id,
+                            target_user_id=similar_user_id,
+                            similarity=similarity,
+                        )
+                        db.session.add(cheat_info)
+                    return submission, status
+
+            db.session.add(submission)
+            return submission, status
+
+    try:
+        submission, status = run_transaction_with_retry(_persist_submission)
+    except RuntimeError as exc:
+        if str(exc) == "submit_busy":
+            return error_response("提交处理中，请稍候再试", 429)
+        if str(exc) == "submit_limit":
+            return error_response("Submission limit exceeded", 429)
+        raise
+    except IntegrityError:
+        db.session.rollback()
+        return error_response("Already solved", 400)
+    except (OperationalError, DBAPIError) as exc:
+        if is_deadlock_error(exc):
+            return error_response("系统繁忙，请稍后重试", 503)
+        raise
+
+    if submission is None:
+        return error_response(
+            "Already solved" if status == 2 else "Submit failed",
+            400 if status == 2 else 400,
+        )
+
+    rs = get_redis()
+    if rs and rs.is_available():
+        ScoreboardCache.invalidate_scoreboard(rs, challenge.game_id)
     
-    db.session.add(submission)
-    db.session.commit()
-    
-    result = submission.to_dict()
+    from backend.services.flag_redact import sanitize_submission_dict
+    result = sanitize_submission_dict(submission.to_dict(), include_answer=False)
     result['message'] = {
         0: 'Correct!',
         1: 'Wrong answer',
         2: 'Already solved',
-        3: 'Similar flag detected (possible cheating)'
+        3: 'Correct!',  # 作弊记录仅写库，不向选手暴露
     }.get(status, 'Unknown')
+    result['is_correct'] = bool(submission.is_correct)
     
     return success_response(result)
 
@@ -512,6 +680,14 @@ def get_scoreboard(game_id):
     game = CtfGame.query.get(game_id)
     if not game:
         return error_response("CtfGame not found", 404)
+
+    rs = get_redis()
+    if rs and rs.is_available():
+        cached = ScoreboardCache.get_cached_scoreboard(rs, game_id)
+        if cached:
+            resp = success_response(cached)
+            resp[0].headers["X-Cache"] = "HIT"
+            return resp
     
     # 从 CtfScoreboard 表直接获取排行榜数据（已按 Team 排行）
     scoreboards = CtfScoreboard.query.filter_by(game_id=game_id).order_by(
@@ -519,27 +695,89 @@ def get_scoreboard(game_id):
         CtfScoreboard.last_submission_time.asc()
     ).all()
     
-    # 为每个排行项计算排名和添加团队信息
+    # 只读：排名在内存中计算，不写库（避免高并发读排行榜时行锁竞争）
     rankings = []
     for idx, sb in enumerate(scoreboards, 1):
-        sb.rank = idx
         team = Team.query.get(sb.team_id)
+        last_time = sb.last_submission_time
+        if not last_time:
+            last_time = ScoringService.resolve_last_submission_time(
+                game_id, sb.team_id, sb.user_id
+            )
         rankings.append({
             'rank': idx,
             'team_id': sb.team_id,
             'team_name': team.name if team else 'Unknown',
+            'team_school': getattr(team, 'school', None) or getattr(team, 'tag', None) or '无组织',
             'total_points': sb.total_points,
             'solved_challenges': sb.solved_challenges,
-            'last_submission_time': sb.last_submission_time.isoformat() if sb.last_submission_time else None,
+            'last_submission_time': last_time.isoformat() if last_time else None,
             'members_count': len(team.users) if team else 0,
         })
-    
-    db.session.commit()  # 保存排名更新
-    
-    return success_response({
+
+    payload = {
         'rankings': rankings,
         'total': len(rankings)
-    })
+    }
+    if rs and rs.is_available():
+        ScoreboardCache.cache_scoreboard(rs, game_id, payload)
+
+    resp = success_response(payload)
+    resp[0].headers["X-Cache"] = "MISS"
+    return resp
+
+
+@bp.route("/games/<int:game_id>/scoreboard/timeline", methods=["GET"])
+def get_scoreboard_timeline(game_id):
+    """积分随时间变化折线图数据"""
+    game = CtfGame.query.get(game_id)
+    if not game:
+        return error_response("CtfGame not found", 404)
+
+    rows = (
+        CtfChallengeSubmission.query.filter_by(game_id=game_id, is_correct=True)
+        .order_by(CtfChallengeSubmission.submitted_at.asc())
+        .all()
+    )
+
+    team_points = {}
+    team_names = {}
+    events = []
+
+    for r in rows:
+        if not r.team_id:
+            continue
+        ch = CtfChallenge.query.get(r.challenge_id)
+        earned = r.points_earned or (ch.points if ch else 0)
+        team_points[r.team_id] = team_points.get(r.team_id, 0) + earned
+        if r.team_id not in team_names:
+            t = Team.query.get(r.team_id)
+            team_names[r.team_id] = t.name if t else f'Team #{r.team_id}'
+        events.append({
+            'team_id': r.team_id,
+            'team_name': team_names[r.team_id],
+            'time': r.submitted_at.isoformat() if r.submitted_at else None,
+            'points': team_points[r.team_id],
+        })
+
+    top_teams = sorted(team_points.items(), key=lambda x: -x[1])[:8]
+    top_ids = {tid for tid, _ in top_teams}
+
+    series_map = {tid: [] for tid in top_ids}
+    running = {tid: 0 for tid in top_ids}
+    for ev in events:
+        tid = ev['team_id']
+        if tid not in top_ids:
+            continue
+        running[tid] = ev['points']
+        series_map[tid].append({'time': ev['time'], 'points': running[tid]})
+
+    series = [
+        {'team_id': tid, 'team_name': team_names.get(tid, f'Team #{tid}'), 'data': series_map[tid]}
+        for tid in top_ids
+    ]
+
+    return success_response({'series': series, 'teams': len(team_points)})
 
 
 @bp.route("/games/<int:game_id>/scoreboard/user", methods=["GET"])
@@ -548,30 +786,35 @@ def get_user_scoreboard(game_id):
     """获取用户及其队伍在该竞赛的排行信息 - Team-based"""
     user_id = get_jwt_identity()
     user = User.query.get(user_id)
-    
-    if not user or not user.team_id:
-        return error_response("User or user's team not found", 404)
+    if not user:
+        return error_response("User not found", 404)
+
+    team = ensure_user_has_team(user)
+    if not team:
+        return error_response("Failed to create solo team", 500)
     
     scoreboard = CtfScoreboard.query.filter_by(
         game_id=game_id,
-        team_id=user.team_id
+        team_id=team.id
     ).first()
     
     if not scoreboard:
         return error_response("Team not in this game yet", 404)
+
+    team_rank = ScoringService.get_team_rank(game_id, team.id)
     
     # 获取团队参赛记录
     participation = CtfParticipation.query.filter_by(
         game_id=game_id,
-        team_id=user.team_id
+        team_id=team.id
     ).first()
     
     return success_response({
-        'team_id': user.team_id,
-        'team_name': user.team.name if user.team else 'Unknown',
+        'team_id': team.id,
+        'team_name': team.name,
         'total_points': scoreboard.total_points,
         'solved_challenges': scoreboard.solved_challenges,
-        'rank': scoreboard.rank,
+        'rank': team_rank,
         'last_submission_time': scoreboard.last_submission_time.isoformat() if scoreboard.last_submission_time else None,
         'status': participation.status if participation else 'unknown',
     })
@@ -581,9 +824,14 @@ def get_user_scoreboard(game_id):
 
 @bp.route("/challenges/<int:challenge_id>/start-instance", methods=["POST"])
 @jwt_required()
+@rate_limit(key_func=_container_start_rate_key, max_requests=8, window_seconds=60, error_message="启容器过于频繁，请稍后再试")
 def start_container_instance(challenge_id):
     """启动容器实例（用于动态题目）"""
     user_id = get_jwt_identity()
+    try:
+        user_id = int(user_id)
+    except (TypeError, ValueError):
+        pass
 
     challenge = CtfChallenge.query.get(challenge_id)
     if not challenge:
@@ -597,18 +845,30 @@ def start_container_instance(challenge_id):
     if not user:
         return error_response("User not found", 404)
 
-    # 检查是否已有运行的实例
+    if not user.is_admin and not PermissionService.has_container_permission(
+        user_id, challenge.game_id, challenge_id
+    ):
+        return error_response("Permission denied", 403)
+
+    team = ensure_user_has_team(user)
+    if not team:
+        return error_response("Failed to create solo team", 500)
+
+    # 检查是否已有运行的实例：同队共享一个靶机
     existing = CtfGameInstance.query.filter_by(
         challenge_id=challenge_id,
-        user_id=user_id,
+        team_id=team.id,
         is_running=True
     ).first()
 
     if existing:
-        # 返回现有实例
+        url = normalize_connection_url(existing, challenge=challenge)
+        if url != (existing.connection_url or ""):
+            existing.connection_url = url
+            db.session.commit()
         return success_response({
             "instance_id": existing.id,
-            "connection_url": existing.connection_url,
+            "connection_url": url,
             "port": existing.port,
             "expires_at": existing.expires_at.isoformat() if existing.expires_at else None
         }, "Container already running")
@@ -617,12 +877,12 @@ def start_container_instance(challenge_id):
     success, instance, msg = container_service.create_container(
         challenge=challenge,
         user=user,
-        team=None,
+        team=team,
         expire_hours=2
     )
 
     if not success:
-        return error_response("Failed to create container", 500)
+        return error_response(msg or "Failed to create container", 500)
 
     return success_response({
         "instance_id": instance.id,
@@ -658,22 +918,21 @@ def stop_container_instance(instance_id):
 @bp.route("/challenges/<int:challenge_id>/hints", methods=["GET"])
 @jwt_required()
 def list_hints(challenge_id):
-    """获取题目的所有提示"""
+    """获取题目的所有提示（未访问不返回 hint_text）"""
     user_id = get_jwt_identity()
     
     hints = CtfChallengeHint.query.filter_by(challenge_id=challenge_id).all()
     
     result = []
     for hint in hints:
-        hint_data = hint.to_dict()
-        
-        # 检查用户是否已查看
         access = CtfUserHintAccess.query.filter_by(
             user_id=user_id,
             hint_id=hint.id
         ).first()
-        
-        hint_data['accessed'] = access is not None
+        accessed = access is not None
+        hint_data = hint.to_dict(include_text=accessed)
+        hint_data['accessed'] = accessed
+        hint_data['is_accessed'] = accessed
         result.append(hint_data)
     
     return success_response(result)
@@ -733,13 +992,13 @@ def cleanup_containers():
     
     if not user or not user.is_admin:
         return error_response("Permission denied", 403)
-    
-        cleaned_count, cleaned_ids = container_service.cleanup_expired_containers()
-    
+
+    cleaned_count, cleaned_ids = container_service.cleanup_expired_containers()
+
     return success_response({
-            'cleaned': cleaned_count,
-            'container_ids': cleaned_ids
-        }, f"Cleaned {cleaned_count} containers")
+        'cleaned': cleaned_count,
+        'container_ids': cleaned_ids,
+    }, f"Cleaned {cleaned_count} containers")
 
 
 # ======================== 健康检查 ========================

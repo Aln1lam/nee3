@@ -1,0 +1,9 @@
+LINE 97 len=4559
+LINE 1185 len=2449
+phaseHint\" class=\"action-hint\">{{ phaseHint }}</p>\n              <p v-if=\"teamHint\" class=\"action-hint team-hint\">{{ teamHint }}</p>\n\n              <UiButton","old_string":"              <p v-if=\"phaseHint\" class=\"action-hint\">{{ phaseHint }}</p>\n\n              <UiButton","path":"E:\\neepu\\frontend\\src\\components\\GameDetail.vue"}},{"type":"tool_use","name":"StrReplace","input":{"new_string":"      return ''\n    })\n\n    const teamHint = computed(() => {\n      if (!loggedIn.value || isArchived.value || !game.value || hasTeam.value) return ''\n      const now = Date.now()\n      const end = game.value.end_time ? new Date(game.value.end_time).getTime() : Infinity\n      if (now >= end) return ''\n      return '正式赛事以战队为单位参赛，进入题目前请先创建或加入队伍。'\n    })\n\n    const primaryCta = computed(() => {","old_string":"      return ''\n    })\n\n    const primaryCta = computed(() => {","path":"E:\\neepu\\frontend\\src\\components\\GameDetail.vue"}},{"type":"tool_use","name":"Grep","input":{"path":"E:\\neepu\\frontend\\src\\components\\GameDetail.vue","pattern":"return \\{"}}]}}
+
+---
+LINE 1187 len=626
+phaseHint, teamHint, primaryCta,","old_string":"      statusLabel, statusTagType, timeRange, phaseHint, primaryCta,","path":"E:\\neepu\\frontend\\src\\components\\GameDetail.vue"}}]}}
+
+---

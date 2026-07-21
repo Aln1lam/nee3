@@ -1,0 +1,71 @@
+          <n-tab-pane v-if="isAdmin" name="stats" tab="统计">
+            <div v-if="stats" class="admin-stats">
+              <div class="stat-row"><span>解出人数</span><strong>{{ stats.unique_solvers || 0 }}</strong></div>
+              <div class="stat-row"><span>总提交数</span><strong>{{ stats.total_submissions || 0 }}</strong></div>
+              <div class="stat-row"><span>通过率</span><strong>{{ stats.solve_rate || '0%' }}</strong></div>
+              <div v-if="stats.first_solver" class="stat-row">
+                <span>首解</span>
+                <strong>{{ stats.first_solver.username }} · {{ formatStatTime(stats.first_solver.solved_at) }}</strong>
+              </div>
+            </div>
+            <div v-else class="muted">加载统计中...</div>
+          </n-tab-pane>
+
+          <n-tab-pane v-if="isAdmin" name="attachments" tab="附件管理">
+            <div class="admin-panel">
+              <p v-if="attachmentUrl">当前附件 ID: {{ selectedChallenge.attachment_id }}</p>
+              <p v-else class="muted">本题暂无附件</p>
+              <a
+                v-if="attachmentUrl"
+                :href="attachmentUrl"
+                target="_blank"
+                rel="noopener"
+                class="admin-link"
+              >下载附件</a>
+              <n-button size="small" @click="goAdminChallenge">前往后台编辑附件</n-button>
+            </div>
+          </n-tab-pane>
+
+          <n-tab-pane v-if="isAdmin" name="instances" tab="实例管理">
+            <div class="admin-panel">
+              <div v-if="instance" class="conn-box">
+                <span v-if="instance.port" class="tcp-badge">tcp</span>
+                {{ instance.connection_url || '—' }}
+              </div>
+              <p v-else class="muted">当前无运行中的实例</p>
+              <n-button v-if="hasContainer" size="small" :loading="containerLoading" @click="startContainer">
+                {{ instance ? '重启环境' : '启动实例' }}
+              </n-button>
+            </div>
+          </n-tab-pane>
+
+          <n-tab-pane v-if="isAdmin" name="checker" tab="判题脚本">
+            <div class="admin-panel">
+              <div class="stat-row"><span>题目类型</span><strong>{{ challengeTypeLabel }}</strong></div>
+              <div v-if="selectedChallenge.flag_template" class="stat-row">
+                <span>Flag 模板</span><strong class="mono">{{ selectedChallenge.flag_template }}</strong>
+              </div>
+              <p class="muted">完整判题配置请在比赛管理后台修改。</p>
+              <n-button size="small" @click="goAdminChallenge">打开题目设置</n-button>
+            </div>
+          </n-tab-pane>
+
+          <n-tab-pane v-if="isAdmin" name="settings" tab="题目设置">
+            <div class="admin-panel">
+              <div class="stat-row">
+                <span>上架状态</span>
+                <strong>{{ selectedChallenge.is_enabled === false ? '已下架' : '已上架' }}</strong>
+              </div>
+              <div class="stat-row"><span>分类</span><strong>{{ selectedChallenge.category || '—' }}</strong></div>
+              <div class="stat-row"><span>分值</span><strong>{{ selectedChallenge.current_score || selectedChallenge.points || 0 }}</strong></div>
+              <UiButton
+                size="small"
+                :variant="selectedChallenge.is_enabled === false ? 'primary' : 'secondary'"
+                :loading="!!selectedChallenge._toggling"
+                @click="toggleChallengeEnabled(selectedChallenge)"
+              >{{ selectedChallenge.is_enabled === false ? '上架题目' : '下架题目' }}</UiButton>
+              <n-button size="small" quaternary @click="goAdminChallenge">完整编辑</n-button>
+            </div>
+          </n-tab-pane>
+
+          <n-tab-pane name="writeup" tab="题解" v-if="mode === 'training' || gameArchived || isAdmin">

@@ -5,44 +5,45 @@ Redis 缓存服务
 
 import json
 import logging
-import pickle
 from typing import Optional, Dict, List, Any
-from datetime import datetime, timedelta
+from datetime import datetime
 from functools import wraps
 import redis
-from backend.server.db_models import CtfScoreboard, CtfChallenge, User
 
 logger = logging.getLogger(__name__)
 
 
 class RedisService:
     """Redis 缓存服务"""
-    
-    def __init__(self, host: str = 'localhost', port: int = 6379, db: int = 0, decode_responses: bool = True):
-        """
-        初始化 Redis 连接
-        
-        Args:
-            host: Redis 主机
-            port: Redis 端口
-            db: 数据库编号
-            decode_responses: 是否自动解码响应为字符串
-        """
+
+    _pool: Optional[redis.ConnectionPool] = None
+
+    def __init__(
+        self,
+        host: str = 'localhost',
+        port: int = 6379,
+        db: int = 0,
+        password: Optional[str] = None,
+        decode_responses: bool = True,
+        max_connections: int = 50,
+    ):
         try:
-            self.redis = redis.Redis(
-                host=host,
-                port=port,
-                db=db,
-                decode_responses=decode_responses,
-                socket_connect_timeout=5,
-                socket_keepalive=True
-            )
-            
-            # 测试连接
+            if RedisService._pool is None:
+                RedisService._pool = redis.ConnectionPool(
+                    host=host,
+                    port=port,
+                    db=db,
+                    password=password,
+                    decode_responses=decode_responses,
+                    max_connections=max_connections,
+                    socket_connect_timeout=5,
+                    socket_keepalive=True,
+                    health_check_interval=30,
+                )
+            self.redis = redis.Redis(connection_pool=RedisService._pool)
             self.redis.ping()
             logger.info(f"Redis connected to {host}:{port}/db={db}")
             self.is_connected = True
-            
         except Exception as e:
             logger.error(f"Failed to connect to Redis: {e}")
             self.is_connected = False
@@ -109,26 +110,37 @@ class RedisService:
             return False
     
     def delete_pattern(self, pattern: str) -> int:
-        """
-        删除匹配模式的所有键
-        
-        Args:
-            pattern: 键的模式（如 'scoreboard:*'）
-        
-        Returns:
-            删除的键数
-        """
+        """删除匹配模式的所有键（使用 SCAN 避免阻塞）"""
         if not self.is_available():
             return 0
-        
+
         try:
-            keys = self.redis.keys(pattern)
-            if keys:
-                return self.redis.delete(*keys)
-            return 0
+            deleted = 0
+            for key in self.redis.scan_iter(match=pattern, count=200):
+                self.redis.delete(key)
+                deleted += 1
+            return deleted
         except Exception as e:
             logger.error(f"Redis DELETE PATTERN error: {e}")
             return 0
+
+    def setex_json(self, key: str, ttl: int, value: Dict) -> bool:
+        """原子设置 JSON 并指定 TTL"""
+        return self.set_json(key, value, expiration=ttl)
+
+    def get_info(self) -> Dict:
+        """获取 Redis 运行信息（用于健康检查）"""
+        if not self.is_available():
+            return {"status": "unavailable"}
+        try:
+            info = self.redis.info(section="memory")
+            return {
+                "status": "ok",
+                "used_memory_human": info.get("used_memory_human"),
+                "connected_clients": self.redis.info("clients").get("connected_clients"),
+            }
+        except Exception as e:
+            return {"status": "error", "message": str(e)}
     
     def get_json(self, key: str) -> Optional[Dict]:
         """获取 JSON 缓存值"""
@@ -369,46 +381,34 @@ class NotificationQueue:
 
 # ======================== 缓存装饰器 ========================
 
-def cache_result(expiration: int = 3600):
-    """
-    缓存函数结果的装饰器
-    
-    使用方法：
-        @cache_result(expiration=600)
-        def get_user_data(user_id):
-            # 从数据库获取数据
-            return user_data
-    """
+def cache_result(expiration: int = 3600, key_prefix: str = ""):
+    """缓存函数结果的装饰器"""
+
     def decorator(func):
         @wraps(func)
         def wrapper(*args, **kwargs):
-            # 生成缓存键（基于函数名和参数）
-            cache_key = f"{func.__name__}:{str(args)}:{str(kwargs)}"
-            
-            # 尝试从缓存获取
-            redis_service = globals().get('redis_service')
-            if redis_service:
-                cached = redis_service.get(cache_key)
+            cache_key = f"{key_prefix or func.__name__}:{str(args)}:{str(kwargs)}"
+            svc = get_redis()
+            if svc and svc.is_available():
+                cached = svc.get(cache_key)
                 if cached:
                     try:
                         return json.loads(cached)
-                    except:
+                    except Exception:
                         pass
-            
-            # 执行函数
+
             result = func(*args, **kwargs)
-            
-            # 存储到缓存
-            if redis_service:
+
+            if svc and svc.is_available():
                 try:
-                    redis_service.set(cache_key, json.dumps(result), expiration)
-                except:
+                    svc.set(cache_key, json.dumps(result, default=str), expiration)
+                except Exception:
                     pass
-            
+
             return result
-        
+
         return wrapper
-    
+
     return decorator
 
 
@@ -416,8 +416,18 @@ def cache_result(expiration: int = 3600):
 redis_service: Optional[RedisService] = None
 
 
-def initialize_redis(host: str = 'localhost', port: int = 6379, db: int = 0) -> RedisService:
+def get_redis() -> Optional[RedisService]:
+    """获取全局 Redis 服务实例"""
+    return redis_service
+
+
+def initialize_redis(
+    host: str = 'localhost',
+    port: int = 6379,
+    db: int = 0,
+    password: Optional[str] = None,
+) -> RedisService:
     """初始化全局 Redis 服务"""
     global redis_service
-    redis_service = RedisService(host=host, port=port, db=db)
+    redis_service = RedisService(host=host, port=port, db=db, password=password)
     return redis_service

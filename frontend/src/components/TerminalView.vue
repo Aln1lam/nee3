@@ -54,13 +54,14 @@ export default {
       // 3. ls 命令 (列出题目)
       ls: async () => {
         try {
-          const { data } = await axios.get('/api/games/1/challenges')
-          if (!data.items) return createStdout('No challenges found.')
+          const { data } = await axios.get('/api/challenges/games/1/challenges')
+          const items = data?.data || data?.items || []
+          if (!items.length) return createStdout('No challenges found.')
           
           let output = 'ID   TITLE           SCORE\n'
           output += '--------------------------\n'
-          data.items.forEach(c => {
-            output += `${String(c.id).padEnd(4)} ${c.title.padEnd(15)} ${c.score}\n`
+          items.forEach(c => {
+            output += `${String(c.id).padEnd(4)} ${String(c.title || '').padEnd(15)} ${c.points ?? c.score ?? ''}\n`
           })
           return createStdout(output)
         } catch (e) {
@@ -74,8 +75,9 @@ export default {
         if (!id || !flagStr) return createStdout('Usage: flag <challenge_id> <flag_string>')
         
         try {
-          const { data } = await axios.post(`/api/games/challenges/${id}/submit`, { flag: flagStr })
-          if (data.correct) return createStdout(`[SUCCESS] Flag accepted! Points added.`)
+          const { data } = await axios.post(`/api/challenges/${id}/submit`, { flag: flagStr, answer: flagStr })
+          const payload = data?.data || data
+          if (payload?.is_correct || payload?.correct || data?.correct) return createStdout(`[SUCCESS] Flag accepted! Points added.`)
           else return createStdout(`[FAIL] Incorrect flag.`)
         } catch (e) {
           return createStdout(`System Error: ${e.message}`)

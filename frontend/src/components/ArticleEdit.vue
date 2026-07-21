@@ -1,5 +1,5 @@
 <template>
-  <div style="padding:16px;max-width:900px;">
+  <div class="article-editor-page page-wrap">
     <n-button @click="$router.back()">取消</n-button>
     <h2>{{ isNew ? '撰写文章' : '编辑文章' }}</h2>
 
@@ -25,8 +25,8 @@
 
       <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px;">
         <n-button @click="$router.back()">取消</n-button>
-        <n-button type="info" @click="save('draft')">保存草稿</n-button>
-        <n-button type="primary" @click="save('published')">发布</n-button>
+        <n-button type="info" :loading="saving" :disabled="saving" @click="save('draft')">保存草稿</n-button>
+        <n-button type="primary" :loading="saving" :disabled="saving" @click="save('published')">发布</n-button>
       </div>
     </n-form>
 
@@ -40,14 +40,17 @@
 <script>
 import { ref, onMounted, inject } from 'vue'
 import { useRouter } from 'vue-router'
-import { NButton, NForm, NFormItem, NInput, NSelect } from 'naive-ui'
+import { NButton, NForm, NFormItem, NInput, NSelect, useMessage } from 'naive-ui'
 import { TAGS } from '../services/tags'
+import { parseMarkdownSafe } from '../utils/markdown'
+import { apiErrorMessage } from '../utils/apiError'
 
 export default {
   components: { NButton, NForm, NFormItem, NInput, NSelect },
   props: { id: { type: [String, Number], default: null } },
   setup(props) {
     const axios = inject('axios')
+    const message = useMessage()
     const isNew = ref(!props.id)
     const title = ref('')
     const summary = ref('')
@@ -56,6 +59,7 @@ export default {
     const preview = ref(false)
     const fileInput = ref(null)
     const renderedHtml = ref('')
+    const saving = ref(false)
 
     async function load() {
       if (!props.id) return
@@ -66,7 +70,10 @@ export default {
           // backend stores tags as comma-separated string; convert to array for the select
           tags.value = (r.data.tags || '').split(',').map(s => s && s.trim()).filter(Boolean)
         body.value = r.data.body || ''
-      } catch (e) { console.error('load article failed', e) }
+      } catch (e) {
+        console.error('load article failed', e)
+        message.error(apiErrorMessage(e, '加载文章失败'))
+      }
     }
 
     function triggerFile() { fileInput.value && fileInput.value.click() }
@@ -81,18 +88,25 @@ export default {
         const url = r.data.url
         // insert markdown image at current cursor position (append for simplicity)
         body.value = body.value + '\n\n![' + (f.name || '') + '](' + url + ')\n'
-      } catch (e) { console.error('upload failed', e) }
+        message.success('图片已插入')
+      } catch (e) {
+        console.error('upload failed', e)
+        message.error(apiErrorMessage(e, '上传失败'))
+      }
     }
 
     const tagOptions = TAGS.map(t => ({ label: t, value: t }))
 
     async function save(status) {
+      if (saving.value) return
       // send tags as array of names; backend will join into a string
       const payload = { title: title.value, body: body.value, summary: summary.value, tags: tags.value, status }
+      saving.value = true
       try {
         if (isNew.value) {
           const r = await axios.post('/api/articles/', payload)
           const id = r.data.id
+          message.success(status === 'published' ? '已发布' : '草稿已保存')
           // navigate to detail and notify other components
           router.push('/knowledge/' + id)
           // dispatch article saved event for other components
@@ -101,12 +115,18 @@ export default {
           } catch (e) { /* ignore */ }
         } else {
           await axios.put('/api/articles/' + props.id, payload)
+          message.success(status === 'published' ? '已发布' : '草稿已保存')
           router.push('/knowledge/' + props.id)
           try {
             window.dispatchEvent(new CustomEvent('neepu_article_saved', { detail: { id: props.id } }))
           } catch (e) { /* ignore */ }
         }
-      } catch (e) { console.error('save failed', e) }
+      } catch (e) {
+        console.error('save failed', e)
+        message.error(apiErrorMessage(e, '保存失败'))
+      } finally {
+        saving.value = false
+      }
     }
 
     function togglePreview() {
@@ -115,20 +135,17 @@ export default {
     }
 
     async function renderMarkdown() {
-      // try to use marked if available, otherwise escape basic markdown (very small fallback)
       try {
-        const marked = (await import('marked')).default
-        renderedHtml.value = marked.parse(body.value || '')
+        renderedHtml.value = parseMarkdownSafe(body.value || '')
       } catch (e) {
-        // fallback: simple newline->br and escape
-        renderedHtml.value = (body.value || '').replace(/&/g, '&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>')
+        renderedHtml.value = ''
       }
     }
 
     const router = useRouter()
 
     onMounted(load)
-    return { isNew, title, summary, tags, tagOptions, body, preview, triggerFile, onFileChange, fileInput, save, renderedHtml, togglePreview }
+    return { isNew, title, summary, tags, tagOptions, body, preview, triggerFile, onFileChange, fileInput, save, saving, renderedHtml, togglePreview }
   }
 }
 </script>

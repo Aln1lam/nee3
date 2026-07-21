@@ -1,0 +1,3 @@
+    const searchQuery = ref('')
+    const collapsedCategories = ref(new Set())
+    const activeTab = ref('terminal')

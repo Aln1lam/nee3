@@ -29,6 +29,7 @@ def admin_required(fn):
     return wrapper
 
 # ==================== 调试接口：设置/检查管理员 ====================
+# 前端入口：@/services/admin/setup.js（AdminSetup 页面）
 
 @bp.get("/check-current-user")
 @jwt_required()
@@ -48,15 +49,27 @@ def check_current_user():
 
 
 @bp.post("/set-admin-first-user")
+@jwt_required()
 def set_admin_first_user():
-    """设置数据库中第一个用户为管理员（调试用）"""
-    user = User.query.first()
+    """首次安装：将当前登录用户设为管理员（需 NEPU_SETUP_SECRET）"""
+    from backend.server.security_helpers import allow_bootstrap_admin
+
+    allowed, msg = allow_bootstrap_admin()
+    if not allowed:
+        return jsonify({'error': msg}), 403
+
+    try:
+        uid = int(get_jwt_identity())
+    except (TypeError, ValueError):
+        return jsonify({'error': 'invalid identity'}), 401
+
+    user = User.query.get(uid)
     if not user:
         return jsonify({'error': '没有用户'}), 404
-    
+
     user.is_admin = True
     extensions.db.session.commit()
-    
+
     return jsonify({
         'success': True,
         'message': f'用户 {user.nickname} (ID: {user.id}) 已设置为管理员',
@@ -70,7 +83,7 @@ def set_admin_first_user():
 
 
 @bp.get("/search-user/<nickname>")
-@jwt_required()
+@admin_required
 def search_user(nickname):
     """搜索用户（根据昵称）"""
     user = User.query.filter_by(nickname=nickname).first()
@@ -99,63 +112,36 @@ def require_admin():
 
 
 
+def _games_gone():
+    """/api/admin/games* CRUD 已迁至 /api/competitions/admin/*（stats/export 仍由 ctf_admin 提供）。"""
+    body = {
+        'code': 410,
+        'msg': 'Gone: use /api/competitions/admin/* for game CRUD; stats/export remain at /api/admin/games/<id>/stats|export-scoreboard',
+        'successor': '/api/competitions/admin/*',
+    }
+    resp = jsonify(body)
+    resp.status_code = 410
+    resp.headers['Deprecation'] = 'true'
+    resp.headers['Link'] = '</api/competitions/admin/>; rel="successor-version"'
+    return resp
+
+
 @bp.get('/games')
 @jwt_required()
 def admin_list_games():
-    if not require_admin():
-        return {"msg": "admin required"}, 403
-    items = []
-    for g in CtfGame.query.all():
-        items.append({'id': g.id, 'title': g.title, 'start_time': g.start_time.isoformat(), 'end_time': g.end_time.isoformat(), 'is_public': g.is_public})
-    return {'items': items}
+    return _games_gone()
 
 
 @bp.put('/games/<int:gid>')
 @jwt_required()
 def admin_update_game(gid):
-    if not require_admin():
-        return {"msg": "admin required"}, 403
-    g = CtfGame.query.get_or_404(gid)
-    data = request.get_json() or {}
-    for f in ('title', 'is_public'):
-        if f in data:
-            setattr(g, f, data.get(f))
-    if 'start_time' in data:
-        try:
-            g.start_time = __import__('datetime').datetime.fromisoformat(data.get('start_time'))
-        except Exception:
-            pass
-    if 'end_time' in data:
-        try:
-            g.end_time = __import__('datetime').datetime.fromisoformat(data.get('end_time'))
-        except Exception:
-            pass
-    extensions.db.session.add(g)
-    extensions.db.session.commit()
-    return {'msg': 'ok', 'id': g.id}
+    return _games_gone()
 
-@bp.get('/users')
-@admin_required
-def admin_list_users():
-    q = User.query
-    email = request.args.get('email')
-    nickname = request.args.get('nickname')
-    team_id = request.args.get('team_id')
-    if email:
-        q = q.filter(User.email.contains(email))
-    if nickname:
-        q = q.filter(User.nickname.contains(nickname))
-    if team_id:
-        try:
-            q = q.filter_by(team_id=int(team_id))
-        except:
-            pass
-    items = [u.to_dict() for u in q.order_by(User.id.desc()).limit(1000).all()]
-    return jsonify({'items': items})
 
 @bp.put('/users/<int:uid>')
 @admin_required
 def admin_update_user(uid):
+    """兼容旧客户端 PUT；字段语义与 PATCH /users/<id> 对齐。"""
     data = request.json or {}
     u = User.query.get_or_404(uid)
     if 'is_admin' in data:
@@ -164,6 +150,8 @@ def admin_update_user(uid):
         u.team_id = int(data['team_id']) if data['team_id'] else None
     if 'nickname' in data:
         u.nickname = data['nickname']
+    if 'full_name' in data:
+        u.full_name = data['full_name']
     extensions.db.session.add(u)
     extensions.db.session.commit()
     return jsonify(u.to_dict())
@@ -213,19 +201,36 @@ def admin_seed():
     extensions.db.session.commit()
     return jsonify({'msg': 'seeded'})
 
-# ==================== 新增：用户管理 ====================
+# ==================== 用户管理（合并原重复 GET /users） ====================
 
 @bp.get("/users")
 @admin_required
 def list_users():
-    """获取所有用户列表"""
+    """获取用户列表（支持分页与 email/nickname/team_id 过滤）"""
     page = request.args.get('page', 1, type=int)
     per_page = request.args.get('per_page', 20, type=int)
-    
+    # 未传 page 且需要全量时：per_page 上限放宽（兼容旧 Admin 过滤面板）
+    if request.args.get('page') is None and request.args.get('per_page') is None:
+        if request.args.get('email') or request.args.get('nickname') or request.args.get('team_id'):
+            per_page = min(request.args.get('per_page', 1000, type=int) or 1000, 1000)
+
     query = User.query
+    email = request.args.get('email')
+    nickname = request.args.get('nickname')
+    team_id = request.args.get('team_id')
+    if email:
+        query = query.filter(User.email.contains(email))
+    if nickname:
+        query = query.filter(User.nickname.contains(nickname))
+    if team_id:
+        try:
+            query = query.filter_by(team_id=int(team_id))
+        except (TypeError, ValueError):
+            pass
+
     total = query.count()
-    users = query.paginate(page=page, per_page=per_page).items
-    
+    users = query.order_by(User.id.desc()).paginate(page=page, per_page=per_page).items
+
     return jsonify({
         'total': total,
         'page': page,
@@ -237,7 +242,7 @@ def list_users():
             'full_name': u.full_name,
             'is_admin': u.is_admin,
             'team_id': u.team_id,
-            'created_at': u.created_at.isoformat()
+            'created_at': u.created_at.isoformat() if u.created_at else None,
         } for u in users]
     })
 
@@ -332,61 +337,21 @@ def delete_user(user_id):
         return jsonify({'error': f'删除用户失败: {str(e)}'}), 500
 
 
-# ==================== 新增：比赛管理 ====================
-
-@bp.get("/games")
-@admin_required
-def list_games_admin():
-    """获取所有比赛"""
-    games = CtfGame.query.order_by(CtfGame.start_time.desc()).all()
-    return jsonify({
-        'items': [{
-            'id': g.id,
-            'title': g.title,
-            'start_time': g.start_time.isoformat(),
-            'end_time': g.end_time.isoformat(),
-            'is_public': g.is_public
-        } for g in games]
-    })
-
+# ==================== 比赛管理（CRUD 已下线，避免与 ctf_admin / competitions 阴影） ====================
 
 @bp.post("/games")
 @admin_required
 def create_game_admin():
-    """创建比赛"""
-    data = request.get_json() or {}
-    from datetime import datetime
-    
-    title = data.get('title')
-    start_time = datetime.fromisoformat(data.get('start_time'))
-    end_time = datetime.fromisoformat(data.get('end_time'))
-    is_public = data.get('is_public', True)
-    
-    if not all([title, start_time, end_time]):
-        return jsonify({'error': '缺少必要字段'}), 400
-    
-    game = CtfGame(title=title, start_time=start_time, end_time=end_time, is_public=is_public)
-    extensions.db.session.add(game)
-    extensions.db.session.commit()
-    
-    return jsonify({'id': game.id, 'success': True}), 201
+    return _games_gone()
 
 
 @bp.delete("/games/<int:game_id>")
 @admin_required
 def delete_game_admin(game_id):
-    """删除比赛"""
-    game = CtfGame.query.get(game_id)
-    if not game:
-        return jsonify({'error': '比赛不存在'}), 404
-    
-    extensions.db.session.delete(game)
-    extensions.db.session.commit()
-    
-    return jsonify({'success': True})
+    return _games_gone()
 
 
-# ==================== 新增：数据统计 ====================
+# ==================== 数据统计 ====================
 
 @bp.get("/stats/dashboard")
 @admin_required

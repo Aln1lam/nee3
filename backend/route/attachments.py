@@ -57,6 +57,12 @@ def upload_article_attachment(article_id):
     
     # 读取文件内容并计算MD5
     file_content = f.read()
+    if ext == 'zip':
+        from backend.services.zip_safety import ZipSafetyError, validate_zip_bytes
+        try:
+            validate_zip_bytes(file_content)
+        except ZipSafetyError as e:
+            return jsonify({'error': f'ZIP 不安全: {e}'}), 400
     file_md5 = get_file_md5(file_content)
     filename = f"{file_md5}.{ext}"
     
@@ -246,6 +252,11 @@ def upload_carousel_attachment(carousel_id):
             is_thumbnail=is_thumbnail
         )
         db.session.add(ca)
+
+        if is_thumbnail or not carousel.image_url:
+            carousel.image_url = url
+            carousel.resource_id = fr.id
+
         db.session.commit()
         
         full_url = request.host_url.rstrip('/') + url

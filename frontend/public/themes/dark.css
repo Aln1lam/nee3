@@ -1,0 +1,106 @@
+:root {
+  /* NEEPU 二次元 / 轻游戏 · dark — docs/ui-style-guide.md */
+  --color-primary: #5ED9A8;
+  --color-accent: #F472B6;
+  --color-depth: #7EB8FF;
+  --color-neon: #5ED9A8;
+  --accent-red: #F472B6;
+  --primary: var(--color-primary);
+  --muted: #9CA8C4;
+  --success: #4ADE80;
+  --warning: #FBBF24;
+  --error: #FB7185;
+  --info: var(--color-depth);
+  --glow: none;
+  --circuit-color: rgba(94, 217, 168, 0.12);
+  --circuit-opacity: 0.1;
+  --hex-grid-color: rgba(255, 255, 255, 0.03);
+  --grid-line-color: rgba(94, 217, 168, 0.08);
+  --grid-opacity: 0.35;
+  --bg-layer: rgba(26, 29, 46, 0.92);
+  --code-bg: #232838;
+  --term-bg: #12141D;
+  --term-fg: var(--color-primary);
+  --card-radius: 12px;
+  --radius-xs: 6px;
+  --radius-sm: 8px;
+  --radius-md: 10px;
+  --radius-lg: 12px;
+  --radius-xl: 14px;
+  --radius-pill: 10px;
+
+  --light-page-bg: #1A1D2E;
+  --light-nav-bg: rgba(26, 29, 46, 0.78);
+  --light-card-bg: #232838;
+  --light-text: #E2E8F0;
+  --light-border: rgba(255, 255, 255, 0.1);
+
+  --nav-height: 72px;
+  --content-max-width: none;
+  --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.35);
+  --hover: rgba(94, 217, 168, 0.12);
+
+  --landing-page-bg: transparent;
+  --landing-panel-bg: rgba(35, 40, 56, 0.86);
+  --landing-splash-bg: #1A1D2E;
+  --on-primary-text: #0F172A;
+  --landing-mask: none;
+  --carousel-caption-gradient: linear-gradient(
+    to top,
+    rgba(0, 0, 0, 0.55) 0%,
+    rgba(0, 0, 0, 0.2) 40%,
+    transparent 100%
+  );
+
+  --gradient-page-base: #1A1D2E;
+  --gradient-page-glow: radial-gradient(ellipse at 15% 0%, rgba(94, 217, 168, 0.18), transparent 50%),
+    radial-gradient(ellipse at 90% 8%, rgba(244, 114, 182, 0.12), transparent 45%);
+  --noise-opacity: 0;
+  --main-surface-bg: #1A1D2E;
+  --main-surface-grid: rgba(94, 217, 168, 0.06);
+  --sidebar-shadow: 0 8px 28px rgba(0, 0, 0, 0.35);
+
+  --gradient-card-bg: #232838;
+  --gradient-card-border: rgba(255, 255, 255, 0.08);
+  --gradient-card-border-hover: rgba(94, 217, 168, 0.4);
+  --gradient-card-shadow: 0 10px 28px rgba(0, 0, 0, 0.28);
+  --gradient-card-shadow-hover: 0 14px 32px rgba(94, 217, 168, 0.12);
+  --gradient-card-header: rgba(94, 217, 168, 0.08);
+  --gradient-card-header-text: #E2E8F0;
+
+  --gradient-btn-fill: #5ED9A8;
+  --gradient-btn-fill-hover: #7EE8C0;
+  --gradient-btn-glow: none;
+  --gradient-btn-glow-soft: none;
+  --gradient-border: rgba(94, 217, 168, 0.35);
+  --gradient-tag-fill: rgba(244, 114, 182, 0.16);
+  --gradient-tag-text: #F9A8D4;
+  --gradient-tag-border: rgba(244, 114, 182, 0.28);
+
+  --gradient-nav-bg: rgba(26, 29, 46, 0.78);
+  --gradient-nav-active: rgba(94, 217, 168, 0.16);
+  --gradient-nav-hover: rgba(94, 217, 168, 0.1);
+
+  --page-bg: var(--light-page-bg);
+  --nav-bg: var(--gradient-nav-bg);
+  --card-bg: var(--gradient-card-bg);
+  --sidebar-bg: transparent;
+  --glass-sidebar-bg: rgba(35, 40, 56, 0.78);
+  --glass-sidebar-border: rgba(255, 255, 255, 0.08);
+  --surface-shine: rgba(255, 255, 255, 0.04);
+  --surface-edge: rgba(255, 255, 255, 0.06);
+  --text: var(--light-text);
+  --border: var(--light-border);
+  --primary-rgb: 94, 217, 168;
+  --primary-hover: #7EE8C0;
+  --overlay: rgba(0, 0, 0, 0.45);
+
+  --card-accent: var(--color-primary);
+  --card-accent-foreground: var(--on-primary-text);
+}
+
+html,
+body,
+#app {
+  transition: background-color 250ms ease, color 250ms ease;
+}

@@ -1,0 +1,180 @@
+/**
+ * Linux / 终端装饰层 — 硬朗面板 + shell prompt
+ * 与西电靶场质感对齐：实色卡片 + 细纹理 + 克制终端元素
+ */
+
+:root {
+  --linux-chrome-bg: #1C2029;
+  --linux-chrome-bg-light: #E8ECF0;
+  --linux-prompt-user: #5ED9A8;
+  --linux-prompt-host: #7EB8FF;
+  --linux-prompt-path: #F472B6;
+  --linux-prompt-cmd: #E8ECF4;
+}
+
+html[data-theme="light"] {
+  --linux-chrome-bg: #E2E8F0;
+  --linux-prompt-user: #15803D;
+  --linux-prompt-host: #2563EB;
+  --linux-prompt-path: #BE185D;
+  --linux-prompt-cmd: #334155;
+}
+
+/* ── Shell prompt（仅真实终端组件；页眉改走 UI 字体）── */
+.linux-prompt,
+.sidebar-prompt,
+.rail-prompt,
+.panel-prompt,
+.sidebar-layout__prompt,
+.sidebar-rail-prompt,
+.page-eyebrow--linux {
+  display: block;
+  margin: 0 0 12px;
+  padding: 0;
+  font-family: var(--font-mono);
+  font-size: 20px;
+  font-weight: 500;
+  line-height: 28px;
+  letter-spacing: 0.01em;
+  color: var(--muted);
+  word-break: break-all;
+}
+
+/* 页眉 eyebrow：二次元 UI，禁止等宽终端主导 */
+.matrix-page-prompt,
+.account-prompt,
+.page-eyebrow {
+  display: block;
+  margin: 0 0 12px;
+  padding: 0;
+  font-family: var(--font-ui);
+  font-size: var(--text-sm, 14px);
+  font-weight: 600;
+  line-height: 1.4;
+  letter-spacing: 0.04em;
+  color: var(--primary);
+  word-break: normal;
+}
+
+.linux-prompt .lp-user,
+.sidebar-prompt .lp-user,
+.sidebar-rail-prompt .lp-user {
+  color: var(--linux-prompt-user);
+}
+
+.linux-prompt .lp-host,
+.sidebar-prompt .lp-host,
+.sidebar-rail-prompt .lp-host {
+  color: var(--linux-prompt-host);
+}
+
+.linux-prompt .lp-path,
+.sidebar-prompt .lp-path,
+.sidebar-rail-prompt .lp-path {
+  color: var(--linux-prompt-path);
+}
+
+.linux-prompt .lp-cmd,
+.sidebar-prompt .lp-cmd {
+  color: var(--linux-prompt-cmd);
+}
+
+.linux-prompt .lp-cursor,
+.sidebar-prompt .lp-cursor {
+  display: inline-block;
+  width: 7px;
+  height: 1.1em;
+  margin-left: 2px;
+  vertical-align: text-bottom;
+  background: var(--primary);
+  animation: linux-cursor-blink 1s step-end infinite;
+}
+
+@keyframes linux-cursor-blink {
+  50% { opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .linux-prompt .lp-cursor,
+  .sidebar-prompt .lp-cursor {
+    animation: none;
+  }
+}
+
+/* ── 终端窗口顶栏（红黄绿 + 路径）── */
+.linux-chrome,
+.panel-head.linux-chrome,
+.matrix-panel-head.linux-chrome {
+  position: relative;
+  padding-left: 56px !important;
+  font-family: var(--font-mono) !important;
+  font-size: var(--text-xs);
+  font-weight: 500 !important;
+  letter-spacing: 0.02em;
+  background: var(--linux-chrome-bg) !important;
+  color: var(--muted) !important;
+  min-height: 36px;
+}
+
+.linux-chrome::before {
+  content: '';
+  position: absolute;
+  left: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #f87171;
+  box-shadow: 14px 0 0 #fbbf24, 28px 0 0 #4ade80;
+}
+
+html[data-theme="light"] .linux-chrome,
+html[data-theme="light"] .panel-head.linux-chrome {
+  background: var(--linux-chrome-bg-light) !important;
+  color: #64748b !important;
+}
+
+.linux-chrome-path {
+  margin-left: auto;
+  font-size: var(--text-xs);
+  color: var(--muted);
+  opacity: 0.85;
+}
+
+/* 卡片顶栏统一 Linux 质感 */
+.article-card,
+.bulletin-item,
+.quick-card,
+.challenge-card,
+.panel,
+.hero-panel,
+.matrix-panel,
+.feature-card,
+.profile-panel {
+  border-radius: var(--card-radius) !important;
+}
+
+/* ── 底部 uname 条（落地页 / 页脚装饰）── */
+.linux-uname {
+  margin: 0;
+  padding: 8px 12px;
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--muted);
+  border-top: 1px solid var(--border);
+  background: var(--linux-chrome-bg);
+  border-radius: 0 0 var(--card-radius) var(--card-radius);
+}
+
+html[data-theme="light"] .linux-uname {
+  background: var(--linux-chrome-bg-light);
+}
+
+/* ── 命令行按钮前缀 ── */
+.linux-cmd-btn::before {
+  content: '$ ';
+  color: var(--linux-prompt-user);
+  font-family: var(--font-mono);
+  font-weight: 600;
+}

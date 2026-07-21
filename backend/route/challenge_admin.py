@@ -111,6 +111,7 @@ def create_challenge(game_id):
             category=data.get("category", "").strip(),
             description=data.get("description", ""),
             flag=data.get("flag", "").strip(),
+            flag_template=data.get("flag_template", "").strip() or None,
             original_points=int(points_value),
             min_score_rate=float(data.get("min_score_rate", 0.25)),
             difficulty=float(data.get("difficulty", 5.0)),
@@ -121,6 +122,9 @@ def create_challenge(game_id):
             disable_blood_bonus=bool(data.get("disable_blood_bonus", False)),
             cpu_count=int(data.get("cpu_count", 1)) if data.get("cpu_count") else 1,
             memory_limit=int(data.get("memory_limit", 256)) if data.get("memory_limit") else 256,
+            storage_limit=int(data.get("storage_limit", 1024)) if data.get("storage_limit") else 1024,
+            network_mode=(data.get("network_mode") or "Open").strip() or "Open",
+            enable_traffic_capture=bool(data.get("enable_traffic_capture", False)),
             is_enabled=True
         )
         
@@ -205,6 +209,9 @@ def update_challenge(game_id, challenge_id):
         
         if "flag" in data and data["flag"].strip():
             challenge.flag = data["flag"].strip()
+
+        if "flag_template" in data:
+            challenge.flag_template = data["flag_template"].strip() or None
         
         # 支持 original_points 和 points 两种字段名
         if "original_points" in data or "points" in data:
@@ -241,6 +248,19 @@ def update_challenge(game_id, challenge_id):
         
         if "memory_limit" in data:
             challenge.memory_limit = int(data.get("memory_limit", 256)) if data.get("memory_limit") else 256
+
+        if "storage_limit" in data:
+            challenge.storage_limit = int(data.get("storage_limit", 1024)) if data.get("storage_limit") else 1024
+
+        if "network_mode" in data:
+            challenge.network_mode = (data.get("network_mode") or "Open").strip() or "Open"
+
+        if "enable_traffic_capture" in data:
+            val = data.get("enable_traffic_capture")
+            if isinstance(val, str):
+                challenge.enable_traffic_capture = val.strip().lower() in ("1", "true", "yes", "on")
+            else:
+                challenge.enable_traffic_capture = bool(val)
         
         if "is_enabled" in data:
             challenge.is_enabled = bool(data.get("is_enabled", True))
@@ -276,13 +296,16 @@ def delete_challenge(game_id, challenge_id):
         
         db.session.delete(challenge)
         db.session.commit()
-        
+
         return jsonify({
             "code": 200,
             "msg": "题目删除成功"
         }), 200
     except Exception as e:
         db.session.rollback()
+        err = str(getattr(e, "orig", e))
+        if "1451" in err or "foreign key constraint" in err.lower():
+            return jsonify({"code": 409, "msg": "题目存在关联数据，无法删除"}), 409
         return jsonify({"code": 500, "msg": str(e)}), 500
 
 
@@ -425,7 +448,19 @@ def upload_challenge_attachment(game_id, challenge_id):
                 i += 1
             
             # 保存文件
-            file.save(dest)
+            raw = file.read()
+            if not raw:
+                return jsonify({"code": 400, "msg": "空文件"}), 400
+            if len(raw) > 20 * 1024 * 1024:
+                return jsonify({"code": 400, "msg": "文件过大（上限 20MB）"}), 400
+            if filename.lower().endswith(".zip"):
+                from backend.services.zip_safety import ZipSafetyError, validate_zip_bytes
+                try:
+                    validate_zip_bytes(raw)
+                except ZipSafetyError as e:
+                    return jsonify({"code": 400, "msg": f"ZIP 不安全: {e}"}), 400
+            with open(dest, "wb") as fh:
+                fh.write(raw)
             
             # 获取文件信息
             url = f"/static/uploads/{filename}"

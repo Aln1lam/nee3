@@ -1,0 +1,4 @@
+      window.addEventListener('neepu_user_refreshed', refreshAdminState)
+      const info = await fetchPlatformInfo()
+      platformCategories.value = info.challenge_categories || []
+      await loadChallenges()

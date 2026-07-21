@@ -152,6 +152,14 @@ import {
   NCard, NButton, NSpace, NInput, NInputGroup, NModal, useMessage
 } from 'naive-ui'
 import Challenge from './Challenge.vue'
+import { createVisibilityPoll, POLL_INTERVALS } from '@/utils/polling'
+import {
+  startContainer as apiStartContainer,
+  stopContainer as apiStopContainer,
+  extendContainer as apiExtendContainer,
+  getContainerStatus,
+  pickRunningInstance,
+} from '@/services/container'
 
 export default {
   components: {
@@ -190,6 +198,7 @@ export default {
     const flagHistory = ref([])
     const showFlagHistory = ref(false)
     const refreshTimer = ref(null)
+    let containerPoll = null
 
     // 计算属性
     const isContainerChallenge = computed(() => {
@@ -211,102 +220,110 @@ export default {
       return types[props.challenge.challenge_type] || '未知题目'
     }
 
+    const refreshInstanceFromStatus = async () => {
+      const payload = await getContainerStatus(props.challenge.id)
+      instance.value = pickRunningInstance(payload)
+      return instance.value
+    }
+
     const launchContainer = async () => {
       if (!props.joined) {
         message.warning('请先加入竞赛')
         return
       }
+      if (launching.value) return
 
       try {
         launching.value = true
-        const response = await axios.post(`/api/container/start/${props.challenge.id}`, {
-          team_id: props.teamId
-        })
-
-        if (response.data.success) {
-          instance.value = response.data.data
+        const payload = await apiStartContainer(props.challenge.id, { asyncMode: false })
+        const running = pickRunningInstance(payload)
+        if (running || payload?.code === 200 || payload?.success) {
+          instance.value = running || (await refreshInstanceFromStatus())
           message.success('✓ 容器已启动')
           startRefreshTimer()
         } else {
-          message.error(response.data.message || '启动失败')
+          message.error(payload?.msg || payload?.message || '启动失败')
         }
       } catch (error) {
-        message.error(error.response?.data?.message || error.message)
+        message.error(error.response?.data?.msg || error.response?.data?.message || error.message)
       } finally {
         launching.value = false
       }
     }
 
     const destroyContainer = async () => {
+      if (destroying.value) return
       if (!window.confirm('确定要销毁这个容器吗？')) return
 
       try {
         destroying.value = true
-        const response = await axios.post(`/api/container/stop/${instance.value.instance_id}`)
-
-        if (response.data.success) {
+        const id = instance.value?.instance_id
+        const payload = await apiStopContainer(id)
+        if (payload?.code === 200 || payload?.success !== false) {
           instance.value = null
           message.success('✓ 容器已销毁')
           stopRefreshTimer()
         } else {
-          message.error(response.data.message || '销毁失败')
+          message.error(payload?.msg || payload?.message || '销毁失败')
         }
       } catch (error) {
-        message.error(error.response?.data?.message || error.message)
+        message.error(error.response?.data?.msg || error.response?.data?.message || error.message)
       } finally {
         destroying.value = false
       }
     }
 
     const extendContainer = async () => {
+      if (extending.value) return
       try {
         extending.value = true
-        // 延时2小时
-        const response = await axios.post(`/api/container/extend/${instance.value.instance_id}`, {
-          hours: 2
-        })
-
-        if (response.data.success) {
-          instance.value.expires_at = response.data.data.expires_at
-          message.success('✓ 容器已延时 2 小时')
+        const id = instance.value?.instance_id
+        const payload = await apiExtendContainer(id)
+        const d = payload?.data
+        if (payload?.code === 200 || payload?.success || d) {
+          if (d?.expires_at && instance.value) instance.value.expires_at = d.expires_at
+          message.success(payload?.msg || '✓ 容器已延时')
         } else {
-          message.error(response.data.message || '延时失败')
+          message.error(payload?.msg || payload?.message || '延时失败')
         }
       } catch (error) {
-        message.error(error.response?.data?.message || error.message)
+        message.error(error.response?.data?.msg || error.response?.data?.message || error.message)
       } finally {
         extending.value = false
       }
     }
 
     const submitFlag = async () => {
-      if (!flag.value.trim()) {
-        message.warning('请输入 Flag')
+      if (!flag.value.trim() || submitting.value) {
+        if (!flag.value.trim()) message.warning('请输入 Flag')
         return
       }
 
       try {
         submitting.value = true
-        const response = await axios.post('/api/container/submit-flag', {
+        const response = await axios.post(`/api/challenges/${props.challenge.id}/submit`, {
           challenge_id: props.challenge.id,
           flag: flag.value,
+          answer: flag.value,
           team_id: props.teamId
         })
 
-        if (response.data.success) {
-          if (response.data.correct) {
-            message.success(`✓ 答案正确！获得 ${response.data.points} 分`)
+        const payload = response.data?.data || response.data || {}
+        const correct = !!(payload.is_correct || payload.correct || response.data?.correct)
+        if (response.data?.code === 200 || response.data?.success || payload.is_correct != null) {
+          if (correct) {
+            const pts = payload.final_score ?? payload.points_earned ?? payload.points
+            message.success(pts != null ? `✓ 答案正确！获得 ${pts} 分` : '✓ 答案正确！')
             flag.value = ''
-            // Flag正确时，后端会销毁容器，需要清空前端状态
-            if (response.data.container_closed) {
+            if (payload.container_closed || response.data?.container_closed) {
               instance.value = null
               stopRefreshTimer()
             }
           } else {
-            message.error('✗ 答案错误，请重试')
+            message.error(response.data?.msg || '✗ 答案错误，请重试')
           }
         } else {
-          message.error(response.data.message || '提交失败')
+          message.error(response.data?.msg || response.data?.message || '提交失败')
         }
       } catch (error) {
         message.error(error.response?.data?.message || error.message)
@@ -350,31 +367,26 @@ export default {
     }
 
     const startRefreshTimer = () => {
-      // 每30秒刷新一次容器信息
-      if (refreshTimer.value) clearInterval(refreshTimer.value)
-      refreshTimer.value = setInterval(async () => {
-        if (instance.value) {
-          try {
-            const response = await axios.get(`/api/container/instance/${instance.value.instance_id}`)
-            if (response.data.success) {
-              instance.value = response.data.data
-            } else {
-              // 容器已销毁或不存在，清空实例
-              instance.value = null
-              stopRefreshTimer()
-            }
-          } catch (error) {
-            console.error('Failed to refresh container status:', error)
-          }
+      stopRefreshTimer()
+      containerPoll = createVisibilityPoll(async () => {
+        if (!instance.value) return
+        try {
+          const running = await refreshInstanceFromStatus()
+          if (!running) stopRefreshTimer()
+        } catch (error) {
+          console.error('Failed to refresh container status:', error)
         }
-      }, 30000)
+      }, POLL_INTERVALS.container)
+      containerPoll.start()
+      refreshTimer.value = true
     }
 
     const stopRefreshTimer = () => {
-      if (refreshTimer.value) {
-        clearInterval(refreshTimer.value)
-        refreshTimer.value = null
+      if (containerPoll) {
+        containerPoll.stop()
+        containerPoll = null
       }
+      refreshTimer.value = null
     }
 
     // 生命周期
@@ -382,11 +394,8 @@ export default {
       // 容器题目需要检查是否有已运行的实例
       if (isContainerChallenge.value) {
         try {
-          const response = await axios.get(`/api/container/instance/${props.challenge.id}`)
-          if (response.data.success && response.data.data) {
-            instance.value = response.data.data
-            startRefreshTimer()
-          }
+          const running = await refreshInstanceFromStatus()
+          if (running) startRefreshTimer()
         } catch (error) {
           // 没有运行的容器实例，保持为null
           console.log('No running container instance')
@@ -621,7 +630,7 @@ export default {
 .empty-history {
   text-align: center;
   color: #999;
-  padding: 20px;
+  padding: var(--fib-21);
   font-size: 12px;
 }
 </style>

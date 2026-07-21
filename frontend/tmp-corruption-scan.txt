@@ -1,0 +1,32 @@
+=== ChallengeWorkspace.vue (1 issues) ===
+  L357 [??] return map[t] ?? '静态题'
+
+=== GameTeams.vue (1 issues) ===
+  L352 [??] inGame.value = !!(data?.in_game ?? parsed?.in_game)
+
+=== TitleBar.vue (24 issues) ===
+  L5 [??] <button class="banner-close" @click="bannerDismissed = true" aria-label="??">�</button>
+  L38 [??] <span class="nav-label">??</span>
+  L63 [??] <button class="avatar-btn" aria-label="????">
+  L68 [??] <span class="user-nick">{{ user.nickname || user.username || '??' }}</span>
+  L72 [??] <n-button v-else size="small" type="primary" @click="navigate('/auth')">??</n-button>
+  L149 [??] if (t.includes('web')) return '??'
+  L150 [??] if (t.includes('pwn')) return '??'
+  L151 [??] if (t.includes('crypto')) return '??'
+  L152 [??] if (t.includes('reverse') || t.includes('??')) return '??'
+  L153 [??] return '??'
+  L170 [??] { label: '??', path: `/games/${id}` },
+  L171 [??] { label: '??', path: `/games/${id}/challenges` },
+  L172 [??] { label: '???', path: `/games/${id}/scoreboard` },
+  L173 [??] { label: '??', path: `/games/${id}/teams` },
+  L174 [??] { label: '??', path: '/games' },
+  L185 [??] { label: `${props.user?.nickname || '??'} � ${userHexId.value}`, key: 'info', disabled: true },
+  L187 [??] { label: '???????', key: 'tempcode' },
+  L188 [??] { label: '????', key: 'settings' },
+  L189 [??] ...(props.user?.is_admin ? [{ label: '????', key: 'admin' }] : []),
+  L191 [??] { label: '??', key: 'logout' },
+  L235 [??] message.success(`?????????${code}`)
+  L236 [??] }).catch(() => message.info(`??????${code}`))
+  L238 [??] message.info(`??????${code}`)
+  L265 [??] platformName.value = info.name || platformName.value || 'CTF ??'
+

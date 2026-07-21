@@ -1,5 +1,5 @@
 <template>
-  <div class="competitions-container">
+  <div class="competitions-container page-wrap competition-page">
     <!-- 竞赛列表 -->
     <div v-if="!selectedGame" class="competitions-list">
       <n-card>
@@ -204,7 +204,7 @@
             
             <div class="description">
               <strong>描述：</strong>
-              <div class="desc-text" v-html="selectedChallenge.description"></div>
+              <div class="desc-text" v-html="safeChallengeDescription"></div>
             </div>
 
             <div v-if="selectedChallenge.attachment_id" class="attachment">
@@ -368,6 +368,13 @@ import {
   NSpin, NTag, useMessage, useDialog
 } from 'naive-ui'
 import { ArrowLeft } from '@vicons/tabler'
+import { parseMarkdownSafe } from '../utils/markdown'
+import {
+  getContainerStatus,
+  startContainer as apiStartContainer,
+  stopContainer as apiStopContainer,
+  pickRunningInstance,
+} from '@/services/container'
 
 export default {
   components: {
@@ -470,6 +477,11 @@ export default {
       )
     }
 
+    const safeChallengeDescription = computed(() => {
+      if (!selectedChallenge.value?.description) return ''
+      return parseMarkdownSafe(selectedChallenge.value.description)
+    })
+
     const calculateAccuracy = () => {
       if (submissionHistory.value.length === 0) return '0'
       const correct = submissionHistory.value.filter(s => s.is_correct).length
@@ -535,7 +547,8 @@ export default {
 
     const fetchScoreboard = async (gameId) => {
       try {
-        const response = await axios.get(`/api/challenges/games/${gameId}/scoreboard`)
+        // 主路径：/api/ctf/games/:id/scoreboard（与 Scoreboard.vue 一致）
+        const response = await axios.get(`/api/ctf/games/${gameId}/scoreboard`)
         scoreboard.value = response.data.data || []
       } catch (error) {
         message.error('获取排行榜失败')
@@ -544,7 +557,8 @@ export default {
 
     const fetchUserStats = async (gameId) => {
       try {
-        const response = await axios.get(`/api/challenges/games/${gameId}/scoreboard/user`)
+        // 个人/队伍榜视角仅存在于 /api/ctf/.../scoreboard/user
+        const response = await axios.get(`/api/ctf/games/${gameId}/scoreboard/user`)
         userStats.value = response.data.data
       } catch (error) {
         console.error('获取用户统计失败', error)
@@ -568,12 +582,8 @@ export default {
         // 检查用户是否已有该题目的容器实例
         if (data.challenge_type && [1, 3].includes(data.challenge_type)) {
           try {
-            const instanceResponse = await axios.get(`/api/container/instance/${challenge.id}`)
-            if (instanceResponse.data.success && instanceResponse.data.data) {
-              containerInfo.value = instanceResponse.data.data
-            } else {
-              containerInfo.value = null
-            }
+            const statusPayload = await getContainerStatus(challenge.id)
+            containerInfo.value = pickRunningInstance(statusPayload)
           } catch (e) {
             console.error('获取容器实例失败', e)
             containerInfo.value = null
@@ -656,56 +666,47 @@ export default {
     }
 
     const submitFlag = async () => {
-      if (!flagInput.value) {
-        message.warning('请输入flag')
+      if (!flagInput.value || submitting.value) {
+        if (!flagInput.value) message.warning('请输入flag')
         return
       }
 
       try {
         submitting.value = true
         
-        // 检查是否是容器题目
-        const isContainerChallenge = selectedChallenge.value?.challenge_type === 1 || selectedChallenge.value?.challenge_type === 3
-        
-        // 容器题目使用特殊的提交路由
+        // 统一走主提交路径（容器题亦由后端按题型处理）
         let endpoint = `/api/challenges/${selectedChallenge.value.id}/submit`
-        if (isContainerChallenge) {
-          endpoint = `/api/container/submit-flag`
-        }
         
-        const requestBody = isContainerChallenge 
-          ? {
-              challenge_id: selectedChallenge.value.id,
+        const requestBody = {
+              answer: flagInput.value,
               flag: flagInput.value,
-              team_id: selectedTeam.value?.id || null
-            }
-          : {
-              answer: flagInput.value
             }
         
         const response = await axios.post(endpoint, requestBody, {
           headers: { 'Content-Type': 'application/json' }
         })
 
-        if (response.data.success && response.data.correct) {
-          // 容器题目正确时检查是否关闭容器
-          if (isContainerChallenge && response.data.container_closed) {
+        const payload = response.data?.data || response.data || {}
+        const correct = !!(payload.is_correct || payload.correct || response.data?.correct)
+        const ok = response.data?.code === 200 || response.data?.success || payload.is_correct != null
+
+        if (ok && correct) {
+          if (payload.container_closed || response.data?.container_closed) {
             message.success('✓ 答案正确！容器已自动关闭')
-            // 更新容器状态
             containerInfo.value = null
             showContainerInfo.value = false
           } else {
-            message.success('✓ 答案正确！' + (response.data.message || ''))
+            message.success('✓ 答案正确！' + (response.data?.msg || response.data?.message || ''))
           }
           
           flagInput.value = ''
-          submissionHistory.value.push(response.data.data?.submission || {})
+          submissionHistory.value.push(payload.submission || {})
           await fetchUserStats(selectedGame.value.id)
           await fetchScoreboard(selectedGame.value.id)
-        } else if (response.data.success && !response.data.correct) {
+        } else if (ok && !correct) {
           message.error('✗ 答案错误')
         } else {
-          message.error(response.data.message || '提交失败')
+          message.error(response.data?.msg || response.data?.message || '提交失败')
         }
       } catch (error) {
         message.error(error.response?.data?.message || error.response?.data?.msg || '提交失败')
@@ -715,28 +716,32 @@ export default {
     }
 
     const startContainer = async () => {
+      if (startingContainer.value) return
       try {
         startingContainer.value = true
-        const response = await axios.post(`/api/container/start/${selectedChallenge.value.id}`, {}, {
-          headers: { 'Content-Type': 'application/json' }
-        })
-        
-        if (response.data.success) {
-          const data = response.data.data
-          containerInfo.value = data
+        const payload = await apiStartContainer(selectedChallenge.value.id, { asyncMode: false })
+        const running = pickRunningInstance(payload)
+        if (running || payload?.code === 200 || payload?.success) {
+          if (running) {
+            containerInfo.value = running
+          } else {
+            const statusPayload = await getContainerStatus(selectedChallenge.value.id)
+            containerInfo.value = pickRunningInstance(statusPayload)
+          }
           showContainerInfo.value = true
           message.success('✓ 容器启动成功！所有流量将被自动捕获')
         } else {
-          message.error(response.data.message || '启动失败')
+          message.error(payload?.msg || payload?.message || '启动失败')
         }
       } catch (error) {
-        message.error(error.response?.data?.message || '启动容器失败')
+        message.error(error.response?.data?.msg || error.response?.data?.message || '启动容器失败')
       } finally {
         startingContainer.value = false
       }
     }
 
     const destroyContainer = async () => {
+      if (destroyingContainer.value) return
       try {
         if (!containerInfo.value?.instance_id) {
           message.error('实例ID不存在')
@@ -744,23 +749,19 @@ export default {
         }
         
         destroyingContainer.value = true
-        const response = await axios.post(
-          `/api/container/stop/${containerInfo.value.instance_id}`,
-          {},
-          { headers: { 'Content-Type': 'application/json' } }
-        )
+        const payload = await apiStopContainer(containerInfo.value.instance_id)
         
-        if (response.data.success) {
+        if (payload?.code === 200 || payload?.success !== false) {
           message.success('容器已销毁，可以重新启动')
           showContainerInfo.value = false
           containerInfo.value = null
           // 关闭题目详情对话框，用户可以重新打开题目
           showChallengeDetail.value = false
         } else {
-          message.error(response.data.message || '销毁失败')
+          message.error(payload?.msg || payload?.message || '销毁失败')
         }
       } catch (error) {
-        message.error(error.response?.data?.message || '销毁容器失败')
+        message.error(error.response?.data?.msg || error.response?.data?.message || '销毁容器失败')
       } finally {
         destroyingContainer.value = false
       }
@@ -887,6 +888,7 @@ export default {
       scoreboard,
       selectedGame,
       selectedChallenge,
+      safeChallengeDescription,
       showChallengeDetail,
       showCreateDialog,
       showContainerInfo,
@@ -924,10 +926,6 @@ export default {
 </script>
 
 <style scoped>
-.competitions-container {
-  padding: 20px;
-}
-
 .header-title {
   display: flex;
   justify-content: space-between;
@@ -937,9 +935,7 @@ export default {
 
 .games-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: 20px;
-  margin-top: 20px;
+  margin-top: var(--fib-21);
 }
 
 .game-card {
@@ -968,9 +964,9 @@ export default {
 }
 
 .game-info {
-  font-size: 14px;
+  font-size: var(--text-sm);
   line-height: 1.8;
-  color: #666;
+  color: var(--muted);
 }
 
 .game-info p {
@@ -991,13 +987,13 @@ export default {
 
 .challenges-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-  gap: 15px;
-  margin-top: 20px;
+  grid-template-columns: repeat(auto-fill, minmax(calc(var(--card-grid-min-golden) / var(--phi)), 1fr));
+  gap: var(--space-gutter);
+  margin-top: var(--fib-21);
 }
 
 .challenge-item {
-  padding: 20px;
+  padding: var(--fib-21);
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
   border-radius: 8px;
@@ -1045,7 +1041,7 @@ export default {
   right: 10px;
   width: 24px;
   height: 24px;
-  background: white;
+  background: var(--gradient-card-bg, var(--card-bg));
   color: #84fab0;
   border-radius: 50%;
   display: flex;
@@ -1067,9 +1063,6 @@ export default {
   font-weight: 600;
 }
 
-.challenge-detail {
-  padding: 20px;
-}
 
 .detail-content h3 {
   margin-top: 0;
@@ -1080,9 +1073,6 @@ export default {
   margin: 15px 0;
 }
 
-.container-info {
-  padding: 20px;
-}
 
 .info-item {
   margin: 15px 0;
@@ -1094,11 +1084,11 @@ export default {
 .label {
   font-weight: bold;
   min-width: 100px;
-  color: #333;
+  color: var(--text);
 }
 
 .value {
-  color: #666;
+  color: var(--muted);
   font-family: monospace;
 }
 
@@ -1110,20 +1100,20 @@ export default {
 
 .value-input {
   flex: 1;
-  padding: 8px 12px;
-  border: 1px solid #d9d9d9;
-  border-radius: 4px;
+  padding: var(--fib-8) var(--fib-13);
+  border: 1px solid var(--border);
+  border-radius: var(--card-radius);
   font-family: monospace;
-  font-size: 14px;
-  background: #f5f5f5;
-  color: #333;
+  font-size: var(--text-sm);
+  background: var(--code-bg, var(--hover));
+  color: var(--text);
   cursor: text;
 }
 
 .value-input:focus {
   outline: none;
-  border-color: #1890ff;
-  background: white;
+  border-color: var(--primary);
+  background: var(--card-bg);
 }
 
 .info-tips {
@@ -1148,10 +1138,11 @@ export default {
 }
 
 .description {
-  margin: 20px 0;
-  padding: 15px;
-  background: #f5f5f5;
-  border-radius: 8px;
+  margin: var(--fib-21) 0;
+  padding: var(--fib-13);
+  background: var(--hover);
+  border-radius: var(--card-radius);
+  border: 1px solid var(--border);
 }
 
 .desc-text {
@@ -1204,11 +1195,5 @@ export default {
   font-size: 12px;
 }
 
-.stats-section {
-  padding: 20px 0;
-}
 
-.scoreboard-section {
-  padding: 20px 0;
-}
 </style>

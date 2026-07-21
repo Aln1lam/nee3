@@ -1,0 +1,3 @@
+    const platformCategories = ref([])
+    const splitRatio = ref(0.42)
+    const isAdmin = ref(false)

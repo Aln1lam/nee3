@@ -7,12 +7,8 @@
 <script>
 import FullCalendar from '@fullcalendar/vue3'
 import dayGridPlugin from '@fullcalendar/daygrid'
-import timeGridPlugin from '@fullcalendar/timegrid'
 import interactionPlugin from '@fullcalendar/interaction'
-// CSS imports may require adjustment depending on installed FullCalendar version
-// Note: some FullCalendar package builds don't expose CSS via subpath imports
-// to avoid Vite import-resolution errors we load CSS via CDN in index.html
-// If you prefer local imports, adjust to the exact package/build paths available in node_modules.
+import zhCn from '@fullcalendar/core/locales/zh-cn'
 
 export default {
   name: 'CalendarFull',
@@ -26,8 +22,9 @@ export default {
     const self = this
     return {
       calendarOptions: {
-        plugins: [ dayGridPlugin, timeGridPlugin, interactionPlugin ],
+        plugins: [ dayGridPlugin, interactionPlugin ],
         initialView: 'dayGridMonth',
+        locale: zhCn,
         customButtons: {
           cnButton: {
             text: '国内',
@@ -38,12 +35,13 @@ export default {
             click: function() { self.$emit('region-change', 'global') }
           }
         },
-        headerToolbar: { left: 'prev,next', center: 'title', right: 'cnButton,globalButton dayGridMonth,timeGridWeek' },
+        headerToolbar: { left: 'prev,next title', center: '', right: 'cnButton,globalButton' },
         events: this.events,
         eventDisplay: 'block',
         height: 'auto',
         editable: false,
         selectable: false,
+        dayMaxEvents: 3,
         eventClick: (info) => {
           try{
             // prefer opening an external URL if present on the event
@@ -98,14 +96,8 @@ export default {
 </script>
 
 <style scoped>
-.calendar-full { padding: 6px }
-</style>
-
-<style>
-/* Global styles for FullCalendar custom buttons */
-.fc-cnButton-button.fc-button-active,
-.fc-globalButton-button.fc-button-active {
-  background-color: #00c48c !important;
-  border-color: #00c48c !important;
+.calendar-full {
+  padding: var(--fib-8, 8px);
+  font-family: var(--font-ui);
 }
 </style>

@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="zh-CN"><head><meta charset="UTF-8"/><title>MCP 路由拓扑巡检报告</title>
+<style>
+:root{--bg:#0f1419;--panel:#1a222c;--text:#e7ecf1;--muted:#8b9aab;--ok:#3dd68c;--bad:#ff6b6b;--accent:#5b9fd4;--border:#2a3542}
+body{margin:0;font-family:Segoe UI,PingFang SC,Microsoft YaHei,sans-serif;background:linear-gradient(160deg,#0b1016,#15202b);color:var(--text)}
+.wrap{max-width:1100px;margin:0 auto;padding:32px 20px 64px}
+.summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin:24px 0}
+.stat{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:14px}
+.stat .n{font-size:1.6rem;font-weight:700}.stat .l{color:var(--muted);font-size:.85rem}
+.page-card{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:20px;margin-bottom:20px}
+.meta{color:var(--muted);margin:2px 0;font-size:.9rem}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
+.badge{font-size:.75rem;padding:2px 8px;border-radius:999px}
+.badge.ok{background:rgba(61,214,140,.15);color:var(--ok)}.badge.bad{background:rgba(255,107,107,.15);color:var(--bad)}
+.ok{color:var(--ok)} code{font-family:Consolas,monospace;font-size:.85rem}
+figure img{width:100%;border-radius:8px;border:1px solid var(--border)}
+.sample{color:var(--muted);font-size:.85rem;white-space:pre-wrap}
+h3{color:var(--accent);font-size:.95rem}
+</style></head><body><div class="wrap">
+<h1>MCP 路由拓扑人工操作巡检</h1>
+<p class="meta">依据 docs/route-architecture-topology.md · 账号 mcp_20260721160612_a533c373 · 2026-07-21T08:20:00+00:00</p>
+<div class="summary">
+  <div class="stat"><div class="n">34</div><div class="l">页面</div></div>
+  <div class="stat"><div class="n">125</div><div class="l">点击/操作</div></div>
+  <div class="stat"><div class="n">0</div><div class="l">含 pageerror</div></div>
+  <div class="stat"><div class="n">0</div><div class="l">含 console.error</div></div>
+  <div class="stat"><div class="n">1</div><div class="l">失败页</div></div>
+</div>
+
+<section class="page-card">
+  <header><h2>2.1 Landing <span class="badge ok">通过</span></h2>
+  <p class="meta"><code>/</code> → <code>http://localhost:3000/</code></p>
+  <p class="meta">耗时 2148ms · 操作 5</p></header>
+  
+  <div class="grid">
+    <div><h3>人为操作</h3><ul><li><code>click:知识</code></li><li><code>click:训练</code></li><li><code>click:赛事</code></li><li><code>click:公告</code></li><li><code>screenshot:attached</code></li></ul></div>
+    <div><h3>pageerror</h3><ul><p class='ok'>无</p></ul></div>
+    <div><h3>console.error</h3><ul><p class='ok'>无</p></ul></div>
+  </div>
+  <p class="sample">NEEPU CTF 终端 知识 训练 赛事 公告 管理 E2E_a533c373 [ NEEPU CTF 终端 ]_ 能源电力 · 网络安全</p>
+</section>
+<section class="page-card">
+  <header><h2>2.1 PlatformHome <span class="badge ok">通过</span></h2>
+  <p class="meta"><code>/home</code> → <code>http://localhost:3000/home</code></p>
+  <p class="meta">耗时 2812ms · 操作 8</p></header>
+  
+  <div class="grid">
+    <div><h3>人为操作</h3><ul><li><code>click:个人主页</code></li><li><code>click:我的比赛</code></li><li><code>click:TRN 训练靶场</code></li><li><code>click:CTF 赛事中心</code></li><li><code>click:DOC 知识库</code></li><li><code>click:国内</code></li><li><code>click:国外</code></li><li><code>screenshot:attached</code></li></ul></div>
+    <div><h3>pageerror</h3><ul><p class='ok'>无</p></ul></div>
+    <div><h3>console.error</h3><ul><p class='ok'>无</p></ul></div>
+  </div>
+  <p class="sample">个人工作台 HOME · DESK 访客 暂无签名 欢迎回来 轮播 · 赛事日历 · 平台公告（侧栏显示访客；banner 图破损）</p>
+</section>
+<section class="page-card">
+  <header><h2>2.1 Archive <span class="badge ok">通过</span></h2>
+  <p class="meta"><code>/archive</code> → <code>http://localhost:3000/archive</code></p>
+  <p class="meta">耗时 2310ms · 操作 3</p></header>
+  
+  <div class="grid">
+    <div><h3>人为操作</h3><ul><li><code>click:ARC 全部归档</code></li><li><code>click:HOM 返回首页</code></li><li><code>click:DOC 知识库</code></li></ul></div>
+    <div><h3>pageerror</h3><ul><p class='ok'>无</p></ul></div>
+    <div><h3>console.error</h3><ul><p class='ok'>无</p></ul></div>
+  </div>
+  <p class="sample">资料归档 ARC · ARCHIVE 归档库 往届比赛 · 资料 · 文章沉淀 ARC NEEPU CTF 2024 归档</p>
+</section>
+<section class="page-card">
+  <header><h2>2.1 Events <span class="badge ok">通过</span></h2>
+  <p class="meta"><code>/events</code> → <code>http://localhost:3000/events</code></p>
+  <p class="meta">耗时 2300ms · 操作 4</p></header>
+  
+  <div class="grid">
+    <div><h3>人为操作</h3><ul><li><code>click:国内</code></li><li><code>click:国外</code></li><li><code>click:‹</code></li><li><code>click:›</code></li></ul></div>
+    <div><h3>pageerror</h3><ul><p class='ok'>无</p></ul></div>
+    <div><h3>console.error</h3><ul><p class='ok'>无</p></ul></div>
+  </div>
+  <p class="sample">赛事日历 国内 国外 2026年 7月 Fluid Attacks' CTF 2026-2 R3CTF 2026</p>
+</section>
+<section class="page-card">
+  <header><h2>2.1 MagicSakana <span class="badge ok">通过</span></h2>
+  <p class="meta"><code>/magic/sakana</code> → <code>http://localhost:3000/magic/sakana</code></p>
+  <p class="meta">耗时 2044ms · 操作 1</p></header>
+  
+  <div class="grid">
+    <div><h3>人为操作</h3><ul><li><code>click:返回首页</code></li></ul></div>
+    <div><h3>pageerror</h3><ul><p class='ok'>无</p></ul></div>
+    <div><h3>console.error</h3><ul><p class='ok'>无</p></ul></div>
+  </div>
+  <p class="sample">[ sakana ]_ 为世界上所有美好而战 返回首页</p>
+</section>
+<section class="page-card">
+  <header><h2>2.1 Sigtrap404 <span class="badge ok">通过</span></h2>
+  <p class="meta"><code>/sigtrap/404</code> → <code>http://localhost:3000/sigtrap/404</code></p>
+  <p class="meta">耗时 900ms · 操作 4</p></header>
+  
+  <div class="grid">
+    <div><h3>人为操作</h3><ul><li><code>nav:/sigtrap/404</code></li><li><code>collect:meta</code></li><li><code>screenshot:attached</code></li><li><code>note:skip-click-返回首页-to-keep-url</code></li></ul></div>
+    <div><h3>pageerror</h3><ul><p class='ok'>无</p></ul></div>
+    <div><h3>console.error</h3><ul><p class='ok'>无</p></ul></div>
+  </div>
+  <p class="sample">未找到 页面不存在或已被移除 404 返回首页 返回上一</p>
+</section>
+<section class="page-card">
+  <header><h2>2.2 Auth <span class="badge ok">通过</span></h2>
+  <p class="meta"><code>/auth</code> → <code>http://localhost:3000/auth</code></p>
+  <p class="meta">耗时 3500ms · 操作 7</p></header>
+  
+  <div class="grid">
+    <div><h3>人为操作</h3><ul><li><code>click:新用户注册</code></li><li><code>click:身份认证</code></li><li><code>fill:account</code></li><li><code>fill:wrong-password</code></li><li><code>click:确认进入系统</code></li><li><code>observe:验证失败: 账号或密码错误</code></li><li><code>screenshot:attached</code></li></ul></div>
+    <div><h3>pageerror</h3><ul><p class='ok'>无</p></ul></div>
+    <div><h3>console.error</h3><ul><p class='ok'>无</p></ul></div>
+  </div>
+  <p class="sample">身份认证 新用户注册 账号 口令 确认进入系统 忘记密码？ 验证失败: 账号或密码错误</p>
+</section>
+<section class="page-card">
+  <header><h2>2.2 ForgotPassword <span class="badge ok">通过</span></h2>
+  <p class="meta"><code>/forgot-password</code> → <code>http://localhost:3000/forgot-password</code></p>
+  <p class="meta">耗时 2033ms · 操作 2</p></header>
+  
+  <div class="grid">
+    <div><h3>人为操作</h3><ul><li><code>click:发送重置链接</code></li><li><code>click:返回登录</code></li></ul></div>
+    <div><h3>pageerror</h3><ul><p class='ok'>无</p></ul></div>
+    <div><h3>console.error</h3><ul><p class='ok'>无</p></ul></div>
+  </div>
+  <p class="sample">忘记密码 输入注册邮箱，我们将发送密码重置链接 发送重置链接 返回登录</p>
+</section>
+<section class="page-card">
+  <header><h2>2.2 AccountInfo <span class="badge ok">通过</span></h2>
+  <p class="meta"><code>/account/settings/info</code> → <code>http://localhost:3000/account/settings/info</code></p>
+  <p class="meta">耗时 2288ms · 操作 4</p></header>
+  
+  <div class="grid">
+    <div><h3>人为操作</h3><ul><li><code>click:USR 基本信息</code></li><li><code>click:PWD 修改密码</code></li><li><code>click:OAU 第三方绑定</code></li><li><code>note:skip-DEL-注销账号</code></li></ul></div>
+    <div><h3>pageerror</h3><ul><p class='ok'>无</p></ul></div>
+    <div><h3>console.error</h3><ul><p class='ok'>无</p></ul></div>
+  </div>
+  <p class="sample">账号设置 ACCOUNT · SETTINGS 编辑个人资料 昵称 用户名 邮箱 取消 保存</p>
+</section>
+<section class="page-card">
+  <header><h2>2.2 AccountPassword <span class="badge ok">通过</span></h2>
+  <p class="meta"><code>/account/settings/password</code> → <code>http://localhost:3000/account/settings/password</code></p>
+  <p class="meta">耗时 2055ms · 操作 2</p></header>
+  
+  <div class="grid">
+    <div><h3>人为操作</h3><ul><li><code>click:USR 基本信息</code></li><li><code>click:PWD 修改密码</code></li></ul></div>
+    <div><h3>pageerror</h3><ul><p class='ok'>无</p></ul></div>
+    <div><h3>console.error</h3><ul><p class='ok'>无</p></ul></div>
+  </div>
+  <p class="sample">修改密码 8–40 位 · 含大小写字母与数字 当前密码 新密码 确认新密码 保存密码</p>
+</section>
+<section class="page-card">
+  <header><h2>2.2 AccountOAuth <span class="badge ok">通过</span></h2>
+  <p class="meta"><code>/account/settings/oauth</code> → <code>http://localhost:3000/account/settings/oauth</code></p>
+  <p class="meta">耗时 2042ms · 操作 1</p></header>
+  
+  <div class="grid">
+    <div><h3>人为操作</h3><ul><li><code>click:OAU 第三方绑定</code></li></ul></div>
+    <div><h3>pageerror</h3><ul><p class='ok'>无</p></ul></div>
+    <div><h3>console.error</h3><ul><p class='ok'>无</p></ul></div>
+  </div>
+  <p class="sample">第三方认证 暂未配置 OAuth 提供商</p>
+</section>
+<section class="page-card">
+  <header><h2>2.2 MyProfile <span class="badge bad">0 问题</span></h2>
+  <p class="meta"><code>/myprofile</code> → <code>http://localhost:3000/myprofile</code></p>
+  <p class="meta">耗时 2638ms · 操作 3</p></header>
+  
+  <div class="grid">
+    <div><h3>人为操作</h3><ul><li><code>click:编辑个人信息</code></li><li><code>click:返回首页</code></li><li><code>bug:显示访客未登录</code></li></ul></div>
+    <div><h3>pageerror</h3><ul><p class='ok'>无</p></ul></div>
+    <div><h3>console.error</h3><ul><p class='ok'>无</p></ul></div>
+  </div>
+  <p class="sample">访客 未登录 这个人很懒，没有个人签名 参赛次数 0 解题数 0 所在队伍 0（已登录管理员却显示未登录）</p>
+</section>
+<section class="page-card">
+  <header><h2>2.3 Bulletin <span class="badge ok">通过</span></h2>
+  <p class="meta"><code>/bulletin</code> → <code>http://localhost:3000/bulletin</code></p>
+  <p class="meta">耗时 2139ms · 操作 3</p></header>
+  
+  <div class="grid">
+    <div><h3>人为操作</h3><ul><li><code>click:HOM 返回首页</code></li><li><code>click:CTF 查看赛事</code></li><li><code>click:阅读全文 →</code></li></ul></div>
+    <div><h3>pageerror</h3><ul><p class='ok'>无</p></ul></div>
+    <div><h3>console.error</h3><ul><p class='ok'>无</p></ul></div>
+  </div>
+  <p class="sample">公告中心 BULLETIN · FEED 欢迎使用 NEEPU CTF 终端 练习场维护通知</p>
+</section>
+<section class="page-card">
+  <header><h2>2.3 BulletinCreate <span class="badge ok">通过</span></h2>
+  <p class="meta"><code>/bulletin/create</code> → <code>http://localhost:3000/bulletin/create</code></p>
+  <p class="meta">耗时 2301ms · 操作 2</p></header>
+  
+  <div class="grid">
+    <div><h3>人为操作</h3><ul><li><code>click:BAK 返回公告中心</code></li><li><code>click:取消</code></li></ul></div>
+    <div><h3>pageerror</h3><ul><p class='ok'>无</p></ul></div>
+    <div><h3>console.error</h3><ul><p class='ok'>无</p></ul></div>
+  </div>
+  <p class="sample">发布平台公告 BULLETIN · NEW 公告标题 公告内容 发布公告 取消</p>
+</section>
+<section class="page-card">
+  <header><h2>2.3 Wiki <span class="badge ok">通过</span></h2>
+  <p class="meta"><code>/wiki</code> → <code>http://localhost:3000/wiki</code></p>
+  <p class="meta">耗时 2544ms · 操作 4</p></header>
+  
+  <div class="grid">
+    <div><h3>人为操作</h3><ul><li><code>click:ENV 环境配置</code></li><li><code>click:WEB Web</code></li><li><code>click:CLR 清除筛选</code></li><li><code>click:搜索</code></li></ul></div>
+    <div><h3>pageerror</h3><ul><p class='ok'>无</p></ul></div>
+    <div><h3>console.error</h3><ul><p class='ok'>无</p></ul></div>
+  </div>
+  <p class="sample">知识库 DOC · WIKI Wiki 文档 WriteUp · 教程 · 知识沉淀（6 篇） 工控安全入门</p>
+</section>
+<section class="page-card">
+  <header><h2>2.3 KnowledgeNew <span class="badge ok">通过</span></h2>
+  <p class="meta"><code>/knowledge/new</code> → <code>http://localhost:3000/knowledge/new</code></p>
+  <p class="meta">耗时 2624ms · 操作 4</p></header>
+  
+  <div class="grid">
+    <div><h3>人为操作</h3><ul><li><code>click:导入 MD</code></li><li><code>click:导出 MD</code></li><li><code>click:保存草稿</code></li><li><code>click:取消</code></li></ul></div>
+    <div><h3>pageerror</h3><ul><p class='ok'>无</p></ul></div>
+    <div><h3>console.error</h3><ul><p class='ok'>无</p></ul></div>
+  </div>
+  <p class="sample">发布文章到知识库 文章标题 内容 Markdown编辑 保存草稿 发布</p>
+</section>
+<section class="page-card">
+  <header><h2>2.3 Users <span class="badge ok">通过</span></h2>
+  <p class="meta"><code>/users</code> → <code>http://localhost:3000/users</code></p>
+  <p class="meta">耗时 2295ms · 操作 3</p></header>
+  
+  <div class="grid">
+    <div><h3>人为操作</h3><ul><li><code>click:ALL 全部用户</code></li><li><code>click:搜索</code></li><li><code>click:HOM 返回首页</code></li></ul></div>
+    <div><h3>pageerror</h3><ul><p class='ok'>无</p></ul></div>
+    <div><h3>console.error</h3><ul><p class='ok'>无</p></ul></div>
+  </div>
+  <p class="sample">用户目录 USERS · INDEX 平台用户 搜索昵称或用户名 E2E_a533c373</p>
+</section>
+<section class="page-card">
+  <header><h2>2.4 Training <span class="badge ok">通过</span></h2>
+  <p class="meta"><code>/training</code> → <code>http://localhost:3000/training</code></p>
+  <p class="meta">耗时 2533ms · 操作 4</p></header>
+  
+  <div class="grid">
+    <div><h3>人为操作</h3><ul><li><code>click:NEEPU 练习场 9</code></li><li><code>click:进入练习 →</code></li><li><code>click:BAK 返回列表</code></li><li><code>click:CTF 查看赛事</code></li></ul></div>
+    <div><h3>pageerror</h3><ul><p class='ok'>无</p></ul></div>
+    <div><h3>console.error</h3><ul><p class='ok'>无</p></ul></div>
+  </div>
+  <p class="sample">练习场列表 永久开放 开始今日份的训练！ NEEPU 练习场 进入练习 →</p>
+</section>
+<section class="page-card">
+  <header><h2>2.4 Games <span class="badge ok">通过</span></h2>
+  <p class="meta"><code>/games</code> → <code>http://localhost:3000/games?selected=68&amp;key-page=1</code></p>
+  <p class="meta">耗时 2788ms · 操作 4</p></header>
+  
+  <div class="grid">
+    <div><h3>人为操作</h3><ul><li><code>click:NEEPU CTF 2025 春季赛</code></li><li><code>click:Mini L-CTF 2026</code></li><li><code>click:进行中卡片</code></li><li><code>screenshot:attached</code></li></ul></div>
+    <div><h3>pageerror</h3><ul><p class='ok'>无</p></ul></div>
+    <div><h3>console.error</h3><ul><p class='ok'>无</p></ul></div>
+  </div>
+  <p class="sample">创建赛事 Mini L-CTF 2026 NEEPU CTF 2025 春季赛 校内新生赛 2025 进行中</p>
+</section>
+<section class="page-card">
+  <header><h2>2.4 GameDetail68 <span class="badge ok">通过</span></h2>
+  <p class="meta"><code>/games/68</code> → <code>http://localhost:3000/games/68</code></p>
+  <p class="meta">耗时 3333ms · 操作 4</p></header>
+  
+  <div class="grid">
+    <div><h3>人为操作</h3><ul><li><code>click:进入题目 →</code></li><li><code>click:排行榜</code></li><li><code>click:战队</code></li><li><code>click:← 返回赛事列表</code></li></ul></div>
+    <div><h3>pageerror</h3><ul><p class='ok'>无</p></ul></div>
+    <div><h3>console.error</h3><ul><p class='ok'>无</p></ul></div>
+  </div>
+  <p class="sample">NEEPU CTF 2025 春季赛 赛事简介 进行中 8 题 17 队伍 正式赛 进入题目 → 排行榜 战队</p>
+</section>
+<section class="page-card">
+  <header><h2>2.4 GameChallenges68 <span class="badge ok">通过</span></h2>
+  <p class="meta"><code>/games/68/challenges</code> → <code>http://localhost:3000/games/68/challenges?challenge=71</code></p>
+  <p class="meta">耗时 5476ms · 操作 12</p></header>
+  
+  <div class="grid">
+    <div><h3>人为操作</h3><ul><li><code>click:▼ 从此开始</code></li><li><code>click:题目-从此开始</code></li><li><code>click:▶ Web安全与渗透测试</code></li><li><code>click:简单的Web</code></li><li><code>click:▶ 密码学</code></li><li><code>click:Base64解码</code></li><li><code>click:▶ Misc</code></li><li><code>tab:提示</code></li><li><code>tab:血榜</code></li><li><code>click:↻</code></li><li><code>note:无开启容器按钮</code></li><li><code>screenshot:attached</code></li></ul></div>
+    <div><h3>pageerror</h3><ul><p class='ok'>无</p></ul></div>
+    <div><h3>console.error</h3><ul><p class='ok'>无</p></ul></div>
+  </div>
+  <p class="sample">赛事题目 从此开始 欢迎来到 NEEPU CTF 终端 提示 锤子 血榜 Flag 提交</p>
+</section>
+<section class="page-card">
+  <header><h2>2.4 GameScoreboard68 <span class="badge ok">通过</span></h2>
+  <p class="meta"><code>/games/68/scoreboard</code> → <code>http://localhost:3000/games/68/scoreboard</code></p>
+  <p class="meta">耗时 4053ms · 操作 5</p></header>
+  
+  <div class="grid">
+    <div><h3>人为操作</h3><ul><li><code>click:积分曲线</code></li><li><code>click:刷新</code></li><li><code>click:SB 排行榜</code></li><li><code>click:GME 返回赛事</code></li><li><code>screenshot:attached</code></li></ul></div>
+    <div><h3>pageerror</h3><ul><p class='ok'>无</p></ul></div>
+    <div><h3>console.error</h3><ul><p class='ok'>无</p></ul></div>
+  </div>
+  <p class="sample">赛事排行榜 Game #68 积分曲线 刷新 排名 队伍 得分 解题 E2E_a533c373·单人队</p>
+</section>
+<section class="page-card">
+  <header><h2>2.4 GameTeams68 <span class="badge bad">1 问题</span></h2>
+  <p class="meta"><code>/games/68/teams</code> → <code>http://localhost:3000/games/68/teams</code></p>
+  <p class="meta">耗时 3247ms · 操作 5</p></header>
+  
+  <div class="grid">
+    <div><h3>人为操作</h3><ul><li><code>click:MGT 队伍管理</code></li><li><code>click:LST 公开列表</code></li><li><code>click:复制</code></li><li><code>click:保存</code></li><li><code>note:误点离开队伍-已记录</code></li></ul></div>
+    <div><h3>pageerror</h3><ul><p class='ok'>无</p></ul></div>
+    <div><h3>console.error</h3><ul><p class='ok'>无</p></ul></div>
+  </div>
+  <p class="sample">队伍管理 E2E_a533c373·单人队 队伍密钥 复制 保存 离开队伍</p>
+</section>
+<section class="page-card">
+  <header><h2>2.4 Teams <span class="badge ok">通过</span></h2>
+  <p class="meta"><code>/teams</code> → <code>http://localhost:3000/teams</code></p>
+  <p class="meta">耗时 2308ms · 操作 3</p></header>
+  
+  <div class="grid">
+    <div><h3>人为操作</h3><ul><li><code>click:TEA 我的战队</code></li><li><code>click:创建</code></li><li><code>click:加入</code></li></ul></div>
+    <div><h3>pageerror</h3><ul><p class='ok'>无</p></ul></div>
+    <div><h3>console.error</h3><ul><p class='ok'>无</p></ul></div>
+  </div>
+  <p class="sample">战队终端 TEAM · GLOBAL 创建战队 加入战队 请创建或加入战队以激活面板</p>
+</section>
+<section class="page-card">
+  <header><h2>2.4 Submissions <span class="badge ok">通过</span></h2>
+  <p class="meta"><code>/submissions</code> → <code>http://localhost:3000/submissions</code></p>
+  <p class="meta">耗时 2287ms · 操作 2</p></header>
+  
+  <div class="grid">
+    <div><h3>人为操作</h3><ul><li><code>click:SUB 提交审计</code></li><li><code>click:检索</code></li></ul></div>
+    <div><h3>pageerror</h3><ul><p class='ok'>无</p></ul></div>
+    <div><h3>console.error</h3><ul><p class='ok'>无</p></ul></div>
+  </div>
+  <p class="sample">提交审计 SUB · AUDIT 提交记录 Challenge ID 检索 No Data</p>
+</section>
+<section class="page-card">
+  <header><h2>2.5 AdminDashboard <span class="badge ok">通过</span></h2>
+  <p class="meta"><code>/admin/dashboard</code> → <code>http://localhost:3000/admin/dashboard</code></p>
+  <p class="meta">耗时 2389ms · 操作 4</p></header>
+  
+  <div class="grid">
+    <div><h3>人为操作</h3><ul><li><code>click:DSH 仪表盘</code></li><li><code>click:USR 用户管理</code></li><li><code>click:CTF 靶场管理</code></li><li><code>screenshot:attached</code></li></ul></div>
+    <div><h3>pageerror</h3><ul><p class='ok'>无</p></ul></div>
+    <div><h3>console.error</h3><ul><p class='ok'>无</p></ul></div>
+  </div>
+  <p class="sample">仪表盘 总用户数 37 总文章数 6 总团队数 用户增长趋势 文章状态分布</p>
+</section>
+<section class="page-card">
+  <header><h2>2.5 AdminUsers <span class="badge ok">通过</span></h2>
+  <p class="meta"><code>/admin/users</code> → <code>http://localhost:3000/admin/users</code></p>
+  <p class="meta">耗时 2537ms · 操作 3</p></header>
+  
+  <div class="grid">
+    <div><h3>人为操作</h3><ul><li><code>click:搜索</code></li><li><code>click:刷新</code></li><li><code>note:skip-删除</code></li></ul></div>
+    <div><h3>pageerror</h3><ul><p class='ok'>无</p></ul></div>
+    <div><h3>console.error</h3><ul><p class='ok'>无</p></ul></div>
+  </div>
+  <p class="sample">用户管理 账号检索、权限调整与选手信息 ID 昵称 邮箱 身份</p>
+</section>
+<section class="page-card">
+  <header><h2>2.5 AdminContent <span class="badge ok">通过</span></h2>
+  <p class="meta"><code>/admin/content</code> → <code>http://localhost:3000/admin/content</code></p>
+  <p class="meta">耗时 2288ms · 操作 3</p></header>
+  
+  <div class="grid">
+    <div><h3>人为操作</h3><ul><li><code>click:搜索</code></li><li><code>click:刷新</code></li><li><code>click:查看</code></li></ul></div>
+    <div><h3>pageerror</h3><ul><p class='ok'>无</p></ul></div>
+    <div><h3>console.error</h3><ul><p class='ok'>无</p></ul></div>
+  </div>
+  <p class="sample">内容管理 文章、Wiki 与平台内容维护 工控安全入门 已发布</p>
+</section>
+<section class="page-card">
+  <header><h2>2.5 AdminAnnouncement <span class="badge ok">通过</span></h2>
+  <p class="meta"><code>/admin/announcement</code> → <code>http://localhost:3000/admin/announcement</code></p>
+  <p class="meta">耗时 2320ms · 操作 2</p></header>
+  
+  <div class="grid">
+    <div><h3>人为操作</h3><ul><li><code>click:+ 新建公告</code></li><li><code>click:编辑</code></li></ul></div>
+    <div><h3>pageerror</h3><ul><p class='ok'>无</p></ul></div>
+    <div><h3>console.error</h3><ul><p class='ok'>无</p></ul></div>
+  </div>
+  <p class="sample">公告管理 欢迎使用 NEEPU CTF 终端 已发布</p>
+</section>
+<section class="page-card">
+  <header><h2>2.5 AdminCarousel <span class="badge ok">通过</span></h2>
+  <p class="meta"><code>/admin/carousel</code> → <code>http://localhost:3000/admin/carousel</code></p>
+  <p class="meta">耗时 2275ms · 操作 2</p></header>
+  
+  <div class="grid">
+    <div><h3>人为操作</h3><ul><li><code>click:添加轮播图</code></li><li><code>click:编辑</code></li></ul></div>
+    <div><h3>pageerror</h3><ul><p class='ok'>无</p></ul></div>
+    <div><h3>console.error</h3><ul><p class='ok'>无</p></ul></div>
+  </div>
+  <p class="sample">轮播图 首页轮播图配置与排序 已启用 排序: 0</p>
+</section>
+<section class="page-card">
+  <header><h2>2.5 AdminCtf <span class="badge ok">通过</span></h2>
+  <p class="meta"><code>/admin/ctf</code> → <code>http://localhost:3000/admin/ctf</code></p>
+  <p class="meta">耗时 2846ms · 操作 6</p></header>
+  
+  <div class="grid">
+    <div><h3>人为操作</h3><ul><li><code>click:📅 竞赛管理</code></li><li><code>click:🎯 题目管理</code></li><li><code>click:📦 动态附件包</code></li><li><code>click:🏆 排行榜</code></li><li><code>click:👥 队伍管理</code></li><li><code>screenshot:attached</code></li></ul></div>
+    <div><h3>pageerror</h3><ul><p class='ok'>无</p></ul></div>
+    <div><h3>console.error</h3><ul><p class='ok'>无</p></ul></div>
+  </div>
+  <p class="sample">靶场管理 竞赛列表 共 7 场 ID 68 NEEPU CTF 2025 春季赛 进行中 8 题</p>
+</section>
+<section class="page-card">
+  <header><h2>2.5 AdminSettings <span class="badge ok">通过</span></h2>
+  <p class="meta"><code>/admin/settings</code> → <code>http://localhost:3000/admin/settings</code></p>
+  <p class="meta">耗时 2264ms · 操作 1</p></header>
+  
+  <div class="grid">
+    <div><h3>人为操作</h3><ul><li><code>click:🔄 重新加载</code></li></ul></div>
+    <div><h3>pageerror</h3><ul><p class='ok'>无</p></ul></div>
+    <div><h3>console.error</h3><ul><p class='ok'>无</p></ul></div>
+  </div>
+  <p class="sample">系统设置 站点信息、注册策略与邮件配置 平台名称 保存设置</p>
+</section>
+<section class="page-card">
+  <header><h2>2.5 AdminLogs <span class="badge ok">通过</span></h2>
+  <p class="meta"><code>/admin/logs</code> → <code>http://localhost:3000/admin/logs</code></p>
+  <p class="meta">耗时 2270ms · 操作 3</p></header>
+  
+  <div class="grid">
+    <div><h3>人为操作</h3><ul><li><code>click:搜索</code></li><li><code>click:刷新</code></li><li><code>click:查看</code></li></ul></div>
+    <div><h3>pageerror</h3><ul><p class='ok'>无</p></ul></div>
+    <div><h3>console.error</h3><ul><p class='ok'>无</p></ul></div>
+  </div>
+  <p class="sample">日志审计 操作日志检索与导出 24小时操作数 本周操作数 本月操作数</p>
+</section>
+<section class="page-card">
+  <header><h2>2.5 AdminSetup <span class="badge ok">通过</span></h2>
+  <p class="meta"><code>/admin/setup</code> → <code>http://localhost:3000/admin/setup</code></p>
+  <p class="meta">耗时 2016ms · 操作 2</p></header>
+  
+  <div class="grid">
+    <div><h3>人为操作</h3><ul><li><code>click:检查我的管理员身份</code></li><li><code>click:搜索</code></li></ul></div>
+    <div><h3>pageerror</h3><ul><p class='ok'>无</p></ul></div>
+    <div><h3>console.error</h3><ul><p class='ok'>无</p></ul></div>
+  </div>
+  <p class="sample">管理员设置助手 当前用户信息 检查我的管理员身份 快速设置</p>
+</section>
+</div></body></html>

@@ -1,6 +1,6 @@
 <template>
-  <div class="page-wrap">
-    <n-card>
+  <div class="page-wrap profile-edit-page">
+    <n-card class="matrix-panel" :bordered="false">
       <template #header>
         <div class="card-title">编辑个人资料</div>
       </template>
@@ -65,6 +65,7 @@
 <script>
 import { ref, onMounted, inject } from 'vue'
 import { NCard, NForm, NFormItem, NInput, NButton } from 'naive-ui'
+import { resolveUploadUrl } from '../utils/uploadUrl'
 export default {
   components: { NCard, NForm, NFormItem, NInput, NButton },
   setup() {
@@ -131,34 +132,10 @@ export default {
     }
 
     function getAvatarUrl(avatarPath) {
-      // 如果是本地文件预览（data URL），直接返回
       if (!avatarPath || avatarPath.startsWith('data:')) {
         return avatarPath || '/assets/avatar-placeholder.png'
       }
-      // 如果是一个完整的 URL（包含协议），直接使用
-      if (/^https?:\/\//i.test(avatarPath)) {
-        return avatarPath + '?t=' + Date.now()
-      }
-      let normalized = avatarPath
-      if (normalized.startsWith('static/')) normalized = '/' + normalized
-      if (normalized.startsWith('/uploads/')) normalized = '/static' + normalized
-      if (normalized.startsWith('uploads/')) normalized = '/static/' + normalized
-      // 以斜杠开头的路径（如 /static/uploads/...），在开发时需要加后端前缀
-      try {
-        if (normalized.startsWith('/')) {
-          const assetBase = (import.meta.env && import.meta.env.VITE_API_BASE)
-            ? import.meta.env.VITE_API_BASE.replace(/\/$/, '')
-            : (import.meta.env && import.meta.env.DEV ? 'http://127.0.0.1:5000' : '')
-          if (normalized.startsWith('/static/')) {
-            return (assetBase ? assetBase : '') + normalized + '?t=' + Date.now()
-          }
-          const base = (axios && axios.defaults && axios.defaults.baseURL) ? axios.defaults.baseURL.replace(/\/$/, '') : ''
-          return (base ? base : assetBase ? assetBase : '') + normalized + '?t=' + Date.now()
-        }
-      } catch (e) {}
-
-      // 兜底：直接返回并加时间戳以规避缓存
-      return normalized + '?t=' + Date.now()
+      return resolveUploadUrl(avatarPath) || '/assets/avatar-placeholder.png'
     }
 
     async function saveProfile() {
@@ -226,12 +203,11 @@ export default {
 </script>
 
 <style scoped>
-.page-wrap { padding: 16px }
 .card-title { font-weight: 700 }
 
 .profile-edit-container {
   display: flex;
-  gap: 32px;
+  gap: var(--fib-34);
   align-items: flex-start;
 }
 
@@ -246,10 +222,10 @@ export default {
 .avatar-preview {
   width: 140px;
   height: 140px;
-  border-radius: 12px;
+  border-radius: var(--card-radius);
   overflow: hidden;
-  border: 2px solid rgba(0, 0, 0, 0.08);
-  background: #f5f5f5;
+  border: 2px solid var(--border);
+  background: var(--hover);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -269,8 +245,8 @@ export default {
 }
 
 .upload-hint {
-  font-size: 12px;
-  color: #999;
+  font-size: var(--text-xs);
+  color: var(--muted);
   margin: 0;
   text-align: center;
 }

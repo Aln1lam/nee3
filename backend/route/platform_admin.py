@@ -8,7 +8,7 @@ from sqlalchemy import func, desc
 from datetime import datetime, timedelta
 from backend.server import extensions
 from backend.server.extensions import db
-from backend.server.db_models import User, Article, ActivityLog, Todo, FileResource, Team, MainAnnouncement, CarouselSlide, CtfParticipation, CtfParticipatingUser
+from backend.server.db_models import User, Article, ActivityLog, Todo, FileResource, Team, MainAnnouncement, CarouselSlide, CtfParticipation, CtfParticipatingUser, CtfChallengeSubmission
 from dotenv import set_key, find_dotenv
 import os
 
@@ -63,11 +63,6 @@ def get_dashboard():
     storage_bytes = db.session.query(func.sum(FileResource.size)).scalar() or 0
     storage_mb = storage_bytes / (1024 * 1024) if storage_bytes else 0
     
-    # 待办统计
-    total_todos = Todo.query.count()
-    completed_todos = Todo.query.filter_by(completed=True).count()
-    completion_rate = (completed_todos / total_todos * 100) if total_todos > 0 else 0
-    
     # 团队统计
     total_teams = Team.query.count()
     
@@ -105,11 +100,6 @@ def get_dashboard():
             'total': total_resources,
             'storage_bytes': storage_bytes,
             'storage_mb': round(storage_mb, 2)
-        },
-        'todos': {
-            'total': total_todos,
-            'completed': completed_todos,
-            'completion_rate': round(completion_rate, 2)
         },
         'teams': {
             'total': total_teams
@@ -153,6 +143,7 @@ def list_users():
             'nickname': u.nickname,
             'full_name': u.full_name,
             'is_admin': u.is_admin,
+            'is_moderator': bool(getattr(u, 'is_moderator', False)),
             'team_id': u.team_id,
             'created_at': u.created_at.isoformat()
         } for u in users]
@@ -171,6 +162,8 @@ def update_user(user_id):
     
     if 'is_admin' in data:
         user.is_admin = bool(data['is_admin'])
+    if 'is_moderator' in data:
+        user.is_moderator = bool(data['is_moderator'])
     if 'nickname' in data:
         user.nickname = data['nickname']
     if 'full_name' in data:
@@ -229,7 +222,7 @@ def delete_user(user_id):
         CtfParticipatingUser.query.filter_by(user_id=user_id).delete()
         
         # 5. 删除用户的所有提交记录
-        Submission.query.filter_by(user_id=user_id).delete()
+        CtfChallengeSubmission.query.filter_by(user_id=user_id).delete()
         
         # 6. 删除用户的活动日志
         ActivityLog.query.filter_by(actor_id=user_id).delete()
@@ -266,7 +259,11 @@ def get_env_vars():
     ]
     res = {}
     for k in allowed:
-        res[k] = os.environ.get(k, '')
+        val = os.environ.get(k, '')
+        if k == 'MAIL_PASSWORD' and val:
+            res[k] = '******'
+        else:
+            res[k] = val
     return jsonify({'vars': res})
 
 
@@ -290,6 +287,8 @@ def set_env_vars():
         for k, v in updates.items():
             # 仅允许更新白名单中的键
             if k not in ['FRONTEND_URL', 'API_URL', 'NEEPU_SITE_NAME', 'NEEPU_SITE_DESCRIPTION', 'MAIL_SERVER', 'MAIL_PORT', 'MAIL_USE_SSL', 'MAIL_USERNAME', 'MAIL_PASSWORD', 'MAIL_DEFAULT_SENDER', 'MAIL_SENDER_NAME', 'NEEPU_ALLOW_REGISTRATION', 'NEEPU_ALLOW_TEAMS', 'NEEPU_ALLOW_GAMES', 'NEEPU_REQUIRE_EMAIL_VERIFICATION']:
+                continue
+            if k == 'MAIL_PASSWORD' and str(v) == '******':
                 continue
             # set_key 会在文件中更新或添加
             set_key(dotenv_path, k, str(v))
@@ -574,21 +573,62 @@ def get_config():
 @platform_admin_required
 def update_config():
     """更新系统配置"""
+    import json
     from backend.server.db_models import SystemConfig
     from backend.server.audit_log import log_activity
     
     data = request.get_json() or {}
     
     for key, value in data.items():
-        # 转换布尔值为字符串
-        if isinstance(value, bool):
+        if isinstance(value, (dict, list)):
+            value = json.dumps(value, ensure_ascii=False)
+        elif isinstance(value, bool):
             value = 'true' if value else 'false'
+        elif value is not None and not isinstance(value, str):
+            value = str(value)
         SystemConfig.set(key, value)
     
-    # 记录配置更新日志
     log_activity('update', 'system_config', meta={'keys': list(data.keys())})
     
     return jsonify({'success': True, 'config': SystemConfig.get_all()})
+
+
+@bp.get("/config/ui")
+@platform_admin_required
+def get_ui_config():
+    """获取平台 UI 配置（结构化 JSON）"""
+    from backend.services.platform_config_service import load_platform_ui_config, get_default_platform_config
+    return jsonify({
+        'current': load_platform_ui_config(),
+        'defaults': get_default_platform_config(),
+    })
+
+
+@bp.patch("/config/ui")
+@platform_admin_required
+def update_ui_config():
+    """更新平台 UI 配置（结构化 JSON）"""
+    import json
+    from backend.server.db_models import SystemConfig
+    from backend.server.audit_log import log_activity
+    from backend.services.platform_config_service import JSON_CONFIG_KEYS, TEXT_CONFIG_KEYS
+
+    data = request.get_json() or {}
+    allowed = set(JSON_CONFIG_KEYS.keys()) | set(TEXT_CONFIG_KEYS.keys())
+    payload = {k: v for k, v in data.items() if k in allowed}
+    if not payload:
+        return jsonify({'error': '无有效配置项'}), 400
+
+    for key, value in payload.items():
+        if key in JSON_CONFIG_KEYS:
+            stored = json.dumps(value, ensure_ascii=False)
+        else:
+            stored = '' if value is None else str(value)
+        SystemConfig.set(key, stored)
+
+    log_activity('update', 'platform_ui_config', meta={'keys': list(payload.keys())})
+    from backend.services.platform_config_service import load_platform_ui_config
+    return jsonify({'success': True, 'config': load_platform_ui_config()})
 
 
 @bp.post("/config/init")
@@ -674,19 +714,19 @@ def articles_distribution():
 @bp.get("/stats/top-active-users")
 @platform_admin_required
 def top_active_users():
-    """活跃用户排行（根据待办项数量）"""
+    """活跃用户排行（根据 Flag 提交次数）"""
     top_users = db.session.query(
         User.id, User.nickname,
-        func.count(Todo.id).label('todo_count')
-    ).join(Todo, User.id == Todo.user_id).group_by(
+        func.count(CtfChallengeSubmission.id).label('submission_count')
+    ).join(CtfChallengeSubmission, User.id == CtfChallengeSubmission.user_id).group_by(
         User.id, User.nickname
-    ).order_by(desc(func.count(Todo.id))).limit(10).all()
+    ).order_by(desc(func.count(CtfChallengeSubmission.id))).limit(10).all()
     
     return jsonify({
         'items': [{
             'user_id': u[0],
             'nickname': u[1],
-            'todo_count': u[2]
+            'submission_count': u[2]
         } for u in top_users]
     })
 
@@ -762,118 +802,99 @@ def delete_announcement(announcement_id):
     return jsonify({'message': '公告已删除'})
 
 
-# ==================== 代办分发 ====================
-
-@bp.post("/distribute-todos")
-@platform_admin_required
-def distribute_todos():
-    """管理员为指定用户分发代办任务"""
-    data = request.get_json()
-    user_ids = data.get('user_ids', [])
-    todo_text = data.get('text', '').strip()
-    
-    if not todo_text:
-        return jsonify({'error': '代办内容不能为空'}), 400
-    
-    if not user_ids or not isinstance(user_ids, list):
-        return jsonify({'error': '必须选择至少一个用户'}), 400
-    
-    # 验证所有用户存在
-    users = User.query.filter(User.id.in_(user_ids)).all()
-    if len(users) != len(user_ids):
-        return jsonify({'error': '部分用户不存在'}), 400
-    
-    # 为每个用户创建待办项
-    todos = []
-    for user_id in user_ids:
-        todo = Todo(user_id=user_id, text=todo_text, done=False)
-        db.session.add(todo)
-        todos.append(todo)
-    
-    db.session.commit()
-    # 记录操作日志，方便在“最近分发”中展示（包含接收者信息）
-    try:
-        from backend.server.audit_log import log_activity
-        # 尝试获取接收者的昵称以便在管理端显示
-        recipients = []
-        for u in users:
-            recipients.append({'id': u.id, 'nickname': u.nickname, 'email': u.email})
-        log_activity(
-            'todo_distribute',
-            target_type='todo',
-            target_name=(todo_text[:200] if todo_text else None),
-            meta={'count': len(todos), 'user_ids': user_ids, 'recipients': recipients}
-        )
-    except Exception:
-        pass
-    
-    return jsonify({
-        'message': f'已为 {len(todos)} 个用户创建代办任务',
-        'count': len(todos)
-    }), 201
-
 # ==================== 轮播图管理 ====================
 
 @bp.get("/carousel")
 @platform_admin_required
 def get_carousel_slides():
     """获取所有轮播图（管理员）"""
+    from backend.services.carousel_service import carousel_slide_to_dict, bind_slide_resource
     slides = CarouselSlide.query.order_by(CarouselSlide.sort_order, CarouselSlide.id).all()
-    return jsonify([s.to_dict() for s in slides])
+    changed = False
+    for slide in slides:
+        if slide.image_url and not slide.resource_id:
+            bind_slide_resource(slide, slide.image_url)
+            changed = True
+    if changed:
+        db.session.commit()
+    return jsonify([carousel_slide_to_dict(s, admin=True) for s in slides])
 
 
 @bp.post("/carousel")
 @platform_admin_required
 def create_carousel_slide():
     """创建轮播图"""
-    data = request.get_json()
-    image_url = data.get('image_url', '').strip()
-    
+    from backend.services.carousel_service import (
+        bind_slide_resource,
+        carousel_slide_to_dict,
+        image_file_exists,
+        normalize_carousel_image_url,
+    )
+
+    data = request.get_json() or {}
+    image_url = (data.get('image_url') or '').strip()
+
     if not image_url:
         return jsonify({'error': '图片地址不能为空'}), 400
-    
-    # 获取当前最大排序值
+
+    normalized = normalize_carousel_image_url(image_url)
+    if not image_file_exists(normalized):
+        return jsonify({'error': '图片文件不存在，请先在媒体库上传'}), 400
+
     max_order = db.session.query(func.max(CarouselSlide.sort_order)).scalar() or 0
-    
+
     slide = CarouselSlide(
-        title=data.get('title', '').strip() or None,
-        description=data.get('description', '').strip() or None,
-        image_url=image_url,
-        link_url=data.get('link_url', '').strip() or None,
+        title=(data.get('title') or '').strip() or None,
+        description=(data.get('description') or '').strip() or None,
+        image_url=normalized,
+        link_url=(data.get('link_url') or '').strip() or None,
         sort_order=data.get('sort_order', max_order + 1),
-        is_active=data.get('is_active', True)
+        is_active=data.get('is_active', True),
     )
+    bind_slide_resource(slide, normalized, data.get('resource_id'))
     db.session.add(slide)
     db.session.commit()
-    
-    return jsonify(slide.to_dict()), 201
+
+    return jsonify(carousel_slide_to_dict(slide, admin=True)), 201
 
 
 @bp.patch("/carousel/<int:slide_id>")
 @platform_admin_required
 def update_carousel_slide(slide_id):
     """更新轮播图"""
+    from backend.services.carousel_service import (
+        bind_slide_resource,
+        carousel_slide_to_dict,
+        image_file_exists,
+        normalize_carousel_image_url,
+    )
+
     slide = CarouselSlide.query.get(slide_id)
     if not slide:
         return jsonify({'error': '轮播图不存在'}), 404
-    
-    data = request.get_json()
-    
+
+    data = request.get_json() or {}
+
     if 'title' in data:
         slide.title = data['title'].strip() if data['title'] else None
     if 'description' in data:
         slide.description = data['description'].strip() if data['description'] else None
-    if 'image_url' in data:
-        slide.image_url = data['image_url'].strip()
     if 'link_url' in data:
         slide.link_url = data['link_url'].strip() if data['link_url'] else None
     if 'sort_order' in data:
         slide.sort_order = data['sort_order']
     if 'is_active' in data:
         slide.is_active = data['is_active']
-    
+    if 'image_url' in data:
+        normalized = normalize_carousel_image_url(data['image_url'])
+        if not image_file_exists(normalized):
+            return jsonify({'error': '图片文件不存在，请重新上传'}), 400
+        bind_slide_resource(slide, normalized, data.get('resource_id'))
+    elif 'resource_id' in data and data['resource_id']:
+        bind_slide_resource(slide, slide.image_url, data['resource_id'])
+
     db.session.commit()
-    return jsonify(slide.to_dict())
+    return jsonify(carousel_slide_to_dict(slide, admin=True))
 
 
 @bp.delete("/carousel/<int:slide_id>")
@@ -883,7 +904,56 @@ def delete_carousel_slide(slide_id):
     slide = CarouselSlide.query.get(slide_id)
     if not slide:
         return jsonify({'error': '轮播图不存在'}), 404
-    
+
     db.session.delete(slide)
     db.session.commit()
     return jsonify({'message': '删除成功'})
+
+@bp.post("/distribute-todos")
+@platform_admin_required
+def distribute_todos():
+    """批量向用户分发待办事项"""
+    import json
+    data = request.get_json(silent=True) or {}
+    user_ids = data.get("user_ids") or []
+    text = (data.get("text") or "").strip()
+    if not text:
+        return jsonify({"error": "待办内容不能为空"}), 400
+    if not isinstance(user_ids, list) or not user_ids:
+        return jsonify({"error": "请选择至少一个用户"}), 400
+
+    created = 0
+    recipients = []
+    for raw_id in user_ids:
+        try:
+            uid = int(raw_id)
+        except (TypeError, ValueError):
+            continue
+        user = User.query.get(uid)
+        if not user:
+            continue
+        db.session.add(Todo(text=text, user_id=uid, done=False))
+        created += 1
+        recipients.append(user.nickname or user.username or str(uid))
+
+    if created == 0:
+        return jsonify({"error": "没有有效用户"}), 400
+
+    actor_id = None
+    try:
+        actor_id = int(get_jwt_identity())
+    except Exception:
+        pass
+    actor = User.query.get(actor_id) if actor_id else None
+    db.session.add(ActivityLog(
+        actor_id=actor_id,
+        actor_name=(actor.nickname or actor.username) if actor else "admin",
+        action="distribute_todos",
+        target_type="todo",
+        target_name=text[:200],
+        meta=json.dumps({"count": created, "text": text, "recipients": recipients[:50]}, ensure_ascii=False),
+        status="success",
+    ))
+    db.session.commit()
+    return jsonify({"message": f"已向 {created} 名用户分发待办", "created": created})
+

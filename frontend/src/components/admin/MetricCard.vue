@@ -23,8 +23,7 @@ export default {
 
 <style scoped>
 .metric-card {
-  background: white;
-  padding: 20px;
+  background: var(--gradient-card-bg, var(--card-bg));
   border-radius: 10px;
   box-shadow: var(--card-shadow);
   border-left: 4px solid var(--card-accent);

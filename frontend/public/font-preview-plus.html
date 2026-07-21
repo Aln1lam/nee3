@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>字体加餐 · 中文 / 搞怪英文 / Mono</title>
+  <link rel="stylesheet" href="/fonts/reverier-mono.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Audiowide&family=Fredoka:wght@400;600;700&family=LXGW+WenKai:wght@400;700&family=Pixelify+Sans:wght@400;700&family=Space+Grotesk:wght@400;600;700&family=Syne:wght@600;700;800&family=ZCOOL+KuaiLe&family=ZCOOL+QingKe+HuangYou&display=swap" rel="stylesheet" />
+  <!-- 得意黑：搞怪中文，体积相对可控 -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/smiley-sans@1.0.0/font/all/smiley-sans.css" />
+  <style>
+    :root {
+      --bg: #0f1218;
+      --card: #1a1f2a;
+      --text: #eef2f7;
+      --muted: rgba(238, 242, 247, 0.55);
+      --line: rgba(255,255,255,.08);
+      --accent: #5eb8ff;
+      --ok: #7dd3a7;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      padding: 28px 20px 72px;
+      background: radial-gradient(900px 480px at 10% 0%, #1b2438, var(--bg) 60%);
+      color: var(--text);
+      font-family: "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+    }
+    h1 { margin: 0 0 6px; font-size: 1.45rem; }
+    .lead { margin: 0 0 10px; color: var(--muted); font-size: .92rem; line-height: 1.55; max-width: 920px; }
+    .tip {
+      margin: 0 0 24px;
+      padding: 10px 12px;
+      border: 1px dashed var(--line);
+      border-radius: 10px;
+      color: var(--muted);
+      font-size: .85rem;
+      max-width: 920px;
+    }
+    .tip code { color: var(--accent); }
+    .sec { margin: 28px 0 10px; font-size: .78rem; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 14px;
+      max-width: 1200px;
+    }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 16px 16px 14px;
+    }
+    .name { font-size: 12px; color: var(--muted); margin-bottom: 10px; font-family: system-ui, sans-serif !important; }
+    .big { margin: 0 0 8px; font-size: 1.55rem; font-weight: 700; line-height: 1.3; }
+    .en { margin: 0 0 8px; font-size: 1.25rem; font-weight: 700; }
+    .body { margin: 0; font-size: .98rem; line-height: 1.65; color: rgba(238,242,247,.82); }
+    .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+    .chip {
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 5px 11px;
+      font-size: .85rem;
+      font-weight: 700;
+    }
+    .mono-box {
+      margin-top: 10px;
+      background: #0a0d12;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 12px;
+      font-size: .88rem;
+      line-height: 1.55;
+      color: #9ec9ef;
+      font-family: "Reverier Mono", ui-monospace, Consolas, monospace;
+    }
+    .mono-box .ok { color: var(--ok); }
+    .f-smiley { font-family: "Smiley Sans", "得意黑", "PingFang SC", "Microsoft YaHei", sans-serif; }
+    .f-wenkai { font-family: "LXGW WenKai", "霞鹜文楷", "PingFang SC", "Microsoft YaHei", serif; }
+    .f-huangyou { font-family: "ZCOOL QingKe HuangYou", "PingFang SC", "Microsoft YaHei", sans-serif; }
+    .f-kuaile { font-family: "ZCOOL KuaiLe", "PingFang SC", "Microsoft YaHei", sans-serif; }
+    .f-sys { font-family: "PingFang SC", "Microsoft YaHei", "Noto Sans SC", sans-serif; }
+    .f-syne { font-family: Syne, "PingFang SC", "Microsoft YaHei", sans-serif; }
+    .f-space { font-family: "Space Grotesk", "PingFang SC", "Microsoft YaHei", sans-serif; }
+    .f-fredoka { font-family: Fredoka, "PingFang SC", "Microsoft YaHei", sans-serif; }
+    .f-pixel { font-family: "Pixelify Sans", "PingFang SC", "Microsoft YaHei", sans-serif; }
+    .f-audio { font-family: Audiowide, "PingFang SC", "Microsoft YaHei", sans-serif; }
+    .combo {
+      max-width: 1200px;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+      gap: 14px;
+    }
+    .combo .card { border-color: rgba(94,184,255,.28); }
+  </style>
+</head>
+<body>
+  <h1>字体加餐预览</h1>
+  <p class="lead">
+    西电观感通常是：<b>英文/数字走 Reverier Mono</b>，中文没有字形时落到系统黑体——所以看起来「有自己的字体」，其实是混排。
+    你说英文要搞怪一点、终端 Mono 留着：下面按「中文候选 / 搞怪英文 / 组合草案」分开看。
+  </p>
+  <p class="tip">地址：<code>http://localhost:5173/font-preview-plus.html</code> · 中文 CDN 字体首次加载可能稍慢</p>
+
+  <div class="sec">一、中文 · 比系统雅黑更有性格</div>
+  <div class="grid">
+    <div class="card f-smiley">
+      <div class="name">① 得意黑 Smiley Sans · 最搞怪中文</div>
+      <p class="big">今日份的训练开始！</p>
+      <p class="body">SQL 注入入门 · 开启容器 · 延时销毁<br />靶场侧栏 / 按钮 / 标题都耐看</p>
+      <div class="chips"><span class="chip">知识</span><span class="chip">训练</span><span class="chip">赛事</span></div>
+    </div>
+    <div class="card f-huangyou">
+      <div class="name">② 站酷庆科黄油体 · 二次元标题</div>
+      <p class="big">今日份的训练开始！</p>
+      <p class="body">适合大标题，不建议整站正文（笔画粗）</p>
+      <div class="chips"><span class="chip">知识</span><span class="chip">训练</span><span class="chip">赛事</span></div>
+    </div>
+    <div class="card f-kuaile">
+      <div class="name">③ 站酷快乐体 · 手写活动感</div>
+      <p class="big">今日份的训练开始！</p>
+      <p class="body">更「海报/活动」，密排侧栏会累一点</p>
+      <div class="chips"><span class="chip">知识</span><span class="chip">训练</span><span class="chip">赛事</span></div>
+    </div>
+    <div class="card f-wenkai">
+      <div class="name">④ 霞鹜文楷 LXGW WenKai · 文气</div>
+      <p class="big">今日份的训练开始！</p>
+      <p class="body">Wiki / 题解长文很舒服；做主 UI 偏「阅读站」</p>
+      <div class="chips"><span class="chip">知识</span><span class="chip">训练</span><span class="chip">赛事</span></div>
+    </div>
+    <div class="card f-sys">
+      <div class="name">⑤ 系统中文（西电常见底）· 微软雅黑 / 苹方</div>
+      <p class="big">今日份的训练开始！</p>
+      <p class="body">最稳、零请求；搭配搞怪英文时很像「有自己字体」</p>
+      <div class="chips"><span class="chip">知识</span><span class="chip">训练</span><span class="chip">赛事</span></div>
+    </div>
+  </div>
+
+  <div class="sec">二、英文 · 搞怪一点（中文仍用系统字兜底）</div>
+  <div class="grid">
+    <div class="card f-syne">
+      <div class="name">Syne · 怪几何（推荐）</div>
+      <p class="en">Today's Training</p>
+      <p class="en" style="font-size:1.05rem">Challenge · Workspace · Start!</p>
+      <p class="body">SQL 注入入门 · Dynamic Container</p>
+    </div>
+    <div class="card f-fredoka">
+      <div class="name">Fredoka · 圆胖搞怪</div>
+      <p class="en">Today's Training</p>
+      <p class="en" style="font-size:1.05rem">Challenge · Workspace · Start!</p>
+      <p class="body">SQL 注入入门 · Dynamic Container</p>
+    </div>
+    <div class="card f-space">
+      <div class="name">Space Grotesk · 轻度怪</div>
+      <p class="en">Today's Training</p>
+      <p class="en" style="font-size:1.05rem">Challenge · Workspace · Start!</p>
+      <p class="body">SQL 注入入门 · Dynamic Container</p>
+    </div>
+    <div class="card f-pixel">
+      <div class="name">Pixelify Sans · 像素街机</div>
+      <p class="en">Today's Training</p>
+      <p class="en" style="font-size:1.05rem">Challenge · Workspace · Start!</p>
+      <p class="body">SQL 注入入门 · Dynamic Container</p>
+    </div>
+    <div class="card f-audio">
+      <div class="name">Audiowide · 科幻标牌</div>
+      <p class="en">Today's Training</p>
+      <p class="en" style="font-size:1.05rem">Challenge · Workspace · Start!</p>
+      <p class="body">SQL 注入入门 · Dynamic Container</p>
+    </div>
+  </div>
+
+  <div class="sec">三、组合草案（英文搞怪 + 中文有性格 + 终端 Reverier）</div>
+  <div class="combo">
+    <div class="card">
+      <div class="name">组合 1 · 得意黑 + Syne + Reverier Mono</div>
+      <p class="big f-smiley">从左侧选择题目开始练习</p>
+      <p class="en f-syne">NEEPU CTF · Lab Board</p>
+      <div class="mono-box">
+        ctf@lab:~/web$ curl :1337<br />
+        <span class="ok">[SUCCESS]</span> flag{smiley_syne_reverier}
+      </div>
+    </div>
+    <div class="card">
+      <div class="name">组合 2 · 系统中文 + Fredoka + Reverier（最像西电混排）</div>
+      <p class="big f-sys">从左侧选择题目开始练习</p>
+      <p class="en f-fredoka">NEEPU CTF · Lab Board</p>
+      <div class="mono-box">
+        ctf@lab:~/web$ curl :1337<br />
+        <span class="ok">[SUCCESS]</span> flag{sys_fredoka_reverier}
+      </div>
+    </div>
+    <div class="card">
+      <div class="name">组合 3 · 黄油体标题 + Pixelify 英文 + Reverier</div>
+      <p class="big f-huangyou">从左侧选择题目开始练习</p>
+      <p class="en f-pixel">NEEPU CTF · Lab Board</p>
+      <div class="mono-box">
+        ctf@lab:~/web$ curl :1337<br />
+        <span class="ok">[SUCCESS]</span> flag{butter_pixel_mono}
+      </div>
+    </div>
+    <div class="card">
+      <div class="name">组合 4 · 文楷正文 + Space Grotesk + Reverier（Wiki 友好）</div>
+      <p class="big f-wenkai">从左侧选择题目开始练习</p>
+      <p class="en f-space">NEEPU CTF · Lab Board</p>
+      <div class="mono-box">
+        ctf@lab:~/wiki$ ls articles/<br />
+        <span class="ok">[OK]</span> writeup ready
+      </div>
+    </div>
+  </div>
+</body>
+</html>

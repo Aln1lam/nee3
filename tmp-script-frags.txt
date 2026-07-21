@@ -1,0 +1,380 @@
+﻿=== line 1182 len 575
+            <span>{{ ch.current_score || ch.points || 0 }} pts</span>
+            <template v-if="bloodRecords(ch.id).length">
+              <span
+                v-for="rec in bloodRecords(ch.id)"
+                :key="rec.blood_level"
+                class="blood-tag"
+                :class="`blood-tag--${rec.blood_level}`"
+                :title="`${bloodLevelName(rec.blood_level)} 路 ${rec.user_name || '鈥?}`"
+              >{{ bloodLevelShort(rec.blood_level) }}</span>
+            </template>
+            <span v-else-if="isSolved(ch.id)" class="solved-mark">鉁?/span>
+
+=== line 1182 len 303
+    function isSolved(id) { return solvedIds.value.has(id) }
+    function bloodRecords(id) { return bloodMap.value[id] || [] }
+    function bloodLevelName(level) {
+      return ['涓€琛€', '浜岃', '涓夎'][level] || '棣栬В'
+    }
+    function bloodLevelShort(level) {
+      return ['馃└', '2', '3'][level] || '路'
+    }
+
+=== line 1182 len 134
+      isSolved, bloodRecords, bloodLevelName, bloodLevelShort, currentBloodRecords,
+      selectChallenge, submitFlag, startContainer,
+
+=== line 1201 len 938
+  <div class="challenge-workspace" :class="[`mode-${mode}`, { 'admin-tools-on': adminActive }]">
+    <div class="workspace-header">
+      <header class="matrix-page-head workspace-head">
+        <div class="header-left">
+          <span class="link-code">CHL</span>
+          <h2 class="matrix-page-title">{{ gameTitle || '棰樼洰' }}</h2>
+          <n-tag v-if="mode === 'training'" size="small" type="success" round>姘镐箙寮€鏀?/n-tag>
+          <n-tag v-else-if="gameStatus" size="small" :type="gameStatusType">{{ gameStatus }}</n-tag>
+          <n-tag v-if="adminActive" size="small" type="warning" round>绠＄悊瑙嗗浘</n-tag>
+        </div>
+        <div v-if="isAdmin && mode !== 'training'" class="header-admin-actions">
+          <n-button
+            size="tiny"
+            :type="showAdminTools ? 'warning' : 'default'"
+            @click="toggleAdminTools"
+          >{{ showAdminTools ? '閫夋墜瑙嗗浘' : '绠＄悊瑙嗗浘' }}</n-button>
+        </div>
+      </header>
+
+=== line 1201 len 274
+            disabled: adminActive && ch.is_enabled === false,
+          }"
+          @click="selectChallenge(ch)"
+        >
+          <div class="ch-title-row">
+            <div class="ch-title">{{ ch.title }}</div>
+            <UiPopover v-if="adminActive" trigger="click">
+
+=== line 1201 len 166
+            <span v-else-if="isSolved(ch.id)" class="solved-mark">鉁?/span>
+            <span v-if="adminActive && ch.is_enabled === false" class="off-badge">涓嬫灦</span>
+
+=== line 1201 len 3528
+          <n-tab-pane v-if="adminActive" name="manage" tab="绠＄悊">
+            <div class="admin-panel admin-panel--manage">
+              <p class="admin-manage-hint">绠＄悊瑙嗗浘鍚粺璁′笌閰嶇疆淇℃伅锛岀洿鎾?褰曞睆鏃惰鍒囧洖閫夋墜瑙嗗浘銆?/p>
+
+              <section v-if="stats" class="manage-section">
+                <h4 class="manage-section-title">缁熻</h4>
+                <div class="stat-row"><span>瑙ｅ嚭浜烘暟</span><strong>{{ stats.unique_solvers || 0 }}</strong></div>
+                <div class="stat-row"><span>鎬绘彁浜ゆ暟</span><strong>{{ stats.total_submissions || 0 }}</strong></div>
+                <div class="stat-row"><span>閫氳繃鐜?/span><strong>{{ stats.solve_rate || '0%' }}</strong></div>
+                <div v-if="stats.first_solver" class="stat-row">
+                  <span>棣栬В</span>
+                  <strong>{{ stats.first_solver.username }} 路 {{ formatStatTime(stats.first_solver.solved_at) }}</strong>
+                </div>
+              </section>
+              <section v-else class="manage-section muted">姝ｅ湪鍔犺浇缁熻鈥?/section>
+
+              <section class="manage-section">
+                <h4 class="manage-section-title">棰樼洰璁剧疆</h4>
+                <div class="stat-row">
+                  <span>涓婃灦鐘舵€?/span>
+                  <strong>{{ selectedChallenge.is_enabled === false ? '宸蹭笅鏋? : '宸蹭笂鏋? }}</strong>
+                </div>
+                <div class="stat-row"><span>鍒嗙被</span><strong>{{ selectedChallenge.category || '鏃? }}</strong></div>
+                <div class="stat-row"><span>绫诲瀷</span><strong>{{ challengeTypeLabel }}</strong></div>
+                <div class="stat-row"><span>鍒嗗€?/span><strong>{{ selectedChallenge.current_score || selectedChallenge.points || 0 }}</strong></div>
+                <div v-if="selectedChallenge.flag_template" class="stat-row">
+                  <span>Flag 妯℃澘</span><strong class="mono">{{ selectedChallenge.flag_template }}</strong>
+                </div>
+                <div class="manage-actions">
+                  <UiButton
+                    size="small"
+                    :variant="selectedChallenge.is_enabled === false ? 'primary' : 'secondary'"
+                    :loading="!!selectedChallenge._toggling"
+                    @click="toggleChallengeEnabled(selectedChallenge)"
+                  >{{ selectedChallenge.is_enabled === false ? '涓婃灦棰樼洰' : '涓嬫灦棰樼洰' }}</UiButton>
+                  <n-button size="small" type="primary" @click="goAdminChallenge">鍓嶅線闈跺満绠＄悊</n-button>
+                </div>
+              </section>
+
+              <section class="manage-section">
+                <h4 class="manage-section-title">闄勪欢</h4>
+                <p v-if="attachmentUrl">闄勪欢 ID: {{ selectedChallenge.attachment_id }}</p>
+                <p v-else class="muted">鏈鏆傛棤闄勪欢</p>
+                <a v-if="attachmentUrl" :href="attachmentUrl" target="_blank" rel="noopener" class="admin-link">涓嬭浇闄勪欢</a>
+              </section>
+
+              <section v-if="hasContainer" class="manage-section">
+                <h4 class="manage-section-title">瀹炰緥</h4>
+                <div v-if="instance" class="conn-box">
+                  <span v-if="instance.port" class="tcp-badge">tcp</span>
+                  {{ instance.connection_url || '鏃? }}
+                </div>
+                <p v-else class="muted">褰撳墠鏃犺繍琛屼腑鐨勫疄渚?/p>
+                <n-button size="small" :loading="containerLoading" @click="startContainer">
+                  {{ instance ? '閲嶆柊鍚姩' : '鍚姩瀹炰緥' }}
+                </n-button>
+              </section>
+            </div>
+          </n-tab-pane>
+
+          <n-tab-pane v-if="mode !== 'training'" name="blood" tab="琛€姒?>
+
+=== line 1201 len 104
+          <n-tab-pane name="writeup" tab="棰樿В" v-if="mode === 'training' || gameArchived || adminActive">
+
+=== line 1201 len 460
+    const splitRatio = ref(0.42)
+    const isAdmin = ref(false)
+    const showAdminTools = ref(false)
+
+    const adminActive = computed(() => isAdmin.value && showAdminTools.value)
+
+    const ADMIN_ONLY_TABS = new Set(['stats', 'attachments', 'instances', 'checker', 'settings', 'manage'])
+    const LEGACY_ADMIN_TAB_MAP = {
+      stats: 'manage',
+      attachments: 'manage',
+      instances: 'manage',
+      checker: 'manage',
+      settings: 'manage',
+    }
+
+=== line 1201 len 1762
+    async function loadChallenges() {
+      if (!props.gameId) return
+      challengesLoading.value = true
+      try {
+        if (adminActive.value) {
+          const res = await ctfAdmin.listAdminChallenges(props.gameId)
+          const { ok, data } = await parseJsonResponse(res)
+          challenges.value = ok ? unwrapList(data) : []
+        } else {
+          const res = await axios.get(`/api/challenges/games/${props.gameId}/challenges`)
+          challenges.value = unwrapList(res.data)
+        }
+        await loadSolvedStatus()
+        if (props.mode !== 'training') await checkHammerUnread()
+      } catch {
+        challenges.value = []
+      } finally {
+        challengesLoading.value = false
+      }
+    }
+
+    function sanitizeChallengeDetail(ch, detail) {
+      if (!detail) return { ...ch }
+      if (adminActive.value) return { ...ch, ...detail }
+      const { flag_template, flag, expected_flag, ...safe } = detail
+      return { ...ch, ...safe }
+    }
+
+    function toggleAdminTools() {
+      setAdminTools(!showAdminTools.value)
+    }
+
+    function setAdminTools(on) {
+      showAdminTools.value = on
+      const q = { ...route.query }
+      if (on) q.admin = '1'
+      else delete q.admin
+      if (!on && ADMIN_ONLY_TABS.has(activeTab.value)) {
+        activeTab.value = 'terminal'
+        q.tab = 'terminal'
+      } else if (on && route.query.tab && LEGACY_ADMIN_TAB_MAP[route.query.tab]) {
+        activeTab.value = LEGACY_ADMIN_TAB_MAP[route.query.tab]
+        q.tab = 'manage'
+      }
+      router.replace({ query: q }).catch(() => {})
+      loadChallenges().then(syncFromRoute)
+    }
+
+    function applyAdminQueryFromRoute() {
+      if (route.query.admin === '1' && isAdmin.value) {
+        showAdminTools.value = true
+      }
+    }
+
+=== line 1201 len 95
+    async function toggleChallengeEnabled(ch) {
+      if (!ch?.id || !adminActive.value) return
+
+=== line 1201 len 391
+        const detail = detailRes.data?.data || detailRes.data
+        if (detail) {
+          selectedChallenge.value = sanitizeChallengeDetail(ch, detail)
+          if (detail.is_solved) {
+            challengeSolved.value = true
+            solvedIds.value.add(ch.id)
+          }
+        }
+        stats.value = adminActive.value
+          ? (statsRes?.data?.data || null)
+          : null
+
+=== line 1201 len 440
+      const allowed = [
+        'terminal', 'hints', 'hammer', 'blood', 'writeup', 'manage',
+      ]
+      if (tab && LEGACY_ADMIN_TAB_MAP[tab]) {
+        activeTab.value = adminActive.value ? LEGACY_ADMIN_TAB_MAP[tab] : 'terminal'
+      } else if (tab && allowed.includes(tab)) {
+        if (tab === 'manage' && !adminActive.value) {
+          activeTab.value = 'terminal'
+        } else {
+          activeTab.value = tab
+        }
+      }
+
+=== line 1201 len 630
+    function refreshAdminState() {
+      const wasAdmin = isAdmin.value
+      isAdmin.value = checkIsAdmin()
+      if (!isAdmin.value) {
+        if (showAdminTools.value) setAdminTools(false)
+        showAdminTools.value = false
+      } else if (!wasAdmin) {
+        applyAdminQueryFromRoute()
+      }
+    }
+
+    watch(showAdminTools, (on, prev) => {
+      if (on === prev) return
+      if (!on && ADMIN_ONLY_TABS.has(activeTab.value)) {
+        activeTab.value = 'terminal'
+      }
+    })
+
+    onMounted(async () => {
+      beginRequestScope()
+      await fetchSession()
+      refreshAdminState()
+      applyAdminQueryFromRoute()
+
+=== line 1201 len 128
+      hasContainer, attachmentUrl, splitRatio, isAdmin, showAdminTools, adminActive,
+      challengeTypeLabel, toggleAdminTools,
+
+=== line 1202 len 321
+      try {
+        const detailPromise = axios.get(`/api/challenges/${ch.id}`)
+        const statsPromise = adminActive.value
+          ? axios.get(`/api/challenges/${ch.id}/stats`).catch(() => null)
+          : Promise.resolve(null)
+        const [detailRes, statsRes] = await Promise.all([detailPromise, statsPromise])
+
+=== line 1218 len 1555
+    <div class="workspace-header" :class="{ 'workspace-header--compact': hideGameHeader }">
+      <header v-if="!hideGameHeader" class="matrix-page-head workspace-head">
+        <div class="header-left">
+          <span class="link-code">CHL</span>
+          <h2 class="matrix-page-title">{{ gameTitle || '棰樼洰' }}</h2>
+          <n-tag v-if="mode === 'training'" size="small" type="success" round>姘镐箙寮€鏀?/n-tag>
+          <n-tag v-else-if="gameStatus" size="small" :type="gameStatusType">{{ gameStatus }}</n-tag>
+          <n-tag v-if="adminActive" size="small" type="warning" round>绠＄悊瑙嗗浘</n-tag>
+        </div>
+        <div v-if="isAdmin && mode !== 'training'" class="header-admin-actions">
+          <n-button
+            size="tiny"
+            :type="showAdminTools ? 'warning' : 'default'"
+            @click="toggleAdminTools"
+          >{{ showAdminTools ? '閫夋墜瑙嗗浘' : '绠＄悊瑙嗗浘' }}</n-button>
+        </div>
+      </header>
+      <div class="workspace-toolbar">
+        <n-input
+          v-model:value="searchQuery"
+          placeholder="鎼滅储鍚嶇О鎴栬€呮爣绛?
+          clearable
+          size="small"
+          class="search-input"
+        />
+        <div v-if="hideGameHeader && isAdmin && mode !== 'training'" class="header-admin-actions">
+          <n-tag v-if="adminActive" size="small" type="warning" round>绠＄悊瑙嗗浘</n-tag>
+          <n-button
+            size="tiny"
+            :type="showAdminTools ? 'warning' : 'default'"
+            @click="toggleAdminTools"
+          >{{ showAdminTools ? '閫夋墜瑙嗗浘' : '绠＄悊瑙嗗浘' }}</n-button>
+        </div>
+      </div>
+    </div>
+
+=== line 1251 len 2750
+    <div class="workspace-body">
+      <div class="challenge-list" :class="{ 'mission-rail': mode === 'competition' }">
+        <div v-if="mode === 'competition'" class="mission-rail-head">
+          <span class="mission-rail-title">浠诲姟鍒楄〃</span>
+          <span class="mission-rail-count">{{ filteredChallenges.length }}</span>
+        </div>
+        <div
+          v-for="ch in filteredChallenges"
+          :key="ch.id"
+          class="challenge-card"
+          :class="{
+            active: selectedChallenge?.id === ch.id,
+            solved: isSolved(ch.id),
+            disabled: adminActive && ch.is_enabled === false,
+            'mission-card': mode === 'competition',
+          }"
+          :style="mode === 'competition' ? { '--cat-stripe': categoryStyle(ch.category).stripe } : undefined"
+          @click="selectChallenge(ch)"
+        >
+          <div class="ch-title-row">
+            <div class="ch-title">{{ ch.title }}</div>
+            <UiPopover v-if="adminActive" trigger="click">
+              <template #trigger>
+                <button class="admin-menu-btn" type="button" @click.stop aria-label="棰樼洰涓婁笅鏋? title="绠＄悊鍛橈細涓婃灦/涓嬫灦棰樼洰">鈰?/button>
+              </template>
+              <div class="admin-popover">
+                <p class="admin-popover__hint">
+                  {{ ch.is_enabled === false ? '棰樼洰褰撳墠宸蹭笅鏋? : '棰樼洰褰撳墠宸蹭笂鏋? }}
+                </p>
+                <UiButton
+                  size="small"
+                  :variant="ch.is_enabled === false ? 'primary' : 'secondary'"
+                  :loading="!!ch._toggling"
+                  @click="toggleChallengeEnabled(ch)"
+                >{{ ch.is_enabled === false ? '涓婃灦棰樼洰' : '涓嬫灦棰樼洰' }}</UiButton>
+              </div>
+            </UiPopover>
+          </div>
+          <div class="ch-meta">
+            <span
+              v-if="mode === 'competition'"
+              class="cat-chip"
+              :style="categoryChipStyle(ch.category)"
+            >{{ ch.category }}</span>
+            <n-tag v-else size="tiny">{{ ch.category }}</n-tag>
+            <span class="ch-points">{{ ch.current_score || ch.points || 0 }} pts</span>
+            <template v-if="bloodRecords(ch.id).length">
+              <span
+                v-for="rec in bloodRecords(ch.id)"
+                :key="rec.blood_level"
+                class="blood-tag"
+                :class="`blood-tag--${rec.blood_level}`"
+                :title="`${bloodLevelName(rec.blood_level)} 路 ${rec.user_name || '鈥?}`"
+              >{{ bloodLevelShort(rec.blood_level) }}</span>
+            </template>
+            <span v-else-if="isSolved(ch.id)" class="solved-mark" title="宸茶В鍑?>鉁?/span>
+            <span v-if="adminActive && ch.is_enabled === false" class="off-badge">涓嬫灦</span>
+          </div>
+        </div>
+
+=== line 1251 len 330
+import { fetchSession, isLoggedIn, isAdmin as checkIsAdmin } from '../services/auth'
+import { getCategoryStyle } from '../utils/categoryStyle'
+
+function categoryStyle(cat) {
+  return getCategoryStyle(cat)
+}
+
+function categoryChipStyle(cat) {
+  const s = getCategoryStyle(cat)
+  return { background: s.chipBg, color: s.chipText }
+}
+
+=== line 1251 len 79
+      goAdminChallenge, formatStatTime, categoryStyle, categoryChipStyle,
+    }
+

@@ -1,76 +1,182 @@
 <template>
-  <div class="card">
-    <h2>排行榜 (Game {{ gameId }})</h2>
-    <button @click="close">返回</button>
-    <button @click="refresh">刷新</button>
-    <table class="scoreboard-table">
-      <thead>
-        <tr><th>排名</th><th>队伍名称</th><th>得分</th><th>解题数</th><th>队伍人数</th><th>最后提交</th></tr>
-      </thead>
-      <tbody>
-        <tr v-for="(it, idx) in items" :key="it.team_id" class="scoreboard-row" :class="{ 'top3': idx < 3 }">
-          <td class="rank">{{ it.rank || idx+1 }}</td>
-          <td class="team-name">{{ it.team_name }}</td>
-          <td class="points">{{ it.total_points }}</td>
-          <td class="solves">{{ it.solved_challenges }}</td>
-          <td class="members">{{ it.members_count }}</td>
-          <td class="time">{{ formatTime(it.last_submission_time) }}</td>
-        </tr>
-      </tbody>
-    </table>
-  </div>
+  <MatrixShell
+    prompt=""
+    title="积分排行"
+    subtitle="SCORE · BOARD"
+    page-prompt="积分排行"
+    page-title="赛事排行榜"
+    page-desc="实时积分 · 解题数 · 最后提交"
+    :items="navItems"
+  >
+    <template #sidebar-footer>
+      <router-link :to="`/games/${gameId}`" class="sidebar-link">
+        <span class="link-code">GME</span>
+        <span>返回赛事</span>
+      </router-link>
+      <router-link to="/games" class="sidebar-link">
+        <span class="link-code">CTF</span>
+        <span>赛事列表</span>
+      </router-link>
+    </template>
+
+    <div class="scoreboard-layout">
+      <div class="matrix-panel scoreboard-panel matrix-data-panel">
+        <div class="scoreboard-toolbar">
+          <div>
+            <span class="link-code">SB</span>
+            <strong>Game #{{ gameId }}</strong>
+          </div>
+          <div class="toolbar-actions">
+            <n-button size="small" :type="showCurve ? 'primary' : 'default'" @click="toggleCurve">积分曲线</n-button>
+            <n-button size="small" @click="refresh">刷新</n-button>
+            <n-button size="small" quaternary @click="goBack">返回</n-button>
+          </div>
+        </div>
+        <div v-if="showCurve" ref="curveRef" class="score-curve"></div>
+        <n-spin :show="loading">
+          <table v-if="items.length" class="scoreboard-table">
+            <thead>
+              <tr>
+                <th>排名</th>
+                <th>队伍</th>
+                <th>得分</th>
+                <th>解题</th>
+                <th>人数</th>
+                <th>最后提交</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr
+                v-for="(it, idx) in items"
+                :key="it.team_id || idx"
+                class="scoreboard-row"
+                :class="{ top3: idx < 3 }"
+              >
+                <td>{{ it.rank || idx + 1 }}</td>
+                <td>{{ it.team_name }}</td>
+                <td>{{ it.total_points }}</td>
+                <td>{{ it.solved_challenges }}</td>
+                <td>{{ it.members_count }}</td>
+                <td>{{ formatTime(it.last_submission_time) }}</td>
+              </tr>
+            </tbody>
+          </table>
+          <div v-else class="empty-state">
+            <p class="matrix-page-prompt">{{ loadError ? '排行榜暂时不可用' : '暂无排行数据' }}</p>
+            <p class="muted">{{ loadError ? '排行榜加载失败，请刷新重试' : '暂无排行数据' }}</p>
+          </div>
+        </n-spin>
+      </div>
+    </div>
+  </MatrixShell>
 </template>
 
 <script>
-import { ref, watch, inject } from 'vue'
+import { ref, watch, inject, computed, nextTick, onUnmounted } from 'vue'
+import * as echarts from 'echarts/core'
+import { LineChart } from 'echarts/charts'
+import { GridComponent, TooltipComponent, LegendComponent } from 'echarts/components'
+import { CanvasRenderer } from 'echarts/renderers'
+echarts.use([LineChart, GridComponent, TooltipComponent, LegendComponent, CanvasRenderer])
+import { useRouter } from 'vue-router'
+import { NButton, NSpin } from 'naive-ui'
+import { MatrixShell } from '@/components/shared'
+
 export default {
-  props: ['gameId'],
-  emits: ['close'],
-  setup(props, { emit }) {
+  name: 'Scoreboard',
+  components: { MatrixShell, NButton, NSpin },
+  props: { gameId: { type: [String, Number], required: true } },
+  setup(props) {
     const axios = inject('axios')
+    const router = useRouter()
     const items = ref([])
+    const showCurve = ref(false)
+    const curveRef = ref(null)
+    let curveChart = null
+    const loading = ref(false)
+    const loadError = ref(false)
+    const navItems = computed(() => [{ code: 'SB', label: '排行榜', active: true }])
 
     function formatTime(timeStr) {
       if (!timeStr) return '-'
       try {
-        const date = new Date(timeStr)
-        return date.toLocaleString('zh-CN')
-      } catch (e) {
+        return new Date(timeStr).toLocaleString('zh-CN')
+      } catch {
         return timeStr
       }
     }
 
     async function load() {
       if (!props.gameId) return
+      loading.value = true
+      loadError.value = false
       try {
         const { data } = await axios.get(`/api/ctf/games/${props.gameId}/scoreboard`)
-        items.value = data.data?.rankings || []
+        items.value = data.data?.rankings || data?.rankings || []
       } catch (e) {
         console.error('Failed to load scoreboard:', e)
         items.value = []
+        loadError.value = true
+      } finally {
+        loading.value = false
       }
     }
 
-    function refresh() { load() }
-    function close() { emit('close') }
+    function toggleCurve() {
+      showCurve.value = !showCurve.value
+      if (showCurve.value) loadTimeline()
+    }
 
-    watch(() => props.gameId, () => load(), { immediate: true })
+    async function loadTimeline() {
+      try {
+        const { data } = await axios.get(`/api/ctf/games/${props.gameId}/scoreboard/timeline`)
+        const payload = data?.data || data || {}
+        const series = payload.series || []
+        await nextTick()
+        if (!curveRef.value) return
+        if (!curveChart) curveChart = echarts.init(curveRef.value)
+        curveChart.setOption({
+          tooltip: { trigger: 'axis' },
+          legend: { type: 'scroll', top: 0 },
+          grid: { left: 48, right: 16, top: 36, bottom: 28 },
+          xAxis: { type: 'time' },
+          yAxis: { type: 'value', name: 'pts' },
+          series: (Array.isArray(series) ? series : []).slice(0, 8).map((s) => ({
+            name: s.team_name || s.name || 'team',
+            type: 'line',
+            showSymbol: false,
+            data: (s.data || s.points || []).map((p) => [p.time || p[0], p.points ?? p[1]]),
+          })),
+        })
+      } catch {
+        /* empty timeline ok */
+      }
+    }
 
-    return { items, refresh, close, formatTime }
-  }
+    function refresh() {
+      load()
+      if (showCurve.value) loadTimeline()
+    }
+    function goBack() { router.push(`/games/${props.gameId}`) }
+
+    watch(() => props.gameId, load, { immediate: true })
+    onUnmounted(() => { try { curveChart?.dispose() } catch { /* ignore */ } })
+
+    return { items, loading, loadError, navItems, refresh, goBack, formatTime, showCurve, curveRef, toggleCurve }
+  },
 }
 </script>
 
-<style>
-.card { padding: var(--scoreboard-card-padding, 12px); background: var(--scoreboard-card-bg, #fafbfc); border-radius:8px }
-.scoreboard-table { width: 100%; border-collapse: collapse; margin-top: var(--scoreboard-table-margin-top, 8px) }
-.scoreboard-row { border-bottom: var(--scoreboard-row-border, 1px solid #eef); transition: background-color 0.2s }
-.scoreboard-row:hover { background-color: rgba(0,0,0,0.02) }
-.scoreboard-row.top3 { font-weight: bold; background-color: rgba(255,215,0,0.05) }
-.rank { text-align: center; font-weight: bold; min-width: 50px }
-.team-name { text-align: left; font-weight: 600 }
-.points { text-align: right; color: var(--primary); font-weight: bold }
-.solves { text-align: center }
-.members { text-align: center }
-.time { text-align: center; font-size: 12px; color: var(--muted) }
+<style scoped>
+.toolbar-actions {
+  display: flex;
+  gap: var(--fib-8);
+}
+
+.empty-state {
+  padding: var(--fib-34);
+  text-align: center;
+  color: var(--muted);
+}
+.score-curve { width: 100%; height: 260px; margin-bottom: 12px; }
 </style>

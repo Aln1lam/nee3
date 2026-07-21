@@ -9,7 +9,7 @@ import math
 from backend.server.extensions import db
 from backend.server.db_models import (
     CtfChallenge, CtfChallengeSubmission, CtfScoreboard, CtfSolves,
-    CtfGame, CtfParticipation, User
+    CtfGame, CtfParticipation, User, Team
 )
 
 
@@ -137,40 +137,45 @@ class ScoringService:
         team_id: Optional[int] = None
     ) -> Optional[int]:
         """
-        记录首解/二解/三解
-        
-        Args:
-            game_id: 比赛ID
-            challenge_id: 题目ID
-            user_id: 用户ID
-            team_id: 队伍ID（可选）
-            
+        记录首解/二解/三解（调用方须已持有题目行锁）。
+
         Returns:
             血液等级（0=一血, 1=二血, 2=三血, None=无血）
         """
-        # 查询该题目已有的解答数
-        existing_solves = CtfSolves.query.filter_by(
-            game_id=game_id,
-            challenge_id=challenge_id
-        ).count()
+        from sqlalchemy.exc import IntegrityError
 
-        if existing_solves >= 3:
-            return None  # 无血奖励
+        # 同队/同人已拿过该题血则不再记
+        dup_q = CtfSolves.query.filter_by(challenge_id=challenge_id)
+        if team_id:
+            if dup_q.filter_by(team_id=team_id).first():
+                return None
+        elif dup_q.filter_by(user_id=user_id).first():
+            return None
 
-        blood_level = existing_solves
-
-        # 记录本次解答
-        first_solve = CtfSolves(
-            game_id=game_id,
-            challenge_id=challenge_id,
-            user_id=user_id,
-            team_id=team_id,
-            blood_level=blood_level,
-            solved_at=datetime.utcnow()
+        existing_solves = (
+            CtfSolves.query.filter_by(challenge_id=challenge_id)
+            .with_for_update()
+            .count()
         )
+        if existing_solves >= 3:
+            return None
 
-        db.session.add(first_solve)
-        return blood_level
+        for blood_level in range(existing_solves, 3):
+            try:
+                with db.session.begin_nested():
+                    db.session.add(CtfSolves(
+                        game_id=game_id,
+                        challenge_id=challenge_id,
+                        user_id=user_id,
+                        team_id=team_id,
+                        blood_level=blood_level,
+                        solved_at=datetime.utcnow(),
+                    ))
+                    db.session.flush()
+                return blood_level
+            except IntegrityError:
+                continue
+        return None
 
     @staticmethod
     def update_scoreboard(
@@ -238,6 +243,53 @@ class ScoringService:
             )
             db.session.add(scoreboard)
 
+        last_time = ScoringService.resolve_last_submission_time(game_id, team_id, user_id)
+        if last_time:
+            scoreboard.last_submission_time = last_time
+
+        db.session.flush()
+
+        try:
+            from backend.services.redis_service import get_redis, ScoreboardCache
+            rs = get_redis()
+            if rs and rs.is_available():
+                ScoreboardCache.invalidate_scoreboard(rs, game_id)
+        except Exception:
+            pass
+
+    @staticmethod
+    def resolve_last_submission_time(
+        game_id: int,
+        team_id: Optional[int] = None,
+        user_id: Optional[int] = None,
+    ) -> Optional[datetime]:
+        """获取队伍/用户在该赛事最后一次正确提交时间"""
+        query = (
+            CtfChallengeSubmission.query.filter_by(is_correct=True)
+            .join(CtfChallenge)
+            .filter(CtfChallenge.game_id == game_id)
+        )
+        if team_id:
+            query = query.filter(CtfChallengeSubmission.team_id == team_id)
+        elif user_id:
+            query = query.filter(CtfChallengeSubmission.user_id == user_id)
+        else:
+            return None
+        last = query.order_by(CtfChallengeSubmission.submitted_at.desc()).first()
+        return last.submitted_at if last else None
+
+    @staticmethod
+    def get_team_rank(game_id: int, team_id: int) -> Optional[int]:
+        """按当前积分榜计算队伍排名（只读，不写库）"""
+        scoreboards = CtfScoreboard.query.filter_by(game_id=game_id).order_by(
+            CtfScoreboard.total_points.desc(),
+            CtfScoreboard.last_submission_time.asc(),
+        ).all()
+        for idx, sb in enumerate(scoreboards, 1):
+            if sb.team_id == team_id:
+                return idx
+        return None
+
     @staticmethod
     def calculate_rankings(game_id: int) -> List[Dict]:
         """
@@ -252,22 +304,32 @@ class ScoringService:
 
         rankings = []
         for sb in scoreboards:
-            user = User.query.get(sb.user_id)
-            
-            # 获取最后提交时间
-            last_submission = CtfChallengeSubmission.query.filter_by(
-                user_id=sb.user_id,
-                is_correct=True
-            ).order_by(CtfChallengeSubmission.submitted_at.desc()).first()
-
-            # 获取提交次数
-            submission_count = CtfChallengeSubmission.query.filter_by(
-                user_id=sb.user_id
-            ).count()
+            if sb.user_id:
+                user = User.query.get(sb.user_id)
+                username = user.username if user else 'Unknown'
+                last_submission = CtfChallengeSubmission.query.filter_by(
+                    user_id=sb.user_id,
+                    is_correct=True,
+                ).order_by(CtfChallengeSubmission.submitted_at.desc()).first()
+                submission_count = CtfChallengeSubmission.query.filter_by(
+                    user_id=sb.user_id,
+                ).count()
+            else:
+                team = Team.query.get(sb.team_id) if sb.team_id else None
+                username = team.name if team else f'Team #{sb.team_id}'
+                last_submission = CtfChallengeSubmission.query.filter_by(
+                    team_id=sb.team_id,
+                    is_correct=True,
+                ).join(CtfChallenge).filter_by(game_id=game_id).order_by(
+                    CtfChallengeSubmission.submitted_at.desc()
+                ).first()
+                submission_count = CtfChallengeSubmission.query.filter_by(
+                    team_id=sb.team_id,
+                ).join(CtfChallenge).filter_by(game_id=game_id).count()
 
             rankings.append({
                 'user_id': sb.user_id,
-                'username': user.username if user else 'Unknown',
+                'username': username,
                 'total_points': sb.total_points,
                 'solved_challenges': sb.solved_challenges,
                 'last_submission_time': last_submission.submitted_at if last_submission else None,
@@ -416,27 +478,42 @@ class PermissionService:
     def check_game_permission(user_id: int, game_id: int, permission: int) -> bool:
         """检查用户对游戏的权限"""
         from backend.server.db_models import CtfParticipatingUser
-        
-        user_participation = CtfParticipatingUser.query.filter_by(
-            user_id=user_id,
-            game_id=game_id
-        ).first()
-        
-        if not user_participation:
-            return False
-            
-        # 简化版权限检查
-        user = User.query.get(user_id)
+
+        try:
+            uid = int(user_id)
+        except (TypeError, ValueError):
+            uid = user_id
+
+        user = User.query.get(uid)
         if user and user.is_admin:
             return True
-            
-        # 根据角色设置权限
+
+        from backend.server.db_models import CtfGame
+
+        game = CtfGame.query.get(game_id)
+        if game and (
+            game.game_type in ("training", "practice") or game.status == "archived"
+        ):
+            user_participation = CtfParticipatingUser.query.filter_by(
+                user_id=uid,
+                game_id=game_id
+            ).first()
+            return user_participation is not None
+
+        user_participation = CtfParticipatingUser.query.filter_by(
+            user_id=uid,
+            game_id=game_id
+        ).first()
+
+        if not user_participation:
+            return False
+
         role_permissions = {
             'admin': 0xFFFFFFFF,
             'manager': GamePermission.VIEW_CHALLENGE | GamePermission.SUBMIT_FLAG,
             'player': GamePermission.VIEW_CHALLENGE | GamePermission.SUBMIT_FLAG | GamePermission.GET_SCORE
         }
-        
+
         user_permissions = role_permissions.get('player', 0)
         return (user_permissions & permission) != 0
 
@@ -451,9 +528,15 @@ class PermissionService:
         challenge = CtfChallenge.query.get(challenge_id)
         if not challenge or not challenge.is_enabled:
             return False
-            
-        # 检查期限
-        if challenge.deadline and datetime.utcnow() > challenge.deadline:
+
+        from backend.server.db_models import CtfGame
+        game = CtfGame.query.get(game_id)
+        is_training = game and (
+            game.game_type in ("training", "practice") or game.status == "archived"
+        )
+
+        # 训练场无截止时间限制
+        if not is_training and challenge.deadline and datetime.utcnow() > challenge.deadline:
             return False
             
         return True
@@ -483,25 +566,44 @@ class FlagValidationService:
             (是否正确, 状态码)
             状态码：0=正确, 1=错误, 2=重复, 3=作弊
         """
-        from backend.server.db_models import CtfChallenge, CtfChallengeSubmission
+        from backend.server.db_models import CtfChallenge, CtfChallengeSubmission, CtfGameInstance, User
         
         challenge = CtfChallenge.query.get(challenge_id)
         if not challenge:
             return False, 1
-        
-        # 检查是否重复提交
-        existing = CtfChallengeSubmission.query.filter_by(
-            user_id=user_id,
+
+        user = User.query.get(user_id)
+
+        # 检查是否重复提交（团队模式下按队伍去重）
+        duplicate_query = CtfChallengeSubmission.query.filter_by(
             challenge_id=challenge_id,
-            is_correct=True
-        ).first()
+            is_correct=True,
+        )
+        if user and user.team_id:
+            existing = duplicate_query.filter_by(team_id=user.team_id).first()
+        else:
+            existing = duplicate_query.filter_by(user_id=user_id).first()
         
         if existing:
             return False, 2  # DUPLICATE
         
         # 验证答案
-        correct = FlagValidationService._check_flag(submitted_flag, challenge)
-        
+        instance_query = CtfGameInstance.query.filter_by(
+            challenge_id=challenge_id,
+            is_running=True
+        )
+        if user and user.team_id:
+            instance = instance_query.filter_by(team_id=user.team_id).first()
+        else:
+            instance = instance_query.filter_by(user_id=user_id).first()
+
+        from backend.services.flag_generator import resolve_challenge_expected_flag
+
+        expected = resolve_challenge_expected_flag(
+            challenge, user, user_id, running_instance=instance,
+        )
+        correct = bool(expected) and submitted_flag.strip() == expected.strip()
+
         if not correct:
             return False, 1  # WRONG_ANSWER
         
@@ -531,7 +633,7 @@ class FlagValidationService:
         # 如果有flag模板，尝试动态验证
         if challenge.flag_template:
             # 简单检查：如果submission包含challenge flag作为子串
-            return challenge.flag in submitted
+            return False
         
         return False
 

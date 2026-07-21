@@ -24,7 +24,7 @@
                 <span class="muted">解出人数: {{ stats?.unique_solvers || 0 }}</span>
               </div>
 
-              <div class="desc" v-html="challenge.description || challenge.content || '暂无题目描述'"></div>
+              <div class="desc" v-html="safeDescription"></div>
             </div>
           </n-card>
 
@@ -168,6 +168,7 @@
 import { ref, inject, onMounted, watch, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { NCard, NInput, NButton, NInputGroup, NTag, useMessage } from 'naive-ui'
+import { parseMarkdownSafe } from '../utils/markdown'
 
 export default {
   name: 'ChallengeDetailPage',
@@ -199,6 +200,11 @@ export default {
       if (instance.value.status === 'running') return 'running'
       if (instance.value.status === 'expired') return 'expired'
       return 'stopped'
+    })
+
+    const safeDescription = computed(() => {
+      const raw = challenge.value?.description || challenge.value?.content || '暂无题目描述'
+      return parseMarkdownSafe(raw)
     })
 
     const instanceStatusText = computed(() => {
@@ -284,7 +290,7 @@ export default {
 
     async function startContainer() {
       const id = challenge.value?.id
-      if (!id) return
+      if (!id || containerLoading.value) return
 
       containerLoading.value = true
       containerError.value = null
@@ -307,7 +313,7 @@ export default {
     }
 
     async function stopContainer() {
-      if (!instance.value?.instance_id) return
+      if (!instance.value?.instance_id || containerLoading.value) return
 
       containerLoading.value = true
       containerError.value = null
@@ -368,7 +374,7 @@ export default {
     }
 
     async function submitFlag() {
-      if (!challenge.value) return
+      if (!challenge.value || submitting.value) return
       if (!answer.value.trim()) {
         message.warning('请输入 flag')
         return
@@ -398,9 +404,9 @@ export default {
 
     function goBack() {
       if (challenge.value?.game_id) {
-        router.push({ name: 'CompetitionDetail', params: { id: challenge.value.game_id } })
+        router.push(`/games/${challenge.value.game_id}/challenges`)
       } else {
-        router.push({ name: 'CTFCompetitions' })
+        router.push({ name: 'GamesHub' })
       }
     }
 
@@ -420,6 +426,7 @@ export default {
       loading,
       submitting,
       challenge,
+      safeDescription,
       stats,
       answer,
       history,
@@ -448,12 +455,11 @@ export default {
 <style scoped>
 .challenge-page {
   min-height: 100%;
-  padding: 20px;
 }
 
 .challenge-shell {
-  max-width: 1320px;
-  margin: 0 auto;
+  width: 100%;
+  margin: 0;
 }
 
 .top-bar {
@@ -468,11 +474,6 @@ export default {
   font-size: 14px;
 }
 
-.layout {
-  display: grid;
-  grid-template-columns: 2fr 1fr;
-  gap: 16px;
-}
 
 .panel {
   margin-bottom: 16px;
@@ -557,7 +558,7 @@ export default {
   padding: 14px;
   color: #e0e0e0;
   font-size: 13px;
-  font-family: 'Fira Code', monospace;
+  font-family: var(--font-ui);
   line-height: 1.6;
 }
 

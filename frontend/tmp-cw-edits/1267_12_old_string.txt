@@ -1,0 +1,3 @@
+    const containerLoading = ref(false)
+    const platformCategories = ref([])
+    const isAdmin = ref(false)

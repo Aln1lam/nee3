@@ -39,7 +39,10 @@
                 <n-input type="password" v-model:value="loginPassword" show-password-on="click" />
               </n-form-item-row>
             </n-form>
-            <n-button type="default" block strong @click="login" :loading="loading">
+            <div v-if="captchaRequired" class="auth-captcha">
+              <Captcha v-model="loginCaptchaAnswer" v-model:captcha-id="loginCaptchaId" />
+            </div>
+            <n-button type="primary" block strong @click="login" :loading="loading">
               确认进入系统
             </n-button>
             <div class="auth-links">
@@ -62,6 +65,9 @@
                 <n-input type="password" v-model:value="password" placeholder="设置登录密码" />
               </n-form-item-row>
             </n-form>
+            <div v-if="captchaRequired" class="auth-captcha">
+              <Captcha v-model="regCaptchaAnswer" v-model:captcha-id="regCaptchaId" />
+            </div>
             <n-button type="success" ghost block @click="register" :loading="loading">
               提交注册申请
             </n-button>
@@ -81,24 +87,17 @@
 import { ref, inject, onMounted, onUnmounted, watch, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { NButton, NModal, NCard, NTabs, NTabPane, NForm, NFormItemRow, NInput, useMessage } from 'naive-ui'
+import Captcha from '@/components/shared/Captcha.vue'
+import { usePlatformStore } from '@/stores/platform'
+import { fetchSession, setUser } from '@/services/auth'
 
 export default {
-  components: { NButton, NModal, NCard, NTabs, NTabPane, NForm, NFormItemRow, NInput },
+  components: { NButton, NModal, NCard, NTabs, NTabPane, NForm, NFormItemRow, NInput, Captcha },
   setup(_, { emit }) {
     const axios = inject('axios')
     const message = useMessage()
-    // --- background image for auth route/modal ---
-    // Replace this URL with the website background image you want to use.
-    // Use a non-dark-specific banner; dark variant removed.
-    const authBackgroundUrl = ref('https://raw.githubusercontent.com/ProbiusOfficial/Hello-CTFtime/main/banner.svg')
-    const authBgStyle = computed(() => {
-      if (!authBackgroundUrl.value) return {}
-      return {
-        backgroundImage: `url(${authBackgroundUrl.value})`,
-        backgroundSize: 'cover',
-        backgroundPosition: 'center center'
-      }
-    })
+    // 同源 CSS 背景，避免外链 SVG 被 ORB 拦截导致控制台报错
+    const authBgStyle = computed(() => ({}))
 
     // Choose one of three Material Design inspired micro-interaction classes:
     // 'md-fade-scale' (default), 'md-slide-up', 'md-shared-axis'
@@ -118,44 +117,53 @@ export default {
     const regUsername = ref('')
     
     const registerSuccess = ref(false)
+    const { platform } = usePlatformStore()
+    const captchaRequired = computed(() => !!(platform.value?.captcha_required || platform.value?.features?.captcha_required))
+    const loginCaptchaId = ref('')
+    const loginCaptchaAnswer = ref('')
+    const regCaptchaId = ref('')
+    const regCaptchaAnswer = ref('')
 
     async function login() {
+      if (loading.value) return
       loading.value = true
       try {
-        const { data } = await axios.post('/api/auth/login', { account: loginAccount.value, password: loginPassword.value })
+        const { data } = await axios.post('/api/auth/login', {
+          account: loginAccount.value,
+          password: loginPassword.value,
+          captcha_id: loginCaptchaId.value,
+          captcha_answer: loginCaptchaAnswer.value,
+        })
+        // 现网：JWT 只在 HttpOnly Cookie；body 通常只有 user，没有 access_token
         if (data?.access_token) {
-          // debug: log server response
-          try { console.debug('Auth.login response', data) } catch (e) {}
           try {
             localStorage.setItem('neepu_token', data.access_token)
-            // 兼容旧版代码：同时写入 `token`
-            try { localStorage.setItem('token', data.access_token) } catch (e) {}
-            console.debug('Auth: token saved to localStorage')
-          } catch (e) { console.error('Auth: failed to save token to localStorage', e) }
-          try { axios.defaults.headers.common['Authorization'] = 'Bearer ' + data.access_token } catch (e) { console.error('Auth: failed to set axios header', e) }
-          if (data.user) try { localStorage.setItem('neepu_user', JSON.stringify(data.user)) } catch(e){}
-          
-          message.success('身份验证通过')
-          // 通知父组件并主动导航到赛事页面，确保模态关闭
-          try { window.dispatchEvent(new Event('neepu_user_refreshed')) } catch (e) {}
-          emit('logged')
-          // 确保 localStorage 写入完成后再通知应用并导航（加小延时避免竞态）
-          try {
-            // debug: 输出写入后的 token
-            try { console.debug('Auth: saved token value', localStorage.getItem('neepu_token')) } catch (e) {}
-            await new Promise(resolve => setTimeout(resolve, 60))
-            try { window.dispatchEvent(new Event('neepu_user_refreshed')) } catch (e) {}
-            try { router.push('/home') } catch (e) {}
-          } catch (e) {
-            try { router.push('/home') } catch (e) {}
-          }
+            localStorage.setItem('token', data.access_token)
+            axios.defaults.headers.common['Authorization'] = 'Bearer ' + data.access_token
+          } catch (e) { /* ignore */ }
         }
+        if (data?.user) {
+          try { localStorage.setItem('neepu_user', JSON.stringify(data.user)) } catch (e) { /* ignore */ }
+          setUser(data.user)
+        } else if (!data?.access_token) {
+          message.error('验证失败: 服务器未返回会话')
+          return
+        }
+        await fetchSession({ force: true })
+        message.success('身份验证通过')
+        try { window.dispatchEvent(new Event('neepu_user_refreshed')) } catch (e) { /* ignore */ }
+        emit('logged')
+        const redirect = typeof route.query.redirect === 'string' && route.query.redirect
+          ? route.query.redirect
+          : '/home'
+        await router.replace(redirect)
       } catch (e) {
         message.error('验证失败: ' + (e.response?.data?.msg || '请检查输入'))
       } finally { loading.value = false }
     }
 
     async function register() {
+      if (loading.value) return
       loading.value = true
       registerSuccess.value = false
       try {
@@ -163,7 +171,9 @@ export default {
           email: email.value, 
           password: password.value, 
           nickname: nickname.value,
-          username: regUsername.value || undefined
+          username: regUsername.value || undefined,
+          captcha_id: regCaptchaId.value,
+          captcha_answer: regCaptchaAnswer.value,
         })
         if (res.data?.need_verify) {
           registerSuccess.value = true
@@ -224,6 +234,7 @@ export default {
       showLogin, loading, login, register,
       loginAccount, loginPassword, email, password, nickname, regUsername,
       goGames, registerSuccess,
+      captchaRequired, loginCaptchaId, loginCaptchaAnswer, regCaptchaId, regCaptchaAnswer,
       authBgStyle, modalAnimationClass
     }
   }
@@ -233,10 +244,16 @@ export default {
 <style scoped>
 .landing-page {
   height: 100%;
+  min-height: 100vh;
   display: flex;
   justify-content: center;
   align-items: center;
-  font-family: 'Fira Code', 'Roboto', sans-serif;
+  font-family: var(--font-ui);
+  /* Follow theme tokens — do NOT hardcode cyber black */
+  background:
+    var(--gradient-page-glow, none),
+    var(--page-bg, var(--gradient-page-base, #F0FBF6));
+  background-attachment: fixed;
 }
 
 .center-content {
@@ -257,7 +274,7 @@ export default {
 
 .bracket {
   font-weight: 300;
-  color: #999; /* 括号颜色淡一点 */
+  color: var(--muted, #64748B);
 }
 
 /* 2. 红色小按钮区域 */
@@ -283,15 +300,7 @@ export default {
   .action-area { margin-top: 30px; }
 }
 
-/* --- Auth background and Material Design micro-interactions --- */
-.landing-page {
-  min-height: 100vh;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  background-repeat: no-repeat;
-  background-attachment: fixed;
-}
+/* --- Material Design micro-interactions --- */
 
 /* 1) Fade + Scale (Entrance) - subtle elevation and fade */
 @keyframes md-fade-scale-in {
@@ -325,11 +334,7 @@ export default {
 /* Backdrop transition (fade) - applied to Naive UI modal mask */
 @keyframes md-backdrop-fade {
   from { opacity: 0; }
-  to { opacity: 0.6; }
-}
-.n-modal__mask {
-  animation: md-backdrop-fade 240ms linear both;
-  background-color: rgba(0,0,0,0.6) !important;
+  to { opacity: 1; }
 }
 
 /* Auth links */
@@ -368,4 +373,47 @@ export default {
 @media (max-width: 520px) {
   .n-modal__card { width: calc(100vw - var(--auth-mobile-modal-offset, 32px)) !important; }
 }
-</style>  
+.auth-captcha { margin: 12px 0; }
+
+/* anime-ui: auth contrast */
+.n-card :deep(.n-button--default-type) {
+  background: var(--gradient-btn-fill, var(--primary)) !important;
+  color: var(--on-primary-text, #fff) !important;
+  border: none !important;
+}
+.n-card :deep(.n-button--default-type:hover) {
+  background: var(--gradient-btn-fill-hover, var(--primary-hover)) !important;
+}
+.n-card :deep(.n-input) {
+  --n-border: 1px solid var(--border) !important;
+  --n-border-hover: 1px solid rgba(var(--primary-rgb), 0.45) !important;
+  --n-border-focus: 1px solid rgba(var(--primary-rgb), 0.7) !important;
+}
+
+</style>
+
+<style>
+.auth-r2s .n-input {
+  --n-height: 48px !important;
+  --n-border-radius: 8px !important;
+  font-family: var(--font-ui) !important;
+}
+.auth-r2s .n-button {
+  --n-height: 48px !important;
+  --n-border-radius: 8px !important;
+  font-weight: 700 !important;
+}
+.auth-r2s .n-form-item-label {
+  font-family: var(--font-ui) !important;
+}
+.auth-icon-slot {
+  width: 48px;
+  height: 48px;
+}
+
+/* Modal mask is teleported to body — must be unscoped */
+.n-modal-mask,
+.n-modal__mask {
+  background-color: rgba(15, 23, 42, 0.14) !important;
+}
+</style>

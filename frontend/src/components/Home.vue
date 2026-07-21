@@ -1,45 +1,70 @@
 <template>
-  <div class="home-wrap">
-    <aside class="home-sidebar">
-      <n-card class="sidebar-card todo-card" size="small">
-        <template #header>
-          <div class="sidebar-heading">个人代办</div>
-        </template>
-        <ul class="todo-list">
-          <li v-for="(t,i) in todos" :key="t.id || i" :class="{done: t.done}">
-            <label @click.prevent="toggleTodo(i)">
-              <input type="checkbox" v-model="t.done" @click.stop /> 
-              <span>{{ t.text }}</span>
-            </label>
-            <button class="todo-delete" @click="removeTodo(i)" title="删除">×</button>
-          </li>
-        </ul>
-        <div class="todo-add">
-          <input v-model="newTodo" placeholder="添加代办..." @keyup.enter="addTodo" />
-          <button @click="addTodo">添加</button>
+  <div
+    class="home-page home-wrap layout-with-sidebar lab-deck"
+    :class="{ 'sidebar-collapsed': collapsed }"
+    style="--sidebar-width: 248px"
+  >
+    <aside class="home-sidebar sidebar-rail">
+      <div class="sidebar-head sidebar-rail-head">
+        <div class="sidebar-head-row">
+          <h2 class="sidebar-title sidebar-rail-title">个人工作台</h2>
         </div>
-      </n-card>
+        <p class="sidebar-desc sidebar-rail-sub">HOME · DESK</p>
+      </div>
 
-      <n-card class="sidebar-card profile-card" size="small">
-        <template #header>
-          <div class="sidebar-heading">个人信息</div>
-        </template>
+      <n-card class="sidebar-card profile-card matrix-panel" size="small" :bordered="false">
         <div class="profile">
           <div class="avatar-small"><img :src="getAvatarUrl(user?.avatar)" alt="avatar"/></div>
           <div class="profile-meta">
             <div class="profile-name">{{ user?.nickname || '访客' }}</div>
-            <div class="profile-signature">{{ user?.signature || '' }}</div>
+            <div class="profile-signature">{{ user?.signature || '暂无签名' }}</div>
           </div>
         </div>
         <div class="profile-actions">
-          <button @click="$router.push('/myprofile')">个人主页</button>
-          <button @click="$router.push('/games')">我的比赛</button>
+          <button type="button" class="profile-btn" @click="$router.push('/myprofile')">个人主页</button>
+          <button type="button" class="profile-btn" @click="$router.push('/games')">我的比赛</button>
         </div>
       </n-card>
+
+      <div class="sidebar-rail-nav">
+        <div class="sidebar-group">
+          <div class="group-label">快捷</div>
+          <router-link to="/training" class="sidebar-item">
+            <span class="item-code">TRN</span>
+            <span class="item-title">训练靶场</span>
+          </router-link>
+          <router-link to="/games" class="sidebar-item">
+            <span class="item-code">CTF</span>
+            <span class="item-title">赛事中心</span>
+          </router-link>
+          <router-link to="/wiki" class="sidebar-item">
+            <span class="item-code">DOC</span>
+            <span class="item-title">知识库</span>
+          </router-link>
+          <router-link to="/bulletin" class="sidebar-item">
+            <span class="item-code">BUL</span>
+            <span class="item-title">平台公告</span>
+          </router-link>
+        </div>
+      </div>
     </aside>
 
-    <section class="home-main">
-      <!-- Large carousel on top -->
+    <button
+      type="button"
+      class="sidebar-collapse-trigger"
+      :aria-label="collapsed ? '展开侧栏' : '收起侧栏'"
+      @click="toggleSidebar"
+    >
+      <span class="chevron" :class="{ 'is-collapsed': collapsed }">‹</span>
+    </button>
+
+    <main class="home-main sidebar-main">
+      <header class="matrix-page-head home-page-head">
+        <p class="matrix-page-prompt">HOM · 个人工作台</p>
+        <h2 class="matrix-page-title">欢迎回来</h2>
+        <p class="matrix-page-desc">轮播 · 赛事日历 · 平台公告</p>
+      </header>
+
       <section class="hero large-hero">
         <div class="carousel">
           <div class="slides" :style="{ transform: `translateX(${ -currentIndex * 100 }%)` }">
@@ -62,6 +87,7 @@
         <n-card class="calendar-card">
           <template #header>
             <div class="card-title">
+              <span class="link-code">CAL</span>
               <span>赛事日历</span>
             </div>
           </template>
@@ -72,7 +98,10 @@
 
         <n-card class="announce-card">
           <template #header>
-            <div class="card-title">公告</div>
+            <div class="card-title">
+              <span class="link-code">BUL</span>
+              <span>公告</span>
+            </div>
           </template>
           <div v-if="announcements.length === 0" class="empty-announcements">
             <p>暂无公告</p>
@@ -85,20 +114,24 @@
           </ul>
         </n-card>
       </div>
-    </section>
+    </main>
   </div>
 </template>
 
 <script>
 import { ref, onMounted, onUnmounted, inject, computed } from 'vue'
 import { useRouter } from 'vue-router'
+import { fetchSession, getUser } from '@/services/auth'
 import { NCard } from 'naive-ui'
 import CalendarFull from './CalendarFull.vue'
+import { useCollapsibleSidebar } from '../composables/useCollapsibleSidebar'
+import { resolveUploadUrl } from '../utils/uploadUrl'
 export default {
   name: 'Home',
   components: { NCard, CalendarFull },
   setup() {
   const router = useRouter()
+  const { collapsed, toggleSidebar } = useCollapsibleSidebar('neepu_home_sidebar_collapsed')
   const axios = inject('axios')
   const categories = ['快速开始','前言','环境设置','MISC | 杂项','Web | 网络攻防','Crypto | 密码学','Reverse | 逆向工程','Pwn | 二进制安全','AWD | 攻防模式','AI | 人工智能安全','blockchain | 区块链安全','附录']
 
@@ -110,8 +143,8 @@ export default {
 
   // 默认轮播图（后端无数据时使用）
   const defaultSlides = [
-    { src: '/assets/index.webp', alt: 'banner', caption: 'Welcome to NEEPU CTF' },
-    { src: '/assets/banner.light.svg', alt: 'banner2', caption: '社区与赛事' }
+    { src: '/assets/index.svg', alt: 'banner', caption: 'Welcome to NEEPU CTF' },
+    { src: '/assets/logo.svg', alt: 'banner2', caption: '社区与赛事' }
   ]
   const heroImages = ref([...defaultSlides])
   const currentIndex = ref(0)
@@ -191,7 +224,6 @@ export default {
     onMounted(() => {
       fetchCarousel() // 加载轮播图
       startCarousel()
-      loadTodos() // Load todos from backend
       fetchAnnouncements() // Load announcements from backend
       try {
         if (typeof navigator !== 'undefined' && !navigator.onLine) {
@@ -212,133 +244,21 @@ export default {
       window.removeEventListener('neepu_user_refreshed', refreshUserData)
     })
     
-    function refreshUserData() {
-      const s = localStorage.getItem('neepu_user')
-      if (s) {
-        try {
-          user.value = JSON.parse(s)
-          console.log('User data refreshed:', user.value)
-        } catch (e) {
-          console.warn('Failed to parse user data:', e)
-        }
+    async function refreshUserData() {
+      try {
+        const u = await fetchSession({ force: true })
+        user.value = u || getUser()
+      } catch (e) {
+        user.value = getUser()
       }
     }
 
-    // --- sidebar: todos and user ---
-    const todos = ref([])
-    const newTodo = ref('')
-    
-    // Load todos from backend
-    async function loadTodos() {
-      try {
-        const token = localStorage.getItem('neepu_token')
-        if (!token) return
-        
-        const res = await axios.get('/api/todos', {
-          headers: { Authorization: `Bearer ${token}` }
-        })
-        todos.value = res.data || []
-      } catch (e) {
-        console.error('加载待办失败:', e)
-      }
-    }
-    
-    async function addTodo() {
-      const t = (newTodo.value || '').trim()
-      if (!t) return
-      
-      try {
-        const token = localStorage.getItem('neepu_token')
-        if (!token) {
-          // Fallback to local mode if not logged in
-          todos.value.unshift({ text: t, done: false })
-          newTodo.value = ''
-          return
-        }
-        
-        const res = await axios.post('/api/todos', 
-          { text: t }, 
-          { headers: { Authorization: `Bearer ${token}` } }
-        )
-        todos.value.unshift(res.data)
-        newTodo.value = ''
-      } catch (e) {
-        console.error('添加待办失败:', e)
-        // Fallback to local
-        todos.value.unshift({ text: t, done: false })
-        newTodo.value = ''
-      }
-    }
-    
-    async function removeTodo(index) {
-      const todo = todos.value[index]
-      
-      // Remove from UI immediately for better UX
-      todos.value.splice(index, 1)
-      
-      if (todo.id) {
-        try {
-          const token = localStorage.getItem('neepu_token')
-          await axios.delete(`/api/todos/${todo.id}`, {
-            headers: { Authorization: `Bearer ${token}` }
-          })
-        } catch (e) {
-          console.error('删除待办失败:', e)
-          // Already removed from UI, no need to rollback
-        }
-      }
-    }
-    
-    async function toggleTodo(index) {
-      const todo = todos.value[index]
-      todo.done = !todo.done
-      
-      if (todo.id) {
-        try {
-          const token = localStorage.getItem('neepu_token')
-          await axios.patch(`/api/todos/${todo.id}`, 
-            { done: todo.done },
-            { headers: { Authorization: `Bearer ${token}` } }
-          )
-        } catch (e) {
-          console.error('更新待办失败:', e)
-        }
-      }
-    }
-
-    const user = ref(null)
-    try {
-      const s = localStorage.getItem('neepu_user')
-      if (s) user.value = JSON.parse(s)
-    } catch (e) { user.value = null }
+    const user = ref(getUser())
+    refreshUserData()
 
     function getAvatarUrl(avatarPath) {
       if (!avatarPath) return '/assets/avatar-placeholder.png'
-      if (avatarPath.startsWith('data:')) return avatarPath
-      if (/^https?:\/\//i.test(avatarPath)) return avatarPath + '?t=' + Date.now()
-
-      let normalized = avatarPath
-      if (normalized.startsWith('static/')) normalized = '/' + normalized
-      if (normalized.startsWith('/uploads/')) normalized = '/static' + normalized
-      if (normalized.startsWith('uploads/')) normalized = '/static/' + normalized
-
-      try {
-        const assetBase = (import.meta.env && import.meta.env.VITE_API_BASE)
-          ? import.meta.env.VITE_API_BASE.replace(/\/$/, '')
-          : (import.meta.env && import.meta.env.DEV ? 'http://127.0.0.1:5000' : '')
-        const apiBase = (axios && axios.defaults && axios.defaults.baseURL)
-          ? axios.defaults.baseURL.replace(/\/$/, '')
-          : assetBase
-
-        if (normalized.startsWith('/static/')) {
-          return (assetBase ? assetBase : '') + normalized + '?t=' + Date.now()
-        }
-        if (normalized.startsWith('/')) {
-          return (apiBase ? apiBase : '') + normalized + '?t=' + Date.now()
-        }
-      } catch (e) {}
-
-      return normalized + '?t=' + Date.now()
+      return resolveUploadUrl(avatarPath) || '/assets/avatar-placeholder.png'
     }
 
     async function fetchExternalEvents(){
@@ -513,63 +433,72 @@ export default {
     function nextMonth(){ if (currentMonth.value===11){ currentMonth.value=0; currentYear.value++ } else currentMonth.value++ ; monthDays.value = buildMonthDays() }
 
     return { heroImages, currentIndex, prev, next, go, recentGames, announcements, categories, goCategory,
-      todos, newTodo, addTodo, removeTodo, toggleTodo, user, months, currentMonth, currentYear, monthDays, prevMonth, nextMonth,
-      fcEvents, onEventClick, fetchAnnouncements, getAvatarUrl, selectedRegion, externalEventsCN, externalEventsGlobal, onSlideClick }
+      user, months, currentMonth, currentYear, monthDays, prevMonth, nextMonth,
+      fcEvents, onEventClick, fetchAnnouncements, getAvatarUrl, selectedRegion, externalEventsCN, externalEventsGlobal, onSlideClick,
+      collapsed, toggleSidebar }
   }
 }
 </script>
 
 <style scoped>
-.home-wrap { display:flex; gap:24px; padding:20px; align-items:flex-start }
-.home-sidebar { width:320px; display:flex; flex-direction:column; gap:16px }
-.sidebar-card { border-radius:10px; overflow:visible }
-.sidebar-heading { font-weight:700 }
-.todo-list { list-style:none; padding:8px 4px; margin:0; max-height:180px; overflow:auto }
-.todo-list li { padding:6px 8px; display:flex; align-items:center; justify-content:space-between; gap:8px; border-radius:6px; transition:background-color .2s ease }
-.todo-list li:hover { background:rgba(0,0,0,0.02) }
-.todo-list li label { flex:1; display:flex; align-items:center; gap:8px; cursor:pointer }
-.todo-list li.done span { text-decoration: line-through; opacity:0.6 }
-.todo-delete { width:24px; height:24px; border-radius:50%; background:transparent; border:none; color:#999; font-size:20px; line-height:1; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:all .2s ease; flex-shrink:0 }
-.todo-delete:hover { background:#ff6b6b; color:#fff; transform:scale(1.1) }
-.todo-add { display:flex; gap:8px; padding:8px }
-.todo-add input { flex:1; padding:6px 8px; border-radius:6px; border:1px solid var(--border) }
-.todo-add button { padding:6px 10px; border-radius:6px }
-.profile { display:flex; gap:12px; align-items:center; padding:12px 0 }
-.avatar-small { width:56px; height:56px; border-radius:8px; overflow:hidden; border:1px solid rgba(0,0,0,0.06) }
-.avatar-small img { width:100%; height:100%; object-fit:cover }
-.profile-meta { font-size:13px }
-.profile-name { font-weight:700 }
-.profile-signature { color:#888; font-size:12px; margin-top:2px }
-.profile-actions { display:flex; gap:8px; padding-top:8px }
-.profile-actions button { padding:6px 10px; border-radius:6px }
+.home-page .profile-card {
+  margin-bottom: var(--fib-8, 8px);
+}
+.home-page-head {
+  margin-bottom: var(--fib-21, 21px);
+}
+.sidebar-card { border-radius: var(--card-radius); overflow: visible; }
+.profile { display: flex; gap: var(--fib-13, 13px); align-items: center; padding: var(--fib-8, 8px) 0; }
+.avatar-small {
+  width: var(--fib-55, 55px);
+  height: var(--fib-55, 55px);
+  border-radius: var(--card-radius);
+  overflow: hidden;
+  border: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.avatar-small img { width: 100%; height: 100%; object-fit: cover; }
+.profile-meta { font-size: var(--text-sm); min-width: 0; }
+.profile-name { font-weight: 700; color: var(--text); }
+.profile-signature { color: var(--muted); font-size: var(--text-xs); margin-top: var(--fib-8, 8px); }
+.profile-actions { display: flex; flex-wrap: wrap; gap: var(--fib-8, 8px); padding-top: var(--fib-13, 13px); }
+.profile-btn {
+  padding: var(--fib-8, 8px) var(--fib-13, 13px);
+  border-radius: var(--card-radius);
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--primary);
+  cursor: pointer;
+  font-size: var(--text-sm);
+  transition: background 0.15s, border-color 0.15s;
+}
+.profile-btn:hover {
+  background: rgba(var(--primary-rgb), 0.12);
+  border-color: rgba(var(--primary-rgb), 0.35);
+}
 
-.home-main { flex:1; display:flex; flex-direction:column; gap:18px }
-.large-hero .carousel { height:360px; border-radius:12px; overflow:hidden; position:relative }
-.large-hero .slide img { width:100%; height:360px; object-fit:cover; display:block; filter:brightness(.95) }
+.large-hero .slide img { width:100%; object-fit:cover; display:block; filter:brightness(.95) }
 .large-hero .slide.clickable { cursor:pointer }
 .large-hero .slide.clickable:hover img { filter:brightness(1) }
 .slide-caption { position:absolute; left:28px; bottom:26px; background:var(--overlay, rgba(0,0,0,0.55)); color:var(--slide-caption-color, #fff); padding:10px 14px; border-radius:8px }
 .slide-description { position:absolute; left:28px; bottom:76px; background:var(--overlay, rgba(0,0,0,0.45)); color:var(--slide-caption-color, #fff); padding:6px 12px; border-radius:6px; font-size:13px; max-width:60% }
 
-.home-bottom-grid { display:grid; grid-template-columns: 1fr 360px; gap:18px }
-.calendar-card, .announce-card { border-radius:10px }
-.card-title { display:flex; align-items:center; justify-content:space-between; width:100% }
-.mini-calendar { padding:12px }
+.card-title { display:flex; align-items:center; gap:10px; width:100%; font-family:var(--font-ui); font-weight:700 }
 .month-header { display:flex; align-items:center; justify-content:space-between; padding-bottom:8px }
 .month-header button { background:transparent; border:0; font-size:18px }
 .weekdays { display:grid; grid-template-columns: repeat(7,1fr); color:var(--muted); font-size:12px; padding-bottom:8px }
-.days-grid { display:grid; grid-template-columns: repeat(7,1fr); gap:6px }
-.day { min-height:56px; border-radius:8px; background:var(--card-bg); display:flex; align-items:flex-start; justify-content:flex-end; padding:8px; border:1px solid rgba(0,0,0,0.03) }
+.days-grid { display:grid; grid-template-columns: repeat(7,1fr); }
+.day { background:var(--card-bg); display:flex; align-items:flex-start; justify-content:flex-end; border:1px solid rgba(0,0,0,0.03) }
 .day.today { outline:2px solid var(--primary); }
   .day.hasEvent { box-shadow: var(--event-shadow, 0 4px 18px rgba(0,196,140,0.06)); border-color: rgba(var(--primary-rgb, 0,196,140),0.12) }
 .day-num { font-size:12px; color:var(--muted) }
 
-.empty-announcements { text-align: center; padding: 20px 0; color: #999; }
+.empty-announcements { text-align: center; padding: var(--fib-21) 0; color: var(--muted); }
 .announcement-list { list-style: none; padding: 0; margin: 0; }
-.announcement-item { padding: 12px; border-bottom: 1px solid rgba(0,0,0,0.05); }
+.announcement-item { border-bottom: 1px solid rgba(0,0,0,0.05); }
 .announcement-item:last-child { border-bottom: none; }
-.announcement-title { font-weight: 600; font-size: 13px; color: #333; margin-bottom: 4px; }
-.announcement-content { font-size: 12px; color: #666; line-height: 1.5; }
+.announcement-title { font-weight: 600; font-size: var(--text-sm); color: var(--text); margin-bottom: 4px; }
+.announcement-content { font-size: var(--text-xs); color: var(--muted); line-height: 1.5; }
 .day-mark { color:var(--primary); font-size:12px; margin-left:6px }
 
 .events-list { margin-top:6px; display:flex; flex-direction:column; gap:4px }
@@ -581,9 +510,4 @@ export default {
 .carousel-dots button.active { background:var(--primary) }
 
 /* responsive */
-@media (max-width: 900px) {
-  .home-wrap { flex-direction:column }
-  .home-sidebar { width:100%; flex-direction:row; overflow:auto }
-  .home-bottom-grid { grid-template-columns: 1fr }
-}
 </style>

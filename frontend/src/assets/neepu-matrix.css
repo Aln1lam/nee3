@@ -1,0 +1,422 @@
+/**
+ * NEEPU Matrix 布局辅助层
+ */
+
+:root {
+  --color-primary: var(--primary);
+}
+
+.n-button,
+.n-tag,
+.n-card,
+.n-input,
+.n-select,
+.n-base-selection,
+.n-pagination {
+  --n-border-radius: var(--card-radius, 10px) !important;
+}
+
+.n-button,
+.n-tag,
+.n-card,
+.n-input,
+.n-select,
+.n-base-selection,
+.n-pagination,
+.n-dropdown,
+.n-dialog,
+.n-modal {
+  font-family: var(--font-ui) !important;
+}
+
+.game-list-item.active,
+.sidebar-item.active {
+  color: var(--primary) !important;
+  background: var(--hover) !important;
+}
+
+.empty-side,
+.cover-empty {
+  font-family: var(--font-ui);
+}
+
+.empty-side {
+  padding: 24px 12px;
+  line-height: 1.6;
+  text-align: center;
+  color: var(--muted);
+  font-size: var(--text-sm);
+}
+
+.empty-side a {
+  color: var(--primary);
+}
+
+.cover-empty {
+  display: block;
+  align-items: stretch;
+  justify-content: flex-start;
+  min-height: auto;
+  color: var(--muted);
+  font-size: var(--text-sm);
+}
+
+.cover-empty .empty-hint {
+  font-size: var(--text-xs);
+  max-width: 320px;
+  text-align: center;
+  line-height: 1.5;
+}
+
+.cover-empty .empty-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: center;
+  margin-top: 8px;
+}
+
+.cover-empty .empty-actions a {
+  padding: 8px 14px;
+  font-size: var(--text-xs);
+  font-family: inherit;
+  border: 1px solid var(--border);
+  border-radius: var(--card-radius);
+  background: transparent;
+  color: var(--primary);
+  text-decoration: none;
+}
+
+.cover-empty .empty-actions a:hover {
+  background: var(--hover);
+}
+
+.cover-empty .empty-prompt {
+  font-size: var(--text-xs);
+  color: var(--color-accent, #D97706);
+  margin: 0;
+}
+
+.cover-empty code {
+  font-size: var(--text-xs);
+  background: var(--code-bg);
+  padding: 2px 6px;
+  border-radius: var(--card-radius);
+}
+
+/* 分类色标 chip（签名元素） */
+.link-code,
+.item-code,
+.game-code,
+.panel-code,
+.nav-code {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 36px;
+  padding: 2px 6px;
+  font-size: var(--text-xs);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--gradient-tag-text, #9D174D);
+  background: var(--gradient-tag-fill, rgba(244, 114, 182, 0.16));
+  border: 1px solid var(--gradient-tag-border, rgba(244, 114, 182, 0.28));
+  border-radius: var(--radius-pill);
+  font-family: var(--font-ui);
+  box-sizing: border-box;
+}
+
+/* prompt 样式见 linux-ui.css */
+
+.page-eyebrow,
+.matrix-page-prompt,
+.account-prompt {
+  margin: 0 0 12px;
+  font-size: var(--text-sm, 14px);
+  font-weight: 600;
+  line-height: 1.4;
+  letter-spacing: 0.04em;
+  color: var(--primary);
+  font-family: var(--font-ui);
+}
+
+.matrix-page,
+.account-page {
+  max-width: none;
+  width: 100%;
+}
+
+.matrix-panel,
+.article-card,
+.bulletin-item,
+.quick-card,
+.wiki-toolbar {
+  background: var(--gradient-card-bg, var(--card-bg)) !important;
+  border: 1px solid var(--gradient-card-border, var(--border)) !important;
+  box-shadow: var(--gradient-card-shadow, none) !important;
+  transition: border-color 0.2s, box-shadow 0.2s, transform 0.2s;
+}
+
+.article-card:hover,
+.bulletin-item:hover,
+.quick-card:hover {
+  border-color: var(--gradient-card-border-hover, var(--primary)) !important;
+  box-shadow: var(--gradient-card-shadow-hover, var(--gradient-card-shadow)) !important;
+  transform: none;
+}
+
+/* 卡片顶缘高光 */
+.article-card,
+.bulletin-item,
+.quick-card,
+.challenge-card,
+.panel,
+.hero-panel,
+.matrix-panel {
+  position: relative;
+}
+
+.article-card::after,
+.bulletin-item::after,
+.quick-card::after,
+.challenge-card::after,
+.panel::after,
+.hero-panel::after,
+.matrix-panel::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 10%;
+  right: 10%;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    var(--surface-shine, rgba(255, 255, 255, 0.1)),
+    transparent
+  );
+  pointer-events: none;
+  z-index: 2;
+}
+
+.matrix-page-title,
+.account-title {
+  margin: 0;
+  font-size: clamp(1.25rem, 2.5vw, 1.75rem);
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+  color: var(--text);
+}
+
+.matrix-page-head,
+.account-page-head {
+  margin-bottom: var(--space-block, 32px);
+  padding-bottom: 0;
+  border: none;
+}
+
+.matrix-page-desc,
+.account-desc {
+  margin: 8px 0 0;
+  font-size: var(--text-sm);
+  color: var(--muted);
+}
+
+.matrix-panel {
+  padding: var(--space-2, 16px) var(--space-3, 24px);
+  border: 1px solid var(--gradient-card-border, var(--border));
+  border-radius: var(--card-radius, 10px);
+  background: var(--gradient-card-bg, var(--card-bg));
+  box-shadow: var(--gradient-card-shadow, none);
+}
+
+/* Matrix 全站侧栏布局壳 */
+.matrix-layout {
+  display: flex;
+  gap: 0;
+  width: 100%;
+  margin: 0;
+  min-height: calc(100vh - var(--nav-height, 72px) - 52px);
+}
+
+.matrix-layout--flat {
+  margin: 0;
+}
+
+.matrix-layout--no-sidebar {
+  margin: 0;
+}
+
+.matrix-layout--no-sidebar .matrix-layout__main {
+  max-width: none;
+  margin: 0;
+  width: 100%;
+}
+
+.matrix-layout__sidebar {
+  width: var(--sidebar-width, 256px);
+  min-width: var(--sidebar-width, 256px);
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  backdrop-filter: blur(8px);
+}
+
+.matrix-sidebar-title {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--primary);
+}
+
+.sidebar-desc {
+  margin: 6px 0 16px;
+  font-size: var(--text-xs);
+  letter-spacing: 0.1em;
+  color: var(--muted);
+  text-transform: uppercase;
+}
+
+.matrix-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+}
+
+.matrix-nav-link,
+.matrix-sidebar-footer .sidebar-link {
+  width: 100%;
+  border-radius: var(--card-radius);
+  background: transparent;
+  cursor: pointer;
+  box-sizing: border-box;
+}
+
+.matrix-nav-link:hover,
+.matrix-nav-link.active,
+.matrix-sidebar-footer .sidebar-link:hover {
+  background: rgba(var(--primary-rgb), 0.12);
+  border-color: rgba(var(--primary-rgb), 0.35);
+  color: var(--primary);
+}
+
+.matrix-nav-link:hover .link-code,
+.matrix-nav-link.active .link-code,
+.matrix-sidebar-footer .sidebar-link:hover .link-code {
+  color: var(--primary);
+}
+
+.matrix-nav-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.matrix-nav-meta {
+  font-size: var(--text-xs);
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+}
+
+.matrix-sidebar-footer {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.matrix-layout__main {
+  flex: 1;
+  min-width: 0;
+  padding: 24px 28px 32px;
+  overflow: auto;
+}
+
+/* 居中认证 / 表单页 */
+.matrix-auth-page {
+  min-height: calc(100vh - var(--nav-height, 72px) - 52px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+}
+
+.matrix-auth-card {
+  width: 100%;
+  max-width: 440px;
+  padding: var(--space-4, 32px) var(--space-3, 28px);
+  border: 1px solid var(--gradient-card-border, var(--border));
+  border-radius: var(--card-radius, 10px);
+  background: var(--gradient-card-bg, var(--card-bg));
+  backdrop-filter: blur(16px);
+  box-shadow: var(--gradient-card-shadow, none);
+}
+
+.matrix-auth-title {
+  margin: 12px 0 0;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--primary);
+}
+
+.matrix-auth-footer {
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+  text-align: center;
+  font-size: var(--text-sm);
+}
+
+.matrix-auth-footer a {
+  color: var(--primary);
+  text-decoration: none;
+}
+
+.matrix-auth-footer a:hover {
+  text-decoration: underline;
+}
+
+.matrix-section-head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.matrix-section-head h3 {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+@media (max-width: 900px) {
+  .matrix-layout {
+    flex-direction: column;
+    margin: 0;
+  }
+  .matrix-layout__sidebar {
+    width: 100%;
+    min-width: 0;
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+  }
+}
+
+/* 账号设置页 Matrix */
+.sidebar-layout__main .n-form-item-label,
+.sidebar-layout__main .n-form-item-label__text {
+  color: var(--muted) !important;
+  font-size: 11px !important;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.sidebar-layout__main .n-input,
+.sidebar-layout__main .n-input__textarea-el {
+  border-radius: var(--card-radius) !important;
+}

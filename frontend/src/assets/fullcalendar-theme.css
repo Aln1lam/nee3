@@ -1,117 +1,294 @@
-/* FullCalendar visual theme overrides for NEEPU CTF */
-:root{
-  /* Use theme variables where possible; fallbacks provided */
-  --fc-event-coming-bg: var(--event-coming-bg, linear-gradient(180deg, rgba(220,250,230,0.96), rgba(235,255,240,0.94)));
-  --fc-event-coming-border: rgba(0,160,85,0.9);
-  --fc-event-coming-text: var(--text, #022b15);
-  --fc-event-past-bg: var(--event-past-bg, #f3f4f6);
-  --fc-event-past-text: var(--muted, #7a7f86);
-  --fc-event-radius: 8px;
-  --fc-event-shadow: 0 6px 18px rgba(3,64,102,0.06);
+/* FullCalendar — NEEPU 二次元 / 轻游戏日历（对齐 ui-style-guide） */
+:root {
+  --fc-border-color: var(--border, rgba(15, 23, 42, 0.08));
+  --fc-page-bg-color: transparent;
+  --fc-neutral-bg-color: rgba(var(--primary-rgb, 45, 181, 138), 0.06);
+  --fc-neutral-text-color: var(--muted, #64748B);
+  --fc-list-event-hover-bg-color: var(--hover);
+  --fc-today-bg-color: rgba(var(--primary-rgb, 45, 181, 138), 0.12);
+  --fc-event-coming-bg: rgba(var(--primary-rgb, 45, 181, 138), 0.88);
+  --fc-event-coming-accent: rgb(var(--primary-rgb, 45, 181, 138));
+  --fc-event-coming-text: #ffffff;
+  --fc-event-cn-bg: rgba(236, 72, 153, 0.86);
+  --fc-event-cn-accent: #DB2777;
+  --fc-event-cn-text: #ffffff;
+  --fc-event-depth-bg: rgba(96, 165, 250, 0.82);
+  --fc-event-past-bg: rgba(100, 116, 139, 0.18);
+  --fc-event-past-text: var(--muted, #64748B);
+  --fc-event-line-height: 22px;
+  --fc-button-bg-color: transparent;
+  --fc-button-border-color: var(--border);
+  --fc-button-text-color: var(--text);
+  --fc-button-hover-bg-color: rgba(var(--primary-rgb, 45, 181, 138), 0.12);
+  --fc-button-hover-border-color: rgba(var(--primary-rgb, 45, 181, 138), 0.35);
+  --fc-button-active-bg-color: var(--primary);
+  --fc-button-active-border-color: var(--primary);
+  --fc-button-active-text-color: var(--on-primary-text, #fff);
 }
 
-/* make events look card-like */
-.fc .fc-daygrid-event {
-  border-radius: calc(var(--fc-event-radius)) !important;
-  box-shadow: 0 8px 22px rgba(3,64,102,0.06) !important;
-  padding: 4px 6px !important; /* 收紧内边距以显示更多事件 */
-  border: 1px solid var(--border, rgba(0,0,0,0.04)) !important;
-  font-weight: 700; /* 加粗 */
-  color: var(--fc-event-coming-text, var(--text)) !important;
-  transition: transform 140ms ease, box-shadow 140ms ease;
-  font-size: 13px !important;
-  line-height: 1.05 !important;
+html[data-theme="dark"] {
+  --fc-today-bg-color: rgba(94, 217, 168, 0.14);
+  --fc-event-coming-bg: rgba(94, 217, 168, 0.88);
+  --fc-event-cn-bg: rgba(244, 114, 182, 0.86);
 }
 
-/* coming events: soft blue */
-.fc .fc-daygrid-event.fc-coming {
-  background: var(--fc-event-coming-bg) !important;
-  border-left: 4px solid var(--fc-event-coming-border) !important;
-  color: var(--fc-event-coming-text) !important;
+.calendar-full,
+.mini-calendar {
+  font-family: var(--font-ui) !important;
 }
 
-/* past events: muted gray */
-.fc .fc-daygrid-event.fc-past {
-  background: var(--fc-event-past-bg) !important;
-  border-left: 4px solid var(--border, rgba(0,0,0,0.06)) !important;
-  color: var(--fc-event-past-text) !important;
-  opacity: 0.95;
+.fc {
+  font-family: var(--font-ui) !important;
+  --fc-border-color: var(--border, rgba(15, 23, 42, 0.08));
 }
 
-/* improve time label visibility */
-.fc .fc-event-time {
-  /* 默认深色底白字（适用于深色事件背景） */
-  background: rgba(0,0,0,0.6);
-  color: var(--slide-caption-color, #fff) !important;
-  border-radius: 6px;
-  padding: 0 6px;
-  margin-right: 6px;
-  font-weight: 800;
-  font-size: 11px;
+/* ── Toolbar：chip 气质，去掉默认石板蓝按钮 ── */
+.fc .fc-toolbar {
+  gap: var(--fib-8, 8px);
+  margin-bottom: var(--fib-13, 13px) !important;
+  flex-wrap: wrap;
 }
 
-/* 对于浅色事件背景（coming/past），使用浅底深字以增强可读性 */
-.fc .fc-daygrid-event.fc-coming .fc-event-time,
-.fc .fc-daygrid-event.fc-past .fc-event-time {
-  background: rgba(255,255,255,0.9) !important;
+.fc .fc-toolbar-title {
+  font-family: var(--font-ui) !important;
+  font-weight: 700 !important;
+  font-size: var(--text-lg, 1.125rem) !important;
   color: var(--text) !important;
-  box-shadow: inset 0 -1px 0 rgba(0,0,0,0.04);
+  letter-spacing: 0.02em;
 }
 
-/* 尝试让月视图中的每个日期格子接近正方形 */
-.fc .fc-daygrid-day {
-  padding: 0 !important;
+.fc .fc-button-primary,
+.fc .fc-button {
+  font-family: var(--font-ui) !important;
+  font-weight: 600 !important;
+  font-size: var(--text-xs, 12px) !important;
+  letter-spacing: 0.04em;
+  background: rgba(var(--primary-rgb, 45, 181, 138), 0.08) !important;
+  border: 1px solid rgba(var(--primary-rgb, 45, 181, 138), 0.22) !important;
+  color: var(--text) !important;
+  border-radius: var(--radius-pill, 10px) !important;
+  box-shadow: none !important;
+  text-transform: none !important;
+  padding: 4px 12px !important;
+  height: auto !important;
+  transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease, transform 0.2s ease;
 }
+
+.fc .fc-button:hover,
+.fc .fc-button:focus {
+  background: rgba(var(--primary-rgb, 45, 181, 138), 0.16) !important;
+  border-color: rgba(var(--primary-rgb, 45, 181, 138), 0.4) !important;
+  color: var(--primary) !important;
+  transform: translateY(-1px);
+}
+
+.fc .fc-button:disabled {
+  opacity: 0.45 !important;
+  transform: none !important;
+}
+
+.fc .fc-button-primary:not(:disabled).fc-button-active,
+.fc .fc-button-primary:not(:disabled):active,
+.fc-cnButton-button.fc-button-active,
+.fc-globalButton-button.fc-button-active {
+  background: var(--primary) !important;
+  border-color: var(--primary) !important;
+  color: var(--on-primary-text, #fff) !important;
+}
+
+.fc .fc-button-group {
+  gap: 6px;
+}
+
+.fc .fc-button-group > .fc-button {
+  margin: 0 !important;
+  border-radius: var(--radius-pill, 10px) !important;
+}
+
+.fc .fc-prev-button,
+.fc .fc-next-button {
+  min-width: 34px;
+  padding: 4px 8px !important;
+}
+
+/* ── 表头 / 格子 ── */
+.fc .fc-scrollgrid,
+.fc .fc-scrollgrid-section > td,
+.fc .fc-theme-standard td,
+.fc .fc-theme-standard th {
+  border-color: var(--border, rgba(15, 23, 42, 0.08)) !important;
+}
+
+.fc .fc-scrollgrid {
+  border-radius: var(--card-radius, 10px);
+  overflow: hidden;
+  border: 1px solid var(--gradient-card-border, var(--border)) !important;
+}
+
+.fc .fc-col-header-cell {
+  background: rgba(var(--primary-rgb, 45, 181, 138), 0.08) !important;
+  padding: 8px 0 !important;
+}
+
+.fc .fc-col-header-cell-cushion {
+  font-family: var(--font-ui) !important;
+  font-weight: 700 !important;
+  font-size: var(--text-xs, 12px) !important;
+  color: var(--primary) !important;
+  letter-spacing: 0.08em;
+  text-decoration: none !important;
+}
+
 .fc .fc-daygrid-day-frame {
-  /* 近似正方形：使用更紧凑的基线高度以显示更多事件 */
   display: flex;
   flex-direction: column;
   justify-content: flex-start;
-  padding: 8px !important;
+  padding: 6px 4px !important;
   box-sizing: border-box;
-  min-height: 78px; /* 更短的基础高度 */
+  min-height: 84px;
+  background: var(--card-bg, #fff);
 }
 
 @media (min-width: 1100px) {
   .fc .fc-daygrid-day-frame { min-height: 96px; }
 }
-@media (min-width: 1500px) {
-  .fc .fc-daygrid-day-frame { min-height: 112px; }
+
+.fc .fc-daygrid-day:hover .fc-daygrid-day-frame {
+  background: rgba(var(--primary-rgb, 45, 181, 138), 0.05);
 }
 
-/* 确保事件区域在格子内显示良好 */
-.fc .fc-daygrid-day-frame .fc-daygrid-day-events {
-  margin-top: 6px;
-  overflow: hidden;
+.fc .fc-daygrid-day.fc-day-today .fc-daygrid-day-frame {
+  background: var(--fc-today-bg-color) !important;
+  box-shadow: inset 0 0 0 1px rgba(var(--primary-rgb, 45, 181, 138), 0.28);
 }
 
-
-/* month header center title */
-.fc .fc-toolbar-title { font-weight:700; font-size:18px; }
-
-/* subtle cell hover */
-.fc .fc-daygrid-day:hover { background: rgba(0,196,140,0.02); }
-
-/* hover 微动与提升感（事件卡片） */
-.fc .fc-daygrid-event:hover {
-  transform: translateY(-4px) scale(1.01);
-  box-shadow: 0 18px 40px rgba(3,64,102,0.12) !important;
-}
-
-/* 强制覆盖 FullCalendar 可能应用的内部样式：确保事件内所有文本为深绿并继承颜色 */
-.fc .fc-daygrid-event, .fc .fc-daygrid-event * {
+.fc .fc-daygrid-day-number {
+  font-family: var(--font-ui) !important;
+  font-weight: 600 !important;
+  font-size: var(--text-sm, 14px) !important;
   color: var(--text) !important;
+  padding: 2px 6px !important;
+  text-decoration: none !important;
+  border-radius: var(--radius-pill, 10px);
 }
 
-/* 链接内部默认样式去除，继承父颜色 */
-.fc .fc-daygrid-event a, .fc .fc-daygrid-event a * {
+.fc .fc-daygrid-day.fc-day-today .fc-daygrid-day-number {
+  background: var(--primary) !important;
+  color: var(--on-primary-text, #fff) !important;
+}
+
+.fc .fc-day-other .fc-daygrid-day-number {
+  color: var(--muted) !important;
+  opacity: 0.55;
+}
+
+/* ── 事件条：圆角 chip 横条，非硬角 SaaS 条 ── */
+.fc .fc-daygrid-day-events {
+  margin-top: 4px;
+  min-height: var(--fc-event-line-height);
+}
+
+.fc .fc-daygrid-event-harness {
+  margin-top: 3px !important;
+}
+
+.fc .fc-daygrid-event {
+  border: none !important;
+  border-radius: var(--radius-pill, 10px) !important;
+  box-shadow: none !important;
+  margin: 0 2px !important;
+  padding: 0 !important;
+  min-height: var(--fc-event-line-height) !important;
+  font-family: var(--font-ui) !important;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  line-height: var(--fc-event-line-height) !important;
+  transition: filter 0.2s ease, transform 0.2s ease;
+}
+
+.fc .fc-daygrid-event .fc-event-main {
+  padding: 0 8px !important;
+  line-height: var(--fc-event-line-height) !important;
+  color: inherit !important;
+}
+
+.fc .fc-daygrid-event.fc-event-start {
+  border-top-left-radius: var(--radius-pill, 10px) !important;
+  border-bottom-left-radius: var(--radius-pill, 10px) !important;
+}
+
+.fc .fc-daygrid-event.fc-event-end {
+  border-top-right-radius: var(--radius-pill, 10px) !important;
+  border-bottom-right-radius: var(--radius-pill, 10px) !important;
+}
+
+.fc .fc-daygrid-event:not(.fc-event-start) .fc-event-title {
+  visibility: hidden;
+  font-size: 0 !important;
+}
+
+/* 默认/未分类/coming → 薄荷绿（修复落到 FC 默认蓝） */
+.fc .fc-daygrid-event:not(.fc-past):not(.fc-cn),
+.fc .fc-daygrid-event.fc-coming:not(.fc-past),
+.fc .fc-daygrid-event.fc-neepu:not(.fc-past),
+.fc .fc-daygrid-event.fc-ext:not(.fc-past) {
+  background: var(--fc-event-coming-bg) !important;
+  color: var(--fc-event-coming-text) !important;
+}
+
+.fc .fc-daygrid-event.fc-coming:not(.fc-past).fc-event-start,
+.fc .fc-daygrid-event.fc-neepu:not(.fc-past).fc-event-start,
+.fc .fc-daygrid-event.fc-ext:not(.fc-past).fc-event-start {
+  box-shadow: inset 3px 0 0 var(--fc-event-coming-accent) !important;
+}
+
+.fc .fc-daygrid-event.fc-cn:not(.fc-past) {
+  background: var(--fc-event-cn-bg) !important;
+  color: var(--fc-event-cn-text) !important;
+}
+
+.fc .fc-daygrid-event.fc-cn:not(.fc-past).fc-event-start {
+  box-shadow: inset 3px 0 0 var(--fc-event-cn-accent) !important;
+}
+
+.fc .fc-daygrid-event.fc-past {
+  background: var(--fc-event-past-bg) !important;
+  color: var(--fc-event-past-text) !important;
+  opacity: 0.92;
+}
+
+.fc .fc-daygrid-event:not(.fc-past):hover {
+  filter: brightness(1.05);
+  transform: translateY(-1px);
+}
+
+.fc .fc-event-time { display: none !important; }
+
+.fc .fc-daygrid-event a {
   color: inherit !important;
   text-decoration: none !important;
 }
 
-/* 标题与时间使用更强的权重和继承颜色 */
-.fc .fc-daygrid-event .fc-event-title, .fc .fc-daygrid-event .fc-event-title * {
-  color: inherit !important;
-  font-weight: 700 !important;
+.fc .fc-daygrid-event .fc-event-title {
+  font-weight: 600 !important;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
+.fc .fc-daygrid-more-link {
+  font-family: var(--font-ui) !important;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  color: var(--primary) !important;
+  background: rgba(var(--primary-rgb, 45, 181, 138), 0.1);
+  border-radius: var(--radius-pill, 10px);
+  padding: 1px 6px !important;
+  margin: 2px !important;
+}
+
+/* 卡片标题区：与 Naive header 薄荷绿条协调 */
+.calendar-card .n-card-header,
+.home-page .calendar-card .n-card__header {
+  background: rgba(var(--primary-rgb, 45, 181, 138), 0.08) !important;
+}

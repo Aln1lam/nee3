@@ -27,7 +27,7 @@
 
         <template v-else-if="article?.content">
           <div class="article-content article-content--full">
-            <div v-html="renderedContent"></div>
+            <Article :content="article.content" :show-toc="true" />
           </div>
         </template>
 
@@ -57,7 +57,7 @@
             </template>
             <template v-else>
               <div class="article-content article-content--full">
-                <div v-html="renderedContent"></div>
+                <Article :content="fileContent" :show-toc="true" />
               </div>
             </template>
           </div>
@@ -76,14 +76,14 @@
 </template>
 
 <script>
-import { ref, onMounted, inject, computed } from 'vue'
+import { ref, onMounted, inject } from 'vue'
 import { useRoute } from 'vue-router'
 import { NButton, NSpin } from 'naive-ui'
-import { marked } from 'marked'
+import { Article } from '@/components/shared'
 
 export default {
   props: ['id'],
-  components: { NButton, NSpin },
+  components: { NButton, NSpin, Article },
   setup(props) {
     const axios = inject('axios')
     const route = useRoute()
@@ -136,7 +136,7 @@ export default {
       loadingContent.value = true
       try {
         const response = await axios.get(fileUrl.value)
-        fileContent.value = response.data
+        fileContent.value = typeof response.data === 'string' ? response.data : (response.data?.content || '')
       } catch (err) {
         console.error('文件加载失败:', err)
         fileContent.value = ''
@@ -144,22 +144,6 @@ export default {
         loadingContent.value = false
       }
     }
-
-    // 计算渲染的内容
-    const renderedContent = computed(() => {
-      // 优先使用在线编辑的content
-      let markdown = article.value?.content || fileContent.value || ''
-      
-      if (!markdown) return ''
-
-      // 使用marked渲染markdown
-      let html = marked.parse(markdown)
-
-      // 处理图片路径：将相对路径转换为 /uploads/ 路径
-      html = html.replace(/<img\s+src="(?!https?:\/\/|\/uploads\/)([^"]+)"/g, '<img src="/uploads/$1"')
-
-      return html
-    })
 
     // 格式化日期
     function formatDate(isoString) {
@@ -172,8 +156,8 @@ export default {
       loading,
       loadingContent,
       fileUrl,
+      fileContent,
       fileIsPdf,
-      renderedContent,
       formatDate
     }
   }
@@ -182,17 +166,16 @@ export default {
 
 <style scoped>
 .page-wrap {
-  padding: 24px 40px;
   width: 100%;
-  margin: 0 auto;
+  margin: 0;
   box-sizing: border-box;
 }
 .back-btn {
   margin-bottom: 16px;
 }
 .article-header {
-  text-align: center;
-  margin-bottom: 8px;
+  text-align: left;
+  margin-bottom: 16px;
 }
 .article-title {
   margin: 8px 0 6px 0;
@@ -200,7 +183,7 @@ export default {
   font-weight: 800;
 }
 .article-meta {
-  color: #666;
+  color: var(--muted);
   font-size: 13px;
   display: inline-flex;
   gap: 16px;
@@ -209,9 +192,9 @@ export default {
   display: block;
 }
 .article-content--full {
-  width: 82%;
-  max-width: 1000px;
-  margin: 0 auto;
+  width: 100%;
+  max-width: none;
+  margin: 0;
 }
 .article-file-wrap {
   width: 100%;
@@ -240,21 +223,21 @@ export default {
 
 .pdf-toolbar {
   display: flex;
-  gap: 12px;
-  padding: 16px 24px;
-  background: #f5f5f5;
-  border-bottom: 1px solid rgba(0,0,0,0.1);
+  gap: var(--fib-13);
+  padding: var(--fib-13) var(--fib-21);
+  background: var(--hover);
+  border-bottom: 1px solid var(--border);
 }
 
 .pdf-action-btn {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 8px 16px;
-  background: #fff;
-  color: #333;
-  border: 1px solid #ddd;
-  border-radius: 4px;
+  padding: var(--fib-8) var(--fib-13);
+  background: var(--card-bg);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: var(--card-radius);
   text-decoration: none;
   font-size: 14px;
   font-weight: 500;
@@ -297,39 +280,46 @@ export default {
 }
 
 .article-content {
-  font-size: 16px;
+  font-size: var(--text-base);
   line-height: 1.8;
-  color: #333;
+  color: var(--text);
 }
 
 /* Article panel: white background for viewing/editing files */
 .article-panel {
-  background: #ffffff;
-  padding: 20px;
-  border-radius: 8px;
-  box-shadow: 0 8px 20px rgba(14,30,37,0.06);
-  max-width: 1000px;
-  margin: 0 auto;
+  background: var(--card-bg, var(--r2s-card));
+  padding: var(--card-padding-y-golden) var(--card-padding-x-golden);
+  border-radius: var(--card-radius);
+  border: 1px solid var(--border, var(--gradient-card-border));
+  box-shadow: var(--gradient-card-shadow);
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  box-sizing: border-box;
+  color: var(--text);
 }
 
 :deep(.article-content h1) {
   font-size: 2em;
   margin: 0.83em 0;
   font-weight: bold;
+  color: var(--text);
 }
 
 :deep(.article-content h2) {
   font-size: 1.5em;
   margin: 0.75em 0;
   font-weight: bold;
-  border-bottom: 1px solid #eee;
+  border-bottom: 1px solid var(--border);
   padding-bottom: 0.3em;
+  color: var(--text);
 }
 
 :deep(.article-content h3) {
   font-size: 1.25em;
   margin: 0.67em 0;
   font-weight: bold;
+  color: var(--text);
 }
 
 :deep(.article-content p) {
@@ -337,32 +327,40 @@ export default {
 }
 
 :deep(.article-content code) {
-  background-color: #f5f5f5;
+  background-color: var(--code-bg);
+  color: var(--text);
   padding: 2px 6px;
-  border-radius: 3px;
-  font-family: 'Courier New', monospace;
+  border-radius: 6px;
+  font-family: var(--font-mono, ui-monospace, monospace);
   font-size: 0.9em;
+  border: 1px solid var(--border);
 }
 
 :deep(.article-content pre) {
-  background-color: #f5f5f5;
+  background-color: var(--code-bg);
+  color: var(--text);
   padding: 16px;
-  border-radius: 4px;
+  border-radius: var(--card-radius, 12px);
   overflow-x: auto;
   margin: 1em 0;
+  border: 1px solid var(--border);
 }
 
 :deep(.article-content pre code) {
   background-color: transparent;
+  color: inherit;
   padding: 0;
   border-radius: 0;
+  border: none;
 }
 
 :deep(.article-content blockquote) {
-  border-left: 4px solid #ddd;
+  border-left: 4px solid var(--primary);
   margin: 1em 0;
-  padding-left: 1em;
-  color: #666;
+  padding: 0.75em 1em;
+  color: var(--muted);
+  background: rgba(var(--primary-rgb), 0.08);
+  border-radius: 0 var(--card-radius, 12px) var(--card-radius, 12px) 0;
 }
 
 :deep(.article-content ul),
@@ -383,14 +381,21 @@ export default {
 
 :deep(.article-content th),
 :deep(.article-content td) {
-  border: 1px solid #ddd;
+  border: 1px solid var(--border);
   padding: 8px 12px;
   text-align: left;
+  color: var(--text);
+  background: transparent;
 }
 
 :deep(.article-content th) {
-  background-color: #f5f5f5;
+  background-color: rgba(var(--primary-rgb), 0.12);
+  color: var(--text);
   font-weight: bold;
+}
+
+:deep(.article-content tr:nth-child(even) td) {
+  background-color: rgba(var(--primary-rgb), 0.04);
 }
 
 :deep(.article-content img) {
@@ -401,7 +406,7 @@ export default {
 }
 
 :deep(.article-content a) {
-  color: #1976d2;
+  color: var(--primary);
   text-decoration: none;
 }
 
@@ -411,7 +416,7 @@ export default {
 
 @media (max-width: 900px) {
   .article-content--full, .pdf-container {
-    width: 92% !important;
+    width: 100% !important;
     min-width: 0;
   }
   .article-title { font-size: 1.8rem; }

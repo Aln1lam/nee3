@@ -76,6 +76,7 @@ export default {
     }
     
     async function submit() {
+      if (submitting.value) return
       if (!props.joined) {
           message.warning('⚠️ ACCESS DENIED: 请先加入比赛')
           return
@@ -87,16 +88,19 @@ export default {
       
       submitting.value = true
       try {
-        const { data } = await axios.post(`/api/games/challenges/${props.challenge.id}/submit`, { flag: flag.value })
-        
-        if (data.correct) {
+        const { data } = await axios.post(`/api/challenges/${props.challenge.id}/submit`, {
+          flag: flag.value,
+          answer: flag.value,
+        })
+        const payload = data?.data || data
+        if (payload?.is_correct || payload?.correct || data?.correct) {
             message.success('✅ CONNECTION ESTABLISHED: Flag 正确！')
             flag.value = ''
         } else {
-            message.error('❌ ACCESS DENIED: Flag 错误')
+            message.error('Flag 不正确')
         }
       } catch (e) { 
-        message.error('⚡ SYSTEM ERROR: ' + (e.response?.data?.msg || e.message)) 
+        message.error('提交失败: ' + (e.response?.data?.msg || e.message)) 
       } finally {
         submitting.value = false
       }
@@ -109,7 +113,7 @@ export default {
 
 <style scoped>
 .chal-inner {
-  font-family: 'Fira Code', monospace;
+  font-family: var(--font-ui);
 }
 
 .desc-box { 

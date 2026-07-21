@@ -70,8 +70,10 @@
 
 <script>
 import { ref, onMounted, onUnmounted, inject } from 'vue'
+import { fetchSession, getUser } from '@/services/auth'
 import { useRouter } from 'vue-router'
 import { NCard, NButton } from 'naive-ui'
+import { resolveUploadUrl } from '../utils/uploadUrl'
 
 export default {
   name: 'MyProfile',
@@ -96,10 +98,9 @@ export default {
       window.removeEventListener('neepu_user_refreshed', loadUserData)
     })
 
-    function loadUserData() {
+    async function loadUserData() {
       try {
-        const s = localStorage.getItem('neepu_user')
-        if (s) user.value = JSON.parse(s)
+        user.value = (await fetchSession({ force: true })) || getUser()
       } catch (e) {
         user.value = null
       }
@@ -112,39 +113,8 @@ export default {
     }
 
     function getAvatarUrl(avatarPath) {
-      // 如果没有头像，返回占位符
-      if (!avatarPath) {
-        return '/assets/avatar-placeholder.png'
-      }
-      // 如果是本地文件预览（data URL），直接返回
-      if (avatarPath.startsWith('data:')) {
-        return avatarPath
-      }
-      // 如果是一个完整的 URL（包含协议），直接使用
-      if (/^https?:\/\//i.test(avatarPath)) {
-        return avatarPath + '?t=' + Date.now()
-      }
-      let normalized = avatarPath
-      if (normalized.startsWith('static/')) normalized = '/' + normalized
-      if (normalized.startsWith('/uploads/')) normalized = '/static' + normalized
-      if (normalized.startsWith('uploads/')) normalized = '/static/' + normalized
-      // 以斜杠开头的路径（如 /static/uploads/... 或 /uploads/...）
-      // 在本地开发时，需要加上后端地址前缀（axios.defaults.baseURL）
-      try {
-        if (normalized.startsWith('/')) {
-          const assetBase = (import.meta.env && import.meta.env.VITE_API_BASE)
-            ? import.meta.env.VITE_API_BASE.replace(/\/$/, '')
-            : (import.meta.env && import.meta.env.DEV ? 'http://127.0.0.1:5000' : '')
-          if (normalized.startsWith('/static/')) {
-            return (assetBase ? assetBase : '') + normalized + '?t=' + Date.now()
-          }
-          const base = (axios && axios.defaults && axios.defaults.baseURL) ? axios.defaults.baseURL.replace(/\/$/, '') : ''
-          return (base ? base : assetBase ? assetBase : '') + normalized + '?t=' + Date.now()
-        }
-      } catch (e) {}
-
-      // 兜底：直接返回并加时间戳以规避缓存
-      return normalized + '?t=' + Date.now()
+      if (!avatarPath) return '/assets/avatar-placeholder.png'
+      return resolveUploadUrl(avatarPath) || '/assets/avatar-placeholder.png'
     }
 
     function goToProfileEdit() {
@@ -172,12 +142,6 @@ export default {
 </script>
 
 <style scoped>
-.myprofile-wrap {
-  padding: 20px;
-  max-width: 1200px;
-  margin: 0 auto;
-}
-
 .profile-header-card {
   border-radius: 12px;
   margin-bottom: 24px;
@@ -185,9 +149,8 @@ export default {
 
 .profile-header {
   display: flex;
-  gap: 32px;
   align-items: flex-start;
-  padding: 24px 0;
+  padding: var(--fib-34) 0;
 }
 
 .profile-avatar {
@@ -232,8 +195,7 @@ export default {
 
 .profile-stats {
   display: flex;
-  gap: 32px;
-  margin-bottom: 16px;
+  margin-bottom: var(--fib-21);
 }
 
 .stat-item {
@@ -264,12 +226,6 @@ export default {
 
 .profile-actions :deep(.n-button) {
   min-width: 120px;
-}
-
-.profile-content-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 20px;
 }
 
 .profile-section {
@@ -345,15 +301,11 @@ export default {
 }
 
 @media (max-width: 768px) {
-  .myprofile-wrap {
-    padding: 12px;
-  }
-
   .profile-header {
     flex-direction: column;
     align-items: center;
     text-align: center;
-    gap: 20px;
+    gap: var(--fib-21);
   }
 
   .profile-avatar {
@@ -369,8 +321,5 @@ export default {
     justify-content: center;
   }
 
-  .profile-content-grid {
-    grid-template-columns: 1fr;
-  }
 }
 </style>

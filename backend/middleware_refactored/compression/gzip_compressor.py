@@ -17,7 +17,7 @@ Gzip 响应压缩模块
 import gzip
 import logging
 from typing import Optional
-from flask import Response
+from flask import Response, request
 
 logger = logging.getLogger(__name__)
 
@@ -95,6 +95,11 @@ class GzipCompressor:
         Returns:
             是否应该压缩
         """
+        # 客户端未声明支持 gzip 时不压缩（避免测试客户端/部分代理无法解码）
+        accept_encoding = request.headers.get('Accept-Encoding', '').lower()
+        if 'gzip' not in accept_encoding:
+            return False
+
         # 1. 检查内容类型
         content_type = response.headers.get('Content-Type', '').lower()
         

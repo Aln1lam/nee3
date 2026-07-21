@@ -3,500 +3,527 @@
     <n-global-style />
     <n-message-provider>
       <n-dialog-provider>
-      
-      <div class="geometric-bg">
-        <div class="hex-grid"></div>
-      </div>
+        <CircuitBackground />
+        <div class="gradient-page-bg" aria-hidden="true" />
+        <div
+          class="bg-overlay"
+          :class="{ 'landing-overlay': isLandingRoute, 'app-overlay': !isLandingRoute }"
+        />
 
-        <!-- Top navigation with logo and menu (full-width header placed outside centered container) -->
+        <TitleBar
+          :user="user"
+          @logout="logout"
+        />
 
-      <header class="top-nav" v-if="!isAdminRoute">
-        <div class="nav-inner">
-          <div class="brand" @click="$router.push('/home')">
-            <img src="/assets/logo.svg" alt="logo" class="brand-logo" v-if="logoExists" />
-            <span class="brand-text">NEEPU CTF</span>
-          </div>
+        <div
+          class="app-shell"
+          :class="{
+            'admin-mode': isAdminRoute,
+            'landing-mode': isLandingRoute,
+            'immersive-mode': isImmersiveRoute,
+            'full-height-mode': isFullHeightRoute,
+          }"
+        >
+          <main class="main-content">
+            <router-view v-slot="{ Component }">
+              <transition name="fade" mode="out-in">
+                <component :is="Component" @logged="onLogged" />
+              </transition>
+            </router-view>
+          </main>
 
-          <nav class="nav-menu">
-            <a v-if="user && user.is_admin" @click.prevent="$router.push('/admin')">仪表盘</a>
-            <a @click.prevent="$router.push('/home')">Home</a>
-            <a @click.prevent="$router.push('/knowledge')">知识</a>
-            <a @click.prevent="$router.push('/ctf')">赛事</a>
-            <a @click.prevent="$router.push('/teams')">队伍</a>
-            <a @click.prevent="$router.push('/archive')">公告</a>
-          </nav>
-
-          <div class="nav-actions">
-            <template v-if="user">
-              <n-dropdown :options="userMenuOptions" @select="onUserMenuSelect" trigger="click" :key="userKey">
-                <template #default>
-                  <n-button size="small">
-                    <template v-if="user && user.avatar">
-                      <n-avatar size="small" style="margin-right:6px" :src="getAvatarUrl(user.avatar)"></n-avatar>
-                    </template>
-                    <template v-else>
-                      <n-avatar size="small" color="var(--avatar-light)" style="margin-right:6px">{{ (user.nickname||'用户').slice(0,1) }}</n-avatar>
-                    </template>
-                    {{ user.nickname || '用户' }}
-                  </n-button>
+          <footer v-if="showFooter" class="site-footer">
+            <div class="footer-inner">
+              <span>© {{ footerYears }} {{ footerOrg }}</span>
+              <div class="footer-links">
+                <a :href="footerUrl" target="_blank" rel="noopener">{{ footerOrg }}</a>
+                <template v-if="footerIcp">
+                  · <a :href="footerIcpUrl" target="_blank" rel="noopener">{{ footerIcp }}</a>
                 </template>
-              </n-dropdown>
-            </template>
-            <template v-else>
-              <n-button size="small" @click="openAuthRoute">登录 / 注册</n-button>
-            </template>
+              </div>
+            </div>
+          </footer>
+        </div>
+
+        <div v-if="showEmailVerifyBanner" class="email-verify-banner">
+          <span>邮箱尚未验证，部分功能可能受限。</span>
+          <button type="button" class="email-verify-btn" @click="resendVerification" :disabled="resendingVerify">
+            {{ resendingVerify ? '发送中…' : '重发验证邮件' }}
+          </button>
+          <router-link class="email-verify-link" to="/account">去账户设置</router-link>
+          <button type="button" class="email-verify-dismiss" @click="dismissEmailBanner">稍后</button>
+        </div>
+
+        <div v-if="showMaintenanceOverlay" class="maintenance-overlay">
+          <div class="maintenance-box">
+            <p class="maintenance-code">503 · MAINTENANCE</p>
+            <h2>平台维护中</h2>
+            <p>{{ maintenanceMessage }}</p>
+            <button type="button" class="maintenance-btn" @click="router.push('/auth')">管理员登录</button>
           </div>
         </div>
-      </header>
 
-      <div class="app-container" :class="{ 'admin-mode': isAdminRoute }">
-
-        <!-- (Carousel moved into Home page) -->
-
-        <!-- features removed permanently -->
-
-        <!-- dynamic routed content (pages) -->
-        <main class="main-content">
-          <router-view v-slot="{ Component }">
-            <transition name="fade" mode="out-in">
-              <component :is="Component" @logged="onLogged" @open-scoreboard="onOpenScoreboard" @open-games="openGames" />
-            </transition>
-          </router-view>
-        </main>
-
-        <!-- Notifications modal (existing) -->
-        <notifications-center v-model:show="showNotifications" v-if="showNotifications" @close="showNotifications=false" />
-
-        <footer class="site-footer">
-          <div class="footer-inner">
-            <div>© 2022 - 2025 NEEPUSEC • 东北电力大学</div>
-            <div class="footer-links"><a @click.prevent="$router.push('/archive')">公告</a> · <a href="#">关于</a></div>
-          </div>
-        </footer>
-      </div>
+        <ToastContainer />
       </n-dialog-provider>
     </n-message-provider>
   </n-config-provider>
 </template>
 
 <script>
-import { ref, computed, watch, inject, onMounted, onUnmounted } from 'vue'
-import BaseModal from './components/BaseModal.vue'
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { NConfigProvider, NGlobalStyle, NMessageProvider, NDialogProvider, NButton, NSpace, NDivider, NDropdown, NAvatar } from 'naive-ui'
+import {
+  NConfigProvider, NGlobalStyle, NMessageProvider, NDialogProvider,
+} from 'naive-ui'
+import CircuitBackground from './components/CircuitBackground.vue'
+import TitleBar from './components/TitleBar.vue'
+import ToastContainer from './components/ToastContainer.vue'
+import { loadPlatform, usePlatformStore } from './stores/platform'
+import { fetchPlatformVersion } from './services/platform'
+import { useToast } from './composables/toast'
+import { useThemeStore } from './stores/theme'
+import { getUser, fetchSession, logout as authLogout } from './services/auth'
 
 export default {
-  components: { 
-    NConfigProvider, NGlobalStyle, NMessageProvider, NDialogProvider, NButton, NSpace, NDivider, NDropdown, NAvatar
+  components: {
+    NConfigProvider, NGlobalStyle, NMessageProvider, NDialogProvider,
+    CircuitBackground, TitleBar, ToastContainer,
   },
   setup() {
     const router = useRouter()
     const route = useRoute()
+    const toast = useToast()
     const user = ref(null)
-    const logoExists = ref(true)
+    const { isDark, initTheme } = useThemeStore()
 
-      // teams dropdown removed — navigation goes directly to /teams
-    // 判断是否在管理后台路由
-    const isAdminRoute = computed(() => {
-      return route.path.startsWith('/admin')
+    const footerOrg = ref('东北电力大学')
+    const footerUrl = ref('https://www.neepu.edu.cn/')
+    const footerYears = ref('2022-2026')
+    const footerIcp = ref('')
+    const footerIcpUrl = ref('https://beian.miit.gov.cn/')
+
+    const { platform } = usePlatformStore()
+    const maintenanceMessage = ref('系统正在维护中，请稍后再试')
+    const forceMaintenance = ref(false)
+    const emailBannerDismissed = ref(sessionStorage.getItem('neepu_email_banner_dismissed') === '1')
+    const resendingVerify = ref(false)
+
+    const isAdminRoute = computed(() => route.path.startsWith('/admin'))
+    const isLandingRoute = computed(() => route.path === '/')
+    const isImmersiveRoute = computed(() => {
+      const p = route.path
+      if (/^\/games\/\d+\/challenges/.test(p)) return true
+      if (/^\/training\/\d+/.test(p)) return true
+      return false
     })
-
-    // 检查用户登录状态
-    function checkUser() {
-      try { 
-        const u = localStorage.getItem('neepu_user')
-        user.value = u ? JSON.parse(u) : null
-      } catch (e) { user.value = null }
+    const isFullHeightRoute = computed(() => (
+      !isLandingRoute.value && !isAdminRoute.value
+    ))
+    const showFooter = computed(() => (
+      !isLandingRoute.value
+      && !isAdminRoute.value
+      && !isImmersiveRoute.value
+      && !showMaintenanceOverlay.value
+    ))
+    const showMaintenanceOverlay = computed(() => {
+      if (isAdminRoute.value) return false
+      if (user.value?.is_admin) return false
+      return !!(forceMaintenance.value || platform.value?.maintenance)
+    })
+    const showEmailVerifyBanner = computed(() => {
+      if (!user.value || user.value.is_admin) return false
+      if (user.value.email_verified !== false) return false
+      if (emailBannerDismissed.value) return false
+      if (route.path.startsWith('/auth') || route.path.startsWith('/verify-email')) return false
+      return true
+    })
+    function dismissEmailBanner() {
+      emailBannerDismissed.value = true
+      sessionStorage.setItem('neepu_email_banner_dismissed', '1')
     }
-    
-    // 监听路由变化，如果去 Auth 页面说明可能登出了，反之检查用户
-  watch(() => route.path, () => checkUser(), { immediate: true })
-
-  // 当 main.js 在启动时刷新用户信息后，会 dispatch 一个事件 'neepu_user_refreshed'
-  // 我们在这里监听该事件以刷新头部显示（例如 is_admin 标志）
-    function onUserRefreshed() { checkUser() }
-    onMounted(() => {
-      window.addEventListener('neepu_user_refreshed', onUserRefreshed)
-    })
-  onUnmounted(() => {
-    window.removeEventListener('neepu_user_refreshed', onUserRefreshed)
-  })
-
-    const userKey = computed(() => {
+    async function resendVerification() {
+      resendingVerify.value = true
       try {
-        return user.value ? `${user.value.id}|${user.value.avatar||''}` : 'anon'
-      } catch (e) { return 'anon' }
-    })
+        const axios = (await import('axios')).default
+        await axios.post('/api/auth/resend-verification', { email: user.value?.email })
+        toast.success('验证邮件已发送，请查收邮箱')
+      } catch (e) {
+        toast.error(e?.response?.data?.msg || e?.response?.data?.message || '发送失败')
+      } finally {
+        resendingVerify.value = false
+      }
+    }
+
+    async function checkUser() {
+      user.value = await fetchSession()
+    }
+
+    function onUserRefreshed() { user.value = getUser() }
+    function onAuthExpired() { user.value = null }
 
     function onLogged() {
       checkUser()
-      updateUserMenu() // 登录成功后更新菜单
-      router.push('/home') // 登录成功跳去首页
-    }
-
-  // notifications feature removed
-    // user menu
-    const userMenuOptions = ref([
-      { label: '个人资料', key: 'profile' },
-      { type: 'divider' },
-      { label: '退出', key: 'logout' }
-    ])
-
-    // 检查是否是管理员，如果是则添加管理后台选项
-    function updateUserMenu() {
-      const userStr = localStorage.getItem('neepu_user')
-      if (userStr) {
-        try {
-          const userData = JSON.parse(userStr)
-          if (userData.is_admin) {
-            userMenuOptions.value = [
-              { label: '个人资料', key: 'profile' },
-              { type: 'divider' },
-              { label: '🔧 管理后台', key: 'admin' },
-              { type: 'divider' },
-              { label: '退出', key: 'logout' }
-            ]
-            return
-          }
-        } catch (e) {}
+      const redirect = route.query.redirect
+      if (redirect && typeof redirect === 'string' && redirect.startsWith('/')) {
+        router.push(redirect)
+      } else {
+        router.push('/home')
       }
-      userMenuOptions.value = [
-        { label: '个人资料', key: 'profile' },
-        { type: 'divider' },
-        { label: '退出', key: 'logout' }
-      ]
     }
 
-    // theme switching removed — site uses the light theme only
-
-    const axios = inject('axios')
-    function getAvatarUrl(avatarPath) {
-      if (!avatarPath) return null
-      if (avatarPath.startsWith('data:')) return avatarPath
-      if (/^https?:\/\//i.test(avatarPath)) return avatarPath + '?t=' + Date.now()
-      try {
-        if (avatarPath.startsWith('/')) {
-          const assetBase = (import.meta.env && import.meta.env.VITE_API_BASE)
-            ? import.meta.env.VITE_API_BASE.replace(/\/$/, '')
-            : (import.meta.env && import.meta.env.DEV ? 'http://127.0.0.1:5000' : '')
-          if (avatarPath.startsWith('/static/')) {
-            return (assetBase ? assetBase : '') + avatarPath + '?t=' + Date.now()
-          }
-          const base = (axios && axios.defaults && axios.defaults.baseURL) ? axios.defaults.baseURL.replace(/\/$/, '') : ''
-          return (base ? base : '') + avatarPath + '?t=' + Date.now()
-        }
-      } catch (e) {}
-      return avatarPath + '?t=' + Date.now()
-    }
-
-    
-
-    const pressed = ref(false)
-    // theme switching removed
-
-    function logout() {
-      localStorage.removeItem('neepu_token')
-      localStorage.removeItem('neepu_user')
+    async function logout() {
+      await authLogout()
       user.value = null
-      try { router.push('/auth') } catch (e) {}
+      router.push('/auth')
     }
 
-    // handle dropdown select (naive-ui passes option object or key depending on usage)
-    function onUserMenuSelect(option) {
-      // option may be { label, key } or just key string
-      const key = typeof option === 'string' ? option : (option && option.key)
-      if (!key) return
-      if (key === 'profile') router.push('/myprofile')
-      else if (key === 'admin') router.push('/admin')
-      else if (key === 'logout') logout()
+    function onMaintenance(e) {
+      const msg = e?.detail?.maintenance_message
+        || platform.value?.maintenance_message
+        || '平台正在升级维护，请稍后重试'
+      if (msg) maintenanceMessage.value = msg
+      forceMaintenance.value = true
+      toast.warning(msg, 8000)
     }
 
-    function go(path) {
-      router.push(path)
+    function syncFooterFromPlatform(info) {
+      if (!info?.footer) return
+      footerOrg.value = info.footer.org_name || footerOrg.value
+      footerUrl.value = info.footer.org_url || footerUrl.value
+      footerYears.value = info.footer.copyright_years || footerYears.value
+      footerIcp.value = info.footer.icp || ''
+      footerIcpUrl.value = info.footer.icp_url || footerIcpUrl.value
+      if (info.maintenance_message) {
+        maintenanceMessage.value = info.maintenance_message
+      }
     }
 
-    function onOpenScoreboard(gameId) {
-      if (gameId) router.push(`/scoreboard/${gameId}`)
+    function onPlatformUpdated(e) {
+      const info = e?.detail
+      if (info) syncFooterFromPlatform(info)
     }
 
-    function openAuthRoute() {
-      // 使用路由跳转到 /auth，Auth.vue 会根据路由打开模态
-      try { router.push('/auth') } catch (e) { console.warn('router push /auth failed', e) }
-    }
+    // Debounce session check — every nav used to hit /api/auth/me and felt janky.
+    let authCheckTimer = null
+    watch(() => route.path, () => {
+      if (authCheckTimer) clearTimeout(authCheckTimer)
+      authCheckTimer = setTimeout(() => { checkUser() }, 120)
+    }, { immediate: true })
 
-    function openGames() {
-      try { router.push('/games') } catch (e) { console.warn('openGames push failed', e) }
-    }
+    onMounted(async () => {
+      initTheme()
+      window.addEventListener('neepu_user_refreshed', onUserRefreshed)
+      window.addEventListener('neepu_auth_expired', onAuthExpired)
+      window.addEventListener('neepu_maintenance', onMaintenance)
+      window.addEventListener('neepu_platform_updated', onPlatformUpdated)
+      checkUser()
 
-  // carousel moved into Home.vue
-  onMounted(() => {
-    checkUser() // 加载用户信息
-    updateUserMenu() // 更新菜单
-  })
+      const info = await loadPlatform()
+      syncFooterFromPlatform(info)
 
-    // UI state
-    const showNotifications = ref(false)
-  onUnmounted(() => { /* cleanup */ })
+      if (info.maintenance) {
+        toast.warning(info.maintenance_message || '平台正在维护中，部分功能可能不可用')
+      }
 
-    // Use CSS variables for theme overrides so public/themes/*.css controls colors
-    const themeOverrides = ref({})
-    function readVar(name, fallback) {
-      try { const v = getComputedStyle(document.documentElement).getPropertyValue(name); return v ? v.trim() : fallback } catch (e) { return fallback }
-    }
-    onMounted(() => {
-      themeOverrides.value = {
-        common: {
-          primaryColor: readVar('--primary', '#333333'),
-          primaryColorHover: readVar('--primary-hover', '#555555'),
-          bodyColor: 'transparent',
-          textColorBase: readVar('--text', '#333333')
-        },
-        Button: {
-          textColorText: readVar('--muted', '#555555'),
-          textColorTextHover: readVar('--text', '#000000'),
-          fontWeight: 'bold'
-        },
-        Card: {
-          borderRadius: '2px',
-          borderColor: readVar('--border', '#e0e0e0'),
-          color: readVar('--text', '#000000'),
-          colorTarget: 'rgba(255, 255, 255, 0.3)',
-          colorEmbedded: 'rgba(255, 255, 255, 0.3)'
+      const ver = await fetchPlatformVersion()
+      const cachedVer = localStorage.getItem('neepu_frontend_version')
+      if (cachedVer && ver.version && cachedVer !== ver.version) {
+        toast.warning('前后端版本不一致，建议刷新页面')
+      }
+      if (ver.version) localStorage.setItem('neepu_frontend_version', ver.version)
+
+      try {
+        const u = getUser()
+        if (u && u.email_verified === false) {
+          toast.warning('邮箱尚未验证，请前往用户设置完成验证', 6000)
         }
+      } catch { /* ignore */ }
+
+      if (!localStorage.getItem('neepu_cookie_notice')) {
+        toast.info('本站使用 Cookie 维持登录状态与会话', 8000)
+        localStorage.setItem('neepu_cookie_notice', '1')
       }
     })
 
-    return { themeOverrides, user, logout, onLogged, go, router, route, onOpenScoreboard, openAuthRoute, openGames,
-      logoExists, isAdminRoute,
-      userMenuOptions, onUserMenuSelect, updateUserMenu,
-      showNotifications,
-      getAvatarUrl, userKey
+    onUnmounted(() => {
+      window.removeEventListener('neepu_user_refreshed', onUserRefreshed)
+      window.removeEventListener('neepu_auth_expired', onAuthExpired)
+      window.removeEventListener('neepu_maintenance', onMaintenance)
+      window.removeEventListener('neepu_platform_updated', onPlatformUpdated)
+    })
+
+    const themeOverrides = computed(() => {
+      if (isDark.value) {
+        return {
+          common: {
+            primaryColor: '#5ED9A8',
+            primaryColorHover: '#7EE8C0',
+            bodyColor: 'transparent',
+            textColor1: '#E2E8F0',
+            textColor2: '#9CA8C4',
+            textColor3: '#9CA8C4',
+            cardColor: '#232838',
+            modalColor: '#232838',
+            popoverColor: '#232838',
+            inputColor: '#232838',
+            tableColor: '#232838',
+            borderColor: 'rgba(94, 217, 168, 0.22)',
+            borderRadius: '12px',
+            fontSize: '16px',
+            fontSizeMini: '12px',
+            fontSizeTiny: '12px',
+            fontSizeSmall: '14px',
+            fontSizeMedium: '16px',
+            fontSizeLarge: '18px',
+            fontSizeHuge: '20px',
+            fontFamily: "'M PLUS Rounded 1c', 'Noto Sans SC', 'PingFang SC', 'Microsoft YaHei UI', sans-serif",
+            fontFamilyMono: "'JetBrains Mono', 'Fira Code', Consolas, monospace",
+          },
+          Button: {
+            textColorPrimary: '#0F172A',
+            textColorHover: '#FFFFFF',
+            textColorPressed: '#FFFFFF',
+            textColorFocus: '#FFFFFF',
+            border: '1px solid rgba(94, 217, 168, 0.28)',
+            borderHover: '1px solid rgba(94, 217, 168, 0.55)',
+            color: 'rgba(94, 217, 168, 0.12)',
+            colorHover: 'rgba(94, 217, 168, 0.22)',
+            colorPressed: 'rgba(94, 217, 168, 0.28)',
+          },
+          Input: {
+            color: '#232838',
+            colorFocus: '#2A3144',
+            textColor: '#E2E8F0',
+            placeholderColor: 'rgba(156, 168, 196, 0.75)',
+            border: '1px solid rgba(255, 255, 255, 0.12)',
+            borderHover: '1px solid rgba(94, 217, 168, 0.45)',
+            borderFocus: '1px solid rgba(94, 217, 168, 0.7)',
+            caretColor: '#5ED9A8',
+          },
+          Card: {
+            color: '#232838',
+            textColor: '#E2E8F0',
+            borderColor: 'rgba(255, 255, 255, 0.08)',
+          },
+        }
+      }
+      return {
+        common: {
+          primaryColor: '#2DB58A',
+          primaryColorHover: '#249E76',
+          bodyColor: 'transparent',
+          textColor1: '#0F172A',
+          textColor2: '#64748B',
+          textColor3: '#64748B',
+          cardColor: '#FFFFFF',
+          borderColor: 'rgba(45, 181, 138, 0.18)',
+          borderRadius: '12px',
+          fontSize: '16px',
+          fontSizeMini: '12px',
+          fontSizeTiny: '12px',
+          fontSizeSmall: '14px',
+          fontSizeMedium: '16px',
+          fontSizeLarge: '18px',
+          fontSizeHuge: '20px',
+          fontFamily: "'M PLUS Rounded 1c', 'Noto Sans SC', 'PingFang SC', 'Microsoft YaHei UI', sans-serif",
+          fontFamilyMono: "'JetBrains Mono', 'Fira Code', Consolas, monospace",
+        },
+      }
+    })
+
+    return {
+      user, themeOverrides, isAdminRoute, isLandingRoute, isImmersiveRoute, isFullHeightRoute, showFooter,
+      footerOrg, footerUrl, footerYears, footerIcp, footerIcpUrl,
+      showMaintenanceOverlay, maintenanceMessage, router, showEmailVerifyBanner, resendVerification, dismissEmailBanner, resendingVerify,
+      onLogged, logout,
     }
-  }
+  },
 }
 </script>
+
 <style>
-/* Load local LxgWenKai font (place ttf files under frontend/public/fonts/) */
-@font-face {
-  font-family: 'LXGWWenKai';
-  src: url('/fonts/LXGWWenKai-Regular.ttf') format('truetype');
-  font-weight: 400;
-  font-style: normal;
-  font-display: swap;
-}
-@font-face {
-  font-family: 'LXGWWenKai';
-  src: url('/fonts/LXGWWenKai-Medium.ttf') format('truetype');
-  font-weight: 500;
-  font-style: normal;
-  font-display: swap;
-}
-/* fallback to system monospace for code areas */
-code, pre, .code, .monospace { font-family: 'Fira Code', monospace; }
-
-/* Apply sensible base fonts - use LXGWWenKai for all UI */
-html, body, #app { font-family: 'LXGW WenKai', 'Fira Code', 'Helvetica Neue', Arial, sans-serif; }
-
-/* Force the branding/title to use LXGW WenKai so Chinese heading looks correct */
-.brand, .bracket-title, .title-text {
-  font-family: 'LXGW WenKai', 'Fira Code', sans-serif !important;
-  font-weight: 500;
-  font-style: normal;
-}
-
-/* 1. 柔和绿蓝背景 (仿西电) */
-.geometric-bg {
-  position: fixed;
-  top: 0; left: 0; width: 100%; height: 100%;
-  background-color: var(--page-bg);
-  z-index: -1;
-  /* 使用 CSS 渐变模拟微细纹理 */
-  background-image: 
-    linear-gradient(var(--grain-1, rgba(255,255,255,0.5)) 2px, transparent 2px),
-    linear-gradient(90deg, var(--grain-1, rgba(255,255,255,0.5)) 2px, transparent 2px),
-    linear-gradient(var(--grain-2, rgba(255,255,255,0.2)) 1px, transparent 1px),
-    linear-gradient(90deg, var(--grain-2, rgba(255,255,255,0.2)) 1px, transparent 1px);
-  background-size: 100px 100px, 100px 100px, 20px 20px, 20px 20px;
-  background-position: -2px -2px, -2px -2px, -1px -1px, -1px -1px;
-  overflow: hidden;
-}
-
-/* 校标水印 - 中心固定到屏幕右下角旋转 */
-.geometric-bg::before {
-  content: '';
-  position: fixed;
-  width: 2400px;
-  height: 2400px;
-  right: -1200px;
-  bottom: -1200px;
-  background-image: url('/assets/055ff5752ef441e4ebe3516f6773fd73.png');
-  background-size: contain;
-  background-repeat: no-repeat;
-  background-position: center;
-  opacity: 0.2;
-  pointer-events: none;
-  transform-origin: center;
-  animation: rotateSchool 120s linear infinite;
-}
-
-@keyframes rotateSchool {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(-360deg); }
-}
-.nav-item.active {
-  color: var(--primary) !important; /* 选中时使用主题主色 */
-  font-weight: 900;
-}
-/* 装饰性六边形 (可选，为了增加科技感) */
-.hex-grid {
-  position: absolute;
-  top: 0; right: 0; bottom: 0; left: 0;
-  background: 
-    radial-gradient(circle at 10% 20%, var(--radial-accent, rgba(200,220,230,0.3)) 0%, transparent 20%),
-    radial-gradient(circle at 90% 80%, var(--radial-accent, rgba(200,220,230,0.3)) 0%, transparent 20%);
-}
-
-.app-container {
+.app-shell {
   max-width: none;
   width: 100%;
-  padding: 0 20px;
+  padding: 0;
   box-sizing: border-box;
-  min-height: 100vh;
+  min-height: calc(100vh - var(--nav-height, 72px));
   display: flex;
   flex-direction: column;
+  position: relative;
+  z-index: 0;
 }
-
-/* 管理后台模式：移除padding，让管理面板占满全屏 */
-.app-container.admin-mode {
+.app-shell.admin-mode,
+.app-shell.landing-mode {
   padding: 0;
-  margin: 0;
 }
-
-.minimal-header {
+.app-shell.admin-mode {
+  overflow-x: hidden;
+}
+.app-shell.admin-mode .main-content {
+  padding: 0;
+  overflow-x: hidden;
+  box-sizing: border-box;
+}
+.app-shell > .main-content {
+  flex: 1;
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: var(--minimal-header-padding);
-  /* 无背景色，直接透出底色 */
+  flex-direction: column;
+  min-width: 0;
 }
-
-.brand {
-  display: flex;
-  align-items: center;
-  gap: var(--brand-gap);
-  font-family: 'Fira Code', monospace;
-  font-weight: 700;
-  font-size: var(--brand-font-size);
-  color: var(--text);
+.app-shell > .main-content > * {
+  flex: 1 1 auto;
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
 }
-.brand .icon { color: var(--primary); }
-
-.nav-item {
-  font-size: var(--nav-item-font-size);
-  color: var(--muted);
-  transition: color 0.3s;
-}
-.nav-item:hover { color: var(--text); }
-
 .main-content {
   flex: 1;
   display: flex;
   flex-direction: column;
+  min-width: 0;
+}
+.main-content > * {
+  flex: 1 1 auto;
+  width: 100%;
+  min-width: 0;
+}
+.app-shell:not(.admin-mode):not(.landing-mode) .main-content {
+  padding: 0;
+  box-sizing: border-box;
 }
 
-/* 3. 极简底部 */
-.minimal-footer {
+/* 非首页 / 非管理：顶栏以下占满视口高度 */
+.app-shell.full-height-mode {
+  min-height: calc(100vh - var(--nav-height, 72px));
+}
+.app-shell.full-height-mode .main-content {
+  flex: 1;
+  min-height: 0;
+}
+
+/* 题目 / 训练工作台：顶栏以下全屏，无页脚 */
+.app-shell.immersive-mode {
+  height: calc(100vh - var(--nav-height, 72px));
+  min-height: calc(100vh - var(--nav-height, 72px));
+  overflow: hidden;
+}
+.app-shell.immersive-mode .main-content {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+.app-shell.immersive-mode .main-content > * {
+  height: 100%;
+  min-height: 0;
+  flex: 1 1 auto;
+}
+
+.bg-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+}
+
+.bg-overlay.app-overlay {
+  background: var(--bg-layer);
+}
+
+.bg-overlay.landing-overlay {
+  background: var(--landing-mask);
+}
+
+.site-footer {
+  margin-top: auto;
+  padding: 20px 24px 28px;
+  color: var(--muted);
+  font-size: 14px;
+  width: 100%;
+  box-sizing: border-box;
+  border: none;
+}
+.footer-inner {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.footer-links a {
+  color: var(--primary);
+  text-decoration: none;
+}
+.footer-links a:hover { text-decoration: underline; }
+
+.email-verify-banner {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 14px;
+  background: rgba(217, 119, 6, 0.14);
+  color: #b45309;
+  font-size: 13px;
+  border-bottom: 1px solid rgba(217, 119, 6, 0.25);
+}
+.email-verify-btn, .email-verify-dismiss {
+  border: 1px solid currentColor;
+  background: transparent;
+  color: inherit;
+  border-radius: 6px;
+  padding: 2px 8px;
+  cursor: pointer;
+}
+.email-verify-link { color: inherit; text-decoration: underline; }
+.maintenance-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(8, 12, 18, 0.82);
+  backdrop-filter: blur(6px);
+  padding: 24px;
+}
+.maintenance-box {
+  max-width: 480px;
+  width: 100%;
+  padding: 28px 32px;
+  border: 1px solid rgba(45, 181, 138, 0.25);
+  background: var(--card-bg, #12141d);
   text-align: center;
-  padding: 20px;
+}
+.maintenance-code {
+  font-family: var(--font-mono, monospace);
   font-size: 12px;
   color: var(--muted);
-  font-family: sans-serif;
-  letter-spacing: 1px;
+  margin: 0 0 12px;
 }
-.geometric-bg {
-  position: fixed;
-  top: 0; left: 0; width: 100%; height: 100%;
-  background-color: var(--page-bg);
-  z-index: -1;
-  background-image: 
-    linear-gradient(var(--grain-1, rgba(255,255,255,0.5)) 2px, transparent 2px),
-    linear-gradient(90deg, var(--grain-1, rgba(255,255,255,0.5)) 2px, transparent 2px),
-    linear-gradient(var(--grain-2, rgba(255,255,255,0.2)) 1px, transparent 1px),
-    linear-gradient(90deg, var(--grain-2, rgba(255,255,255,0.2)) 1px, transparent 1px);
-  background-size: 100px 100px, 100px 100px, 20px 20px, 20px 20px;
-  background-position: -2px -2px, -2px -2px, -1px -1px, -1px -1px;
+.maintenance-box h2 {
+  margin: 0 0 12px;
+  font-size: 22px;
 }
-.app-container { max-width: none; width:100%; padding:0 20px; box-sizing:border-box; min-height: 100vh; display: flex; flex-direction: column; }
-.minimal-header { display: flex; justify-content: space-between; align-items: center; padding: var(--minimal-header-padding); }
-.brand { display: flex; align-items: center; gap: var(--brand-gap); font-family: 'Fira Code', monospace; font-weight: 700; font-size: var(--brand-font-size); color: var(--text); }
-.nav-item { font-size: var(--nav-item-font-size); color: var(--muted); transition: color 0.3s; }
-.nav-item:hover { color: var(--text); }
-.main-content { flex: 1; display: flex; flex-direction: column; }
-.minimal-footer { text-align: center; padding: 20px; font-size: 12px; color: var(--muted); }
-.fade-enter-active, .fade-leave-active { transition: opacity 0.3s ease; }
-.fade-enter-from, .fade-leave-to { opacity: 0; }
-.fade-enter-active, .fade-leave-active { transition: opacity 0.3s ease; }
-.fade-enter-from, .fade-leave-to { opacity: 0; }
-/* subtle global grain to give the UI more texture */
-body::before {
-  content: '';
-  position: fixed; inset: 0; pointer-events: none; z-index: -1;
-  background-image: radial-gradient(rgba(0,0,0,0.01) 1px, transparent 1px);
-  background-size: 18px 18px;
-  opacity: 0.6;
+.maintenance-box p {
+  margin: 0 0 20px;
+  color: var(--muted);
+  line-height: 1.6;
 }
-
-.top-nav { background: var(--nav-bg); border-bottom: 1px solid var(--border); width:100%; position:sticky; top:0; z-index:60; box-shadow: var(--shadow, 0 1px 6px rgba(10,20,40,0.06)); backdrop-filter: blur(6px) }
-  .nav-inner { max-width:var(--content-max-width); margin:0 auto; display:flex; align-items:center; justify-content:space-between; padding:var(--nav-inner-padding); min-height:var(--nav-height); }
-.brand { display:flex; align-items:center; gap:var(--brand-gap); cursor:pointer }
-.brand-logo { height:var(--brand-logo-height) }
-.brand-text { font-weight:700; font-size: var(--brand-text-size) }
-  .nav-menu { display:flex; gap:var(--nav-gap); align-items:center; font-size: var(--nav-font-size, 0.95rem) }
-.nav-menu a { color:var(--text); text-decoration:none; padding:var(--nav-padding-y) var(--nav-padding-x); border-radius:calc(var(--nav-padding-y) * 1.2); font-weight:500; transition: color .15s, background .15s }
-.nav-menu a:hover { background: var(--hover, rgba(0,0,0,0.04)); color: var(--text) }
-.nav-menu a.active { color: var(--primary); font-weight:700 }
-.nav-actions { display:flex; gap:var(--nav-gap-small); align-items:center }
-/* tighten action button appearance to match reference */
-.nav-actions .icon-btn, .nav-actions .n-button { padding:var(--nav-padding-y) var(--nav-padding-x) }
-
-/* Enforce nav sizing when other styles try to override */
-.top-nav, .nav-inner { min-height: var(--nav-height); }
-.brand-logo { height: var(--brand-logo-height); }
-
-.hero { padding:18px 0; background: linear-gradient(180deg, var(--page-bg), rgba(255,255,255,0)); }
-.carousel { position:relative; max-width:var(--content-max-width); margin:0 auto; overflow:hidden; border-radius:10px }
-.slides { display:flex; transition:transform .45s cubic-bezier(.2,.9,.3,1) }
-.slide { min-width:100%; position:relative }
-.slide img { width:100%; height:320px; object-fit:cover; display:block }
-.slide-caption { position:absolute; left:24px; bottom:16px; background: var(--overlay, rgba(0,0,0,0.4)); color: var(--slide-caption-color, #fff); padding:8px 12px; border-radius:6px }
-.carousel-prev, .carousel-next { position:absolute; top:50%; transform:translateY(-50%); background:var(--card-bg); border:0; width:36px; height:36px; border-radius:50%; cursor:pointer; box-shadow: var(--shadow-lg, 0 6px 18px rgba(10,20,40,0.08)) }
-.carousel-prev { left:12px }
-.carousel-next { right:12px }
-.carousel-dots { position:absolute; right:12px; bottom:12px; display:flex; gap:6px }
-.carousel-dots button { width:8px; height:8px; border-radius:50%; border:0; background: var(--dot-bg, rgba(255,255,255,0.5)); opacity:0.8 }
-.carousel-dots button.active { background:var(--primary) }
-
-.features { padding:28px 0 }
-.features-inner { max-width:var(--content-max-width); margin:0 auto; display:grid; grid-template-columns:repeat(3, 1fr); gap:18px }
-.feature { background:var(--card-bg); padding:18px; border-radius:10px; box-shadow: var(--feature-shadow, 0 8px 20px rgba(20,30,60,0.05)); border:1px solid var(--border) }
-.feature-icon { font-size:28px }
-.feature-title { margin-top:8px; margin-bottom:8px }
-.feature-desc { color:var(--muted) }
-
-.site-footer { margin-top:36px; padding:20px 0; background:transparent; color:var(--muted) }
-.footer-inner { max-width:var(--content-max-width); margin:0 auto; display:flex; justify-content:space-between }
-
-/* responsive */
-@media (max-width: 900px) {
-  .features-inner { grid-template-columns: repeat(2, 1fr) }
+.maintenance-btn {
+  border: 1px solid var(--primary);
+  background: transparent;
+  color: var(--primary);
+  padding: 10px 18px;
+  cursor: pointer;
+  font: inherit;
 }
-@media (max-width: 600px) {
-  .nav-menu { display:none }
-  .features-inner { grid-template-columns: 1fr }
-  .slide img { height:180px }
+.maintenance-btn:hover {
+  background: rgba(45, 181, 138, 0.12);
 }
-
-/* Theme variables are provided by public/themes/*.css. Minimal fallbacks removed
-   so that the linked theme CSS (e.g. public/themes/light.css) controls colors.
-*/
 </style>

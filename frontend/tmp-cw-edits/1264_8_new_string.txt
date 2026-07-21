@@ -1,0 +1,10 @@
+    watch(challengeTree, (tree) => {
+      if (!tree.length || collapsedCategories.value.size) return
+      const next = new Set()
+      for (let i = 1; i < tree.length; i += 1) {
+        next.add(tree[i].category)
+      }
+      collapsedCategories.value = next
+    }, { immediate: true })
+
+    watch(() => props.gameId, () => {

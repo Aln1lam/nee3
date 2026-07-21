@@ -1,0 +1,258 @@
+<template>
+  <div class="challenge-workspace workspace-dock" :class="[`mode-${mode}`, { 'admin-tools-on': adminActive }]">
+    <!-- 左：题目树 -->
+    <aside class="tree-panel">
+      <div class="tree-panel-head">
+        <router-link v-if="backLink" :to="backLink.to" class="tree-back">{{ backLink.label }}</router-link>
+        <div class="tree-title-row">
+          <h2 class="tree-panel-title">{{ gameTitle || '题目' }}</h2>
+          <button type="button" class="tree-refresh" aria-label="刷新题目" :disabled="challengesLoading" @click="loadChallenges">↻</button>
+        </div>
+        <n-tag v-if="mode === 'training'" size="small" type="success" round>永久开放</n-tag>
+        <n-tag v-else-if="gameStatus" size="small" :type="gameStatusType">{{ gameStatus }}</n-tag>
+      </div>
+
+      <div class="tree-search">
+        <n-input
+          v-model:value="searchQuery"
+          placeholder="搜索名称或者标签"
+          clearable
+          size="small"
+        />
+      </div>
+
+      <div class="tree-body">
+        <UiLoadingTips v-if="challengesLoading && !challenges.length" />
+        <div v-else-if="!challengeTree.length" class="tree-empty">
+          {{ mode === 'competition' ? '暂无任务' : '暂无题目' }}
+        </div>
+        <div v-for="group in challengeTree" :key="group.category" class="tree-group">
+          <button type="button" class="tree-cat" @click="toggleCategory(group.category)">
+            <span class="tree-cat-icon">{{ isCategoryExpanded(group.category) ? '▼' : '▶' }}</span>
+            <span class="tree-cat-name">{{ group.category }}</span>
+            <span class="tree-cat-count">{{ group.items.length }}</span>
+          </button>
+          <ul v-show="isCategoryExpanded(group.category)" class="tree-items">
+            <li
+              v-for="ch in group.items"
+              :key="ch.id"
+              class="tree-item"
+              :class="{
+                active: selectedChallenge?.id === ch.id,
+                solved: isSolved(ch.id),
+                disabled: adminActive && ch.is_enabled === false,
+              }"
+              @click="selectChallenge(ch)"
+            >
+              <span class="tree-item-title">{{ ch.title }}</span>
+              <span v-if="isSolved(ch.id)" class="tree-item-mark" title="已解出">✓</span>
+              <UiPopover v-if="adminActive" trigger="click">
+                <template #trigger>
+                  <button class="tree-item-menu" type="button" @click.stop aria-label="题目上下架">⋯</button>
+                </template>
+                <div class="admin-popover">
+                  <p class="admin-popover__hint">{{ ch.is_enabled === false ? '已下架' : '已上架' }}</p>
+                  <UiButton
+                    size="small"
+                    :variant="ch.is_enabled === false ? 'primary' : 'secondary'"
+                    :loading="!!ch._toggling"
+                    @click="toggleChallengeEnabled(ch)"
+                  >{{ ch.is_enabled === false ? '上架' : '下架' }}</UiButton>
+                </div>
+              </UiPopover>
+            </li>
+          </ul>
+        </div>
+      </div>
+
+      <div v-if="$slots['tree-footer']" class="tree-footer">
+        <slot name="tree-footer" />
+      </div>
+    </aside>
+
+    <!-- 右：工作区 -->
+    <section class="workspace-stage">
+      <div v-if="isAdmin && mode !== 'training'" class="stage-admin-bar">
+        <n-tag v-if="adminActive" size="small" type="warning" round>管理视图</n-tag>
+        <n-button size="tiny" :type="showAdminTools ? 'warning' : 'default'" @click="toggleAdminTools">
+          {{ showAdminTools ? '选手视图' : '管理视图' }}
+        </n-button>
+      </div>
+
+      <template v-if="selectedChallenge">
+        <div class="stage-tabbar">
+          <span class="stage-home" aria-hidden="true">⌂</span>
+          <div class="stage-tab active">
+            <span class="stage-tab-code">&lt;/&gt;</span>
+            <span class="stage-tab-label">{{ selectedChallenge.title }}</span>
+            <button type="button" class="stage-tab-close" aria-label="关闭题目" @click="closeChallenge">×</button>
+          </div>
+        </div>
+
+        <div class="stage-content">
+          <div class="stage-brief">
+            <div class="brief-main">
+              <div class="brief-title-row">
+                <h3>{{ selectedChallenge.title }}</h3>
+                <span v-if="hasContainer" class="brief-env-hint">题目可开启在线环境</span>
+              </div>
+              <div v-if="selectedChallenge.tags?.length" class="tag-row">
+                <n-tag v-for="t in selectedChallenge.tags" :key="t" size="small">{{ t }}</n-tag>
+              </div>
+              <Article :content="descriptionContent" class="brief-desc" />
+              <div v-if="attachmentUrl" class="attachment-row">
+                <span>附件</span>
+                <a :href="attachmentUrl" target="_blank" rel="noopener">下载附件</a>
+              </div>
+            </div>
+            <div class="brief-aside">
+              <div class="brief-stat">
+                <span class="brief-stat-num">{{ solveCount }}</span>
+                <span class="brief-stat-label">solves</span>
+              </div>
+              <n-button
+                v-if="hasContainer"
+                type="primary"
+                size="small"
+                :loading="containerLoading"
+                class="brief-launch"
+                @click="startContainer"
+              >{{ instance ? '重新启动' : '启动!' }}</n-button>
+              <span
+                class="cat-chip cat-chip--lg"
+                :style="categoryChipStyle(selectedChallenge.category)"
+              >{{ selectedChallenge.category }}</span>
+              <span v-if="mode !== 'training'" class="brief-points">{{ selectedChallenge.current_score || selectedChallenge.points || 0 }} pts</span>
+            </div>
+          </div>
+
+          <div class="stage-tools">
+            <n-tabs type="line" animated v-model:value="activeTab" class="workspace-tabs" @update:value="onTabChange">
+              <n-tab-pane name="terminal" tab="终端">
+                <div class="terminal-panel">
+                  <div v-if="instance" class="conn-box">
+                    <span v-if="instance.port" class="tcp-badge">tcp</span>
+                    {{ instance.connection_url || '无' }}
+                    <n-button text size="tiny" @click="copyConn">复制</n-button>
+                  </div>
+                  <Terminal
+                    v-model="flagInput"
+                    :loading="submitting"
+                    :disabled="challengeSolved"
+                    :result="flagResult"
+                    @submit="submitFlag"
+                  />
+                </div>
+              </n-tab-pane>
+
+              <n-tab-pane name="hints" tab="提示">
+                <UiLoadingTips v-if="hintsLoading" spin-size="small" />
+                <div v-else-if="hintItems.length === 0" class="muted">
+                  {{ mode === 'training' ? '本题无提示，训练场提示自动解锁' : '本题无提示，如需提示请联系管理员' }}
+                </div>
+                <ul v-else class="hint-list">
+                  <li v-for="(h, i) in hintItems" :key="h.id || i" class="hint-item">
+                    <template v-if="h.unlocked">
+                      <div class="hint-head">
+                        <strong v-if="hintItems.length > 1">提示 {{ i + 1 }}</strong>
+                        <span v-if="h.penalty > 0 && mode !== 'training'" class="penalty-tag">-{{ h.penalty }} pts</span>
+                      </div>
+                      <p class="hint-text">{{ h.text }}</p>
+                    </template>
+                    <template v-else>
+                      <n-button size="small" :loading="h.unlocking" @click="unlockHint(h)">
+                        解锁提示 {{ i + 1 }}{{ h.penalty > 0 ? ` (-${h.penalty} pts)` : '' }}
+                      </n-button>
+                    </template>
+                  </li>
+                </ul>
+              </n-tab-pane>
+
+              <n-tab-pane name="hammer" tab="🔨 锤子" :disabled="mode === 'training'">
+                <HammerPanel
+                  v-if="mode !== 'training' && selectedChallenge"
+                  :challenge-id="selectedChallenge.id"
+                  :game-id="gameId"
+                />
+              </n-tab-pane>
+
+              <n-tab-pane v-if="adminActive" name="manage" tab="管理">
+                <div class="admin-panel admin-panel--manage">
+                  <p class="admin-manage-hint">管理视图含统计与配置信息，直播/录屏时请切回选手视图。</p>
+                  <section v-if="stats" class="manage-section">
+                    <h4 class="manage-section-title">统计</h4>
+                    <div class="stat-row"><span>解出人数</span><strong>{{ stats.unique_solvers || 0 }}</strong></div>
+                    <div class="stat-row"><span>总提交数</span><strong>{{ stats.total_submissions || 0 }}</strong></div>
+                    <div class="stat-row"><span>通过率</span><strong>{{ stats.solve_rate || '0%' }}</strong></div>
+                    <div v-if="stats.first_solver" class="stat-row">
+                      <span>首解</span>
+                      <strong>{{ stats.first_solver.username }} · {{ formatStatTime(stats.first_solver.solved_at) }}</strong>
+                    </div>
+                  </section>
+                  <section v-else class="manage-section muted">正在加载统计…</section>
+                  <section class="manage-section">
+                    <h4 class="manage-section-title">题目设置</h4>
+                    <div class="stat-row"><span>上架状态</span><strong>{{ selectedChallenge.is_enabled === false ? '已下架' : '已上架' }}</strong></div>
+                    <div class="stat-row"><span>分类</span><strong>{{ selectedChallenge.category || '无' }}</strong></div>
+                    <div class="stat-row"><span>类型</span><strong>{{ challengeTypeLabel }}</strong></div>
+                    <div class="stat-row"><span>分值</span><strong>{{ selectedChallenge.current_score || selectedChallenge.points || 0 }}</strong></div>
+                    <div v-if="selectedChallenge.flag_template" class="stat-row">
+                      <span>Flag 模板</span><strong class="mono">{{ selectedChallenge.flag_template }}</strong>
+                    </div>
+                    <div class="manage-actions">
+                      <UiButton
+                        size="small"
+                        :variant="selectedChallenge.is_enabled === false ? 'primary' : 'secondary'"
+                        :loading="!!selectedChallenge._toggling"
+                        @click="toggleChallengeEnabled(selectedChallenge)"
+                      >{{ selectedChallenge.is_enabled === false ? '上架题目' : '下架题目' }}</UiButton>
+                      <n-button size="small" type="primary" @click="goAdminChallenge">前往靶场管理</n-button>
+                    </div>
+                  </section>
+                  <section class="manage-section">
+                    <h4 class="manage-section-title">附件</h4>
+                    <p v-if="attachmentUrl">附件 ID: {{ selectedChallenge.attachment_id }}</p>
+                    <p v-else class="muted">本题暂无附件</p>
+                    <a v-if="attachmentUrl" :href="attachmentUrl" target="_blank" rel="noopener" class="admin-link">下载附件</a>
+                  </section>
+                  <section v-if="hasContainer" class="manage-section">
+                    <h4 class="manage-section-title">实例</h4>
+                    <div v-if="instance" class="conn-box">
+                      <span v-if="instance.port" class="tcp-badge">tcp</span>
+                      {{ instance.connection_url || '无' }}
+                    </div>
+                    <p v-else class="muted">当前无运行中的实例</p>
+                  </section>
+                </div>
+              </n-tab-pane>
+
+              <n-tab-pane v-if="mode !== 'training'" name="blood" tab="血榜">
+                <ul v-if="currentBloodRecords.length" class="blood-list">
+                  <li v-for="rec in currentBloodRecords" :key="rec.blood_level" class="blood-list-item">
+                    <span class="blood-tag" :class="`blood-tag--${rec.blood_level}`">{{ bloodLevelName(rec.blood_level) }}</span>
+                    <span>{{ rec.user_name || '—' }}</span>
+                    <span v-if="rec.team_name" class="muted">· {{ rec.team_name }}</span>
+                    <span class="muted blood-time">{{ formatStatTime(rec.solved_at) }}</span>
+                  </li>
+                </ul>
+                <div v-else class="muted">暂无首解记录</div>
+              </n-tab-pane>
+
+              <n-tab-pane name="writeup" tab="题解" v-if="mode === 'training' || gameArchived || adminActive">
+                <div v-if="!selectedChallenge.writeup" class="muted">
+                  {{ mode === 'training' ? '暂无题解' : '题解将在归档后开放' }}
+                </div>
+                <Article v-else :content="writeupContent" />
+              </n-tab-pane>
+            </n-tabs>
+          </div>
+        </div>
+      </template>
+
+      <div v-else class="stage-empty">
+        <span class="stage-empty-icon" aria-hidden="true">🎯</span>
+        <p>从左侧选择题目开始{{ mode === 'training' ? '练习' : '挑战' }}</p>
+      </div>
+    </section>
+  </div>
+</template>

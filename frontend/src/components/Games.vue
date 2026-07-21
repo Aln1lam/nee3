@@ -1,5 +1,6 @@
 <template>
-  <div class="page-container">
+  <div class="page-container legacy-page">
+    <p class="legacy-page-notice">Legacy 组件 · 请使用 /games (GamesHub)</p>
 
     <!-- 队伍管理面板 -->
     <div v-if="!selected" class="team-panel">
@@ -273,15 +274,16 @@ export default {
             axios.defaults.headers.common['Authorization'] = 'Bearer ' + t
           }
         } catch (e) {}
-        const { data } = await axios.get('/api/games/')
-        games.value = data.items || data
+        const { data } = await axios.get('/api/competitions/?per_page=100')
+        const payload = data?.data || data
+        games.value = payload?.items || payload || []
         console.log('Loaded games:', games.value)
         await Promise.all(games.value.map(async (g) => {
           try {
             const t = localStorage.getItem('neepu_token')
             if (!t) { g.joined = false; return }
-            const r = await axios.get(`/api/games/${g.id}/joined`)
-            g.joined = !!r.data.joined
+            const r = await axios.get(`/api/competitions/${g.id}/joined`)
+            g.joined = !!(r.data?.joined ?? r.data?.data?.joined)
           } catch(e) { console.error('Games: joined check failed for', g.id, e); g.joined = false }
         }))
         console.log('Games after joined check:', games.value)
@@ -307,8 +309,9 @@ export default {
 
     async function loadChallenges(gid) {
       try {
-        const { data } = await axios.get(`/api/games/${gid}/challenges`)
-        challenges.value = data.items || data || []
+        const { data } = await axios.get(`/api/challenges/games/${gid}/challenges`)
+        const payload = data?.data || data
+        challenges.value = Array.isArray(payload) ? payload : (payload?.items || [])
       } catch (e) { console.error('loadChallenges failed', e); challenges.value = [] }
     }
 
@@ -330,10 +333,10 @@ export default {
           }
           
           // 带邀请码参赛
-          await axios.post(`/api/games/${g.id}/join`, { invite_code: inviteCode.trim() })
+          await axios.post(`/api/competitions/${g.id}/join`, { invite_code: inviteCode.trim() })
         } else {
           // 公开比赛，直接参赛
-          await axios.post(`/api/games/${g.id}/join`)
+          await axios.post(`/api/competitions/${g.id}/join`)
         }
         
         g.joined = true
@@ -395,7 +398,7 @@ export default {
 </script>
 
 <style scoped>
-.page-container { padding: 20px; font-family: 'Fira Code', monospace; }
+.page-container { padding: var(--fib-21); font-family: var(--font-ui); }
 
 /* 队伍管理面板 */
 .team-panel { margin-bottom: 40px; }
@@ -410,11 +413,11 @@ export default {
 .team-card {
   border: 1px solid #e0e0e0;
   border-radius: 4px;
-  padding: 20px;
+  padding: var(--fib-21);
   background: #fafafa;
   transition: all 0.3s ease;
 }
-.team-card:hover { border-color: #ff5252; background: #fff; }
+.team-card:hover { border-color: #ff5252; background: var(--gradient-card-bg, var(--card-bg)); }
 .team-card h4 { margin-top: 0; margin-bottom: 15px; color: #333; }
 
 .success-msg { margin-top: 10px; padding: 8px 12px; background: #f0f9ff; border-left: 3px solid #52c41a; color: #52c41a; font-size: 0.9rem; border-radius: 2px; }
@@ -439,7 +442,7 @@ export default {
 .bracket { color: #ccc; margin: 0 10px; }
 
 /* 卡片风格 */
-.minimal-card { border: 1px solid #e0e0e0; border-radius: 2px; transition: all 0.3s ease; background: white; }
+.minimal-card { border: 1px solid #e0e0e0; border-radius: 2px; transition: all 0.3s ease; background: var(--gradient-card-bg, var(--card-bg)); }
 .minimal-card:hover { border-color: #ff5252; box-shadow: 0 4px 12px rgba(255, 82, 82, 0.1); transform: translateY(-2px); }
 
 .card-header { display: flex; justify-content: space-between; align-items: center; }

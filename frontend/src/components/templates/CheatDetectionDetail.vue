@@ -262,12 +262,21 @@ async function loadCheatRecord() {
     loading.value = true
     const recordId = route.params.id
     
-    const response = await axios.get(`/api/dynamic/cheat-detection/${recordId}/details`)
-    
-    if (response.data.status === 'success') {
-      cheatRecord.value = response.data.data
+    // 主路径：/api/admin/cheat-detection（无独立 details；按 id 从列表取）
+    const response = await axios.get('/api/admin/cheat-detection', {
+      params: { page: 1, per_page: 100 },
+      withCredentials: true,
+    })
+    const items = response.data?.data?.items || response.data?.items || []
+    const found = items.find((r) => String(r.id) === String(recordId))
+    if (response.data?.status === 'success' || response.data?.code === 200) {
+      if (found) {
+        cheatRecord.value = found
+      } else {
+        message.error('未找到该作弊记录')
+      }
     } else {
-      message.error(response.data.message || '加载失败')
+      message.error(response.data.message || response.data.msg || '加载失败')
     }
   } catch (error) {
     message.error('加载作弊记录失败: ' + error.message)
@@ -281,12 +290,18 @@ async function submitReview(conclusion) {
     reviewing.value = true
     const recordId = route.params.id
     
+    // 主路径：/api/admin/cheat-records/:id/{review|confirm|dismiss}
+    const action = conclusion === 'confirmed' || conclusion === 'confirm'
+      ? 'confirm'
+      : conclusion === 'dismissed' || conclusion === 'dismiss'
+        ? 'dismiss'
+        : 'review'
     const response = await axios.post(
-      `/api/cheat-detection/${recordId}/review`,
+      `/api/admin/cheat-records/${recordId}/${action}`,
       {
-        status: conclusion,
-        review_notes: reviewForm.value.notes
-      }
+        admin_note: reviewForm.value.notes,
+      },
+      { withCredentials: true },
     )
     
     if (response.data.status === 'success') {
@@ -309,7 +324,7 @@ onMounted(() => {
 
 <style scoped>
 .cheat-detection-detail {
-  padding: 20px;
+  padding: var(--fib-21);
 }
 
 .header {
@@ -504,18 +519,19 @@ async function submitUpload() {
       formData.append('file', fileList.value[0].file)
     }
     
+    // 主路径：/api/admin/dynamic-packages/challenges/:id/upload（field=file）
     const response = await axios.post(
-      `/api/dynamic/challenges/${uploadForm.value.challenge_id}/upload-package`,
-      formData
+      `/api/admin/dynamic-packages/challenges/${uploadForm.value.challenge_id}/upload`,
+      formData,
+      { withCredentials: true },
     )
     
-    if (response.data.status === 'success') {
-      message.success(`成功上传 ${response.data.data.count} 个包`)
+    if (response.data.status === 'success' || response.data.code === 200) {
+      message.success(response.data.msg || '上传成功')
       showUploadModal.value = false
       fileList.value = []
-      // 刷新列表
     } else {
-      message.error(response.data.message || '上传失败')
+      message.error(response.data.message || response.data.msg || '上传失败')
     }
   } catch (error) {
     message.error('上传出错: ' + error.message)
@@ -531,7 +547,7 @@ async function handleDelete(packageId) {
 
 <style scoped>
 .dynamic-attachment-admin {
-  padding: 20px;
+  padding: var(--fib-21);
 }
 
 .header-title {

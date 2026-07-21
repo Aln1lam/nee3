@@ -1,5 +1,5 @@
 <template>
-  <div style="padding:16px; width:100%;">
+  <div class="wiki-editor-page page-wrap">
     <n-button @click="$router.back()">取消</n-button>
     <h2>发布文章到知识库</h2>
 
@@ -25,7 +25,7 @@
                 <div style="flex:1"></div>
                 <div class="editor-status" style="color:#666;font-size:12px;">字数: {{ stats.words }} &nbsp; 行: {{ stats.lines }} &nbsp; 光标: {{ stats.cursor }}</div>
               </div>
-              <div id="vditor-edit" style="border: 1px solid #ddd; border-radius: 4px; margin-top:0; background:#fff;"></div>
+              <div id="vditor-edit" class="vditor-host"></div>
             </div>
         </n-form-item>
 
@@ -367,8 +367,8 @@ export default {
 
 /* 自定义布局：工具栏顶部、左侧编辑区 ~62%、右侧预览 ~38% */
 :deep(#vditor-edit .vditor) {
-  background: #fff;
-  border-radius: 4px;
+  background: var(--card-bg);
+  border-radius: var(--card-radius);
 }
 
 :deep(#vditor-edit) {
@@ -378,8 +378,8 @@ export default {
 }
 
 :deep(#vditor-edit .vditor-toolbar) {
-  border-bottom: 1px solid #eef0f2;
-  background: #fafafa;
+  border-bottom: 1px solid var(--border);
+  background: var(--hover);
 }
 
 :deep(.editor-wrap) {
@@ -389,8 +389,8 @@ export default {
   margin: 0 0 12px 0; /* 顶部留点间距 */
   box-sizing: border-box;
   padding: 8px; /* 让编辑区看起来是一个独立的大框 */
-  border: 1px solid #e9e9e9;
-  background: rgba(255,255,255,0.95);
+  border: 1px solid var(--border);
+  background: var(--gradient-card-bg, var(--card-bg));
 }
 
 :deep(.editor-topbar) {
@@ -417,7 +417,7 @@ export default {
   width: 30% !important;
   padding: 24px;
   overflow: auto;
-  background: #ffffff;
+  background: var(--card-bg);
   min-height: 680px;
 }
 

@@ -1,0 +1,2 @@
+      window.addEventListener('neepu_user_refreshed', refreshAdminState)
+      await loadChallenges()

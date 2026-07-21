@@ -111,6 +111,14 @@
         </label>
         <p class="help-text">用户注册时需要验证邮箱才能登录</p>
       </div>
+
+      <div class="form-group">
+        <label class="checkbox-label">
+          <input type="checkbox" v-model="settings.captcha_required" />
+          登录/注册验证码
+        </label>
+        <p class="help-text">开启后登录与注册必须填写图形验证码（也可由环境变量 NEPU_CAPTCHA_REQUIRED 强制）</p>
+      </div>
     </div>
 
     <div class="settings-card">
@@ -223,6 +231,7 @@ export default {
       allow_teams: true,
       allow_games: true,
       require_email_verification: true,
+      captcha_required: false,
       
       // 邮件配置
       mail_server: 'smtp.qq.com',
@@ -239,7 +248,7 @@ export default {
 
     // 将字符串 'true'/'false' 转为布尔值
     function parseConfig(data) {
-      const boolKeys = ['maintenance_mode', 'allow_registration', 'allow_teams', 'allow_games', 'require_email_verification', 'mail_use_ssl']
+      const boolKeys = ['maintenance_mode', 'allow_registration', 'allow_teams', 'allow_games', 'require_email_verification', 'captcha_required', 'mail_use_ssl']
       const result = { ...data }
       for (const key of boolKeys) {
         if (key in result) {
@@ -293,6 +302,7 @@ export default {
     }
 
     async function saveSettings() {
+      if (saving.value) return
       saving.value = true
       try {
         const token = localStorage.getItem('neepu_token')
@@ -321,7 +331,8 @@ export default {
         showStatus('success', '设置保存成功（已写入 .env 并同步运行时配置）')
       } catch (e) {
         console.error('保存设置失败:', e)
-        showStatus('error', '保存设置失败')
+        const detail = e.response?.data?.error || e.response?.data?.msg || e.message
+        showStatus('error', detail ? `保存设置失败：${detail}` : '保存设置失败')
       } finally {
         saving.value = false
       }
@@ -388,8 +399,8 @@ h3 {
 }
 
 .settings-card {
-  background: white;
-  padding: 20px;
+  background: var(--gradient-card-bg, var(--card-bg));
+  padding: var(--fib-21);
   border-radius: 8px;
   margin-bottom: 20px;
   box-shadow: var(--card-shadow);
@@ -525,7 +536,7 @@ label:not(.checkbox-label) {
   padding: 8px 16px;
   border: 1px solid #1976d2;
   border-radius: 6px;
-  background: white;
+  background: var(--gradient-card-bg, var(--card-bg));
   color: #1976d2;
   cursor: pointer;
   font-size: 13px;

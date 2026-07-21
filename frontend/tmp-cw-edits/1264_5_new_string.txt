@@ -1,0 +1,2 @@
+    const platformCategories = ref([])
+    const isAdmin = ref(false)

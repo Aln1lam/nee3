@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>NEEPU CTF · 字体方案预览</title>
+  <!-- 仅预览页临时拉字体；正式站仍建议自托管 / 系统栈 -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=M+PLUS+Rounded+1c:wght@400;500;700;800&family=Manrope:wght@400;600;700;800&family=Sora:wght@400;600;700&family=ZCOOL+QingKe+HuangYou&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #12151c;
+      --card: #1e222c;
+      --text: #e8ecf2;
+      --muted: rgba(232, 236, 242, 0.55);
+      --line: rgba(255, 255, 255, 0.08);
+      --a: #3aa6f0;
+      --b: #7dd3a7;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: radial-gradient(1200px 600px at 20% -10%, #1a2740 0%, var(--bg) 55%);
+      color: var(--text);
+      font-family: system-ui, "PingFang SC", "Microsoft YaHei", sans-serif;
+      padding: 32px 24px 64px;
+    }
+    h1 {
+      margin: 0 0 8px;
+      font-size: 1.5rem;
+      font-weight: 700;
+    }
+    .lead {
+      margin: 0 0 28px;
+      color: var(--muted);
+      font-size: 0.95rem;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+      gap: 20px;
+      max-width: 1200px;
+    }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 22px 22px 18px;
+      overflow: hidden;
+    }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 14px;
+    }
+    .dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: var(--a);
+    }
+    .card.b .dot { background: var(--b); }
+    .scheme-title {
+      margin: 0 0 6px;
+      font-size: 1.35rem;
+      font-weight: 800;
+    }
+    .scheme-desc {
+      margin: 0 0 20px;
+      color: var(--muted);
+      font-size: 0.88rem;
+      line-height: 1.5;
+    }
+    .sample {
+      border-top: 1px solid var(--line);
+      padding: 16px 0 4px;
+    }
+    .sample + .sample { margin-top: 4px; }
+    .label {
+      font-size: 11px;
+      color: var(--muted);
+      margin-bottom: 8px;
+      font-family: system-ui, sans-serif !important;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+    .ui-a {
+      font-family: "M PLUS Rounded 1c", "PingFang SC", "Microsoft YaHei", sans-serif;
+    }
+    .display-a {
+      font-family: "ZCOOL QingKe HuangYou", "M PLUS Rounded 1c", "Microsoft YaHei", sans-serif;
+    }
+    .ui-b-manrope {
+      font-family: Manrope, "PingFang SC", "Microsoft YaHei", sans-serif;
+    }
+    .ui-b-sora {
+      font-family: Sora, "PingFang SC", "Microsoft YaHei", sans-serif;
+    }
+    .mono {
+      font-family: "JetBrains Mono", ui-monospace, Consolas, monospace;
+    }
+    .hero {
+      font-size: clamp(1.6rem, 3vw, 2.1rem);
+      font-weight: 800;
+      line-height: 1.25;
+      margin: 0 0 10px;
+    }
+    .body {
+      font-size: 1rem;
+      font-weight: 500;
+      line-height: 1.7;
+      margin: 0 0 10px;
+    }
+    .meta {
+      font-size: 0.92rem;
+      color: var(--muted);
+      margin: 0;
+    }
+    .chip-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+    .chip {
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 6px 12px;
+      font-size: 0.85rem;
+      font-weight: 700;
+    }
+    .codebox {
+      margin-top: 10px;
+      background: #0d1016;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 12px 14px;
+      font-size: 0.88rem;
+      line-height: 1.55;
+      color: #9ec9ef;
+    }
+    .codebox .ok { color: #7dd3a7; }
+    .note {
+      max-width: 1200px;
+      margin: 28px 0 0;
+      color: var(--muted);
+      font-size: 0.85rem;
+      line-height: 1.6;
+    }
+    .pair {
+      display: grid;
+      gap: 12px;
+    }
+  </style>
+</head>
+<body>
+  <h1>字体方案预览</h1>
+  <p class="lead">靶场气质 · 中英混排 · 仅作选型参考（中文依赖本机 PingFang / 微软雅黑）</p>
+
+  <div class="grid">
+    <!-- A -->
+    <section class="card">
+      <div class="badge"><span class="dot"></span>方案 A · 二次元轻游戏</div>
+      <h2 class="scheme-title ui-a">M PLUS Rounded + 系统中文</h2>
+      <p class="scheme-desc">圆润、偏活动面板。Display 用黄油体只做大标题。</p>
+
+      <div class="sample">
+        <div class="label">Display · ZCOOL QingKe HuangYou</div>
+        <p class="hero display-a">今日份的训练开始！</p>
+        <p class="meta display-a" style="font-size:1.15rem;color:var(--text)">NEEPU CTF Lab · Challenge Board</p>
+      </div>
+
+      <div class="sample ui-a">
+        <div class="label">UI · M PLUS Rounded 1c</div>
+        <p class="hero">SQL 注入入门</p>
+        <p class="body">从左侧选择题目 · 永久开放 · 不计入正式积分<br />Select a challenge to start practicing.</p>
+        <div class="chip-row">
+          <span class="chip">知识</span>
+          <span class="chip">训练</span>
+          <span class="chip">赛事</span>
+          <span class="chip">Start Challenge</span>
+        </div>
+      </div>
+
+      <div class="sample mono">
+        <div class="label">Mono · JetBrains Mono</div>
+        <div class="codebox">
+          ctf@lab:~/web$ curl :1337<br />
+          <span class="ok">[SUCCESS]</span> flag{n3epu_r0und3d_ui}<br />
+          score: 500 · solves: 12
+        </div>
+      </div>
+    </section>
+
+    <!-- B Manrope -->
+    <section class="card b">
+      <div class="badge"><span class="dot"></span>方案 B1 · 利落极客</div>
+      <h2 class="scheme-title ui-b-manrope">Manrope + 系统中文</h2>
+      <p class="scheme-desc">几何感更强、偏现代靶场控制台，比圆润方案更「硬」一点。</p>
+
+      <div class="sample ui-b-manrope">
+        <div class="label">UI · Manrope</div>
+        <p class="hero">SQL 注入入门</p>
+        <p class="body">从左侧选择题目 · 永久开放 · 不计入正式积分<br />Select a challenge to start practicing.</p>
+        <div class="chip-row">
+          <span class="chip">知识</span>
+          <span class="chip">训练</span>
+          <span class="chip">赛事</span>
+          <span class="chip">Start Challenge</span>
+        </div>
+      </div>
+
+      <div class="sample ui-b-manrope">
+        <div class="label">英文标题感</div>
+        <p class="hero">Today's Training</p>
+        <p class="meta">Challenge Workspace · Dynamic Container</p>
+      </div>
+
+      <div class="sample mono">
+        <div class="label">Mono · JetBrains Mono</div>
+        <div class="codebox">
+          ctf@lab:~/pwn$ nc 1.2.3.4 9999<br />
+          <span class="ok">[SUCCESS]</span> flag{manrope_lab_stack}<br />
+          score: 500 · solves: 12
+        </div>
+      </div>
+    </section>
+
+    <!-- B Sora -->
+    <section class="card b">
+      <div class="badge"><span class="dot"></span>方案 B2 · 更锐一点</div>
+      <h2 class="scheme-title ui-b-sora">Sora + 系统中文</h2>
+      <p class="scheme-desc">比 Manrope 更锋利、字怀更紧，适合密集侧栏和数据行。</p>
+
+      <div class="sample ui-b-sora">
+        <div class="label">UI · Sora</div>
+        <p class="hero">SQL 注入入门</p>
+        <p class="body">从左侧选择题目 · 永久开放 · 不计入正式积分<br />Select a challenge to start practicing.</p>
+        <div class="chip-row">
+          <span class="chip">知识</span>
+          <span class="chip">训练</span>
+          <span class="chip">赛事</span>
+          <span class="chip">Start Challenge</span>
+        </div>
+      </div>
+
+      <div class="sample ui-b-sora">
+        <div class="label">英文标题感</div>
+        <p class="hero">Today's Training</p>
+        <p class="meta">Challenge Workspace · Dynamic Container</p>
+      </div>
+
+      <div class="sample mono">
+        <div class="label">Mono · JetBrains Mono</div>
+        <div class="codebox">
+          ctf@lab:~/rev$ ./chal<br />
+          <span class="ok">[SUCCESS]</span> flag{sora_compact_ui}<br />
+          score: 500 · solves: 12
+        </div>
+      </div>
+    </section>
+
+    <!-- C -->
+    <section class="card">
+      <div class="badge"><span class="dot"></span>方案 C · UI + 终端彩蛋</div>
+      <h2 class="scheme-title ui-a">Rounded UI · Mono 仅终端</h2>
+      <p class="scheme-desc">界面走 A，终端/Prompt 可用现有 Reverier（本页用 JetBrains 示意分工）。</p>
+
+      <div class="pair">
+        <div class="sample ui-a">
+          <div class="label">界面文案 · Rounded</div>
+          <p class="body" style="font-size:1.15rem;font-weight:700;margin:0">开启容器 · 延时 1 小时 · 销毁</p>
+          <p class="meta" style="margin-top:8px">Start / Extend / Destroy instance</p>
+        </div>
+        <div class="sample mono">
+          <div class="label">仅终端 · Mono</div>
+          <div class="codebox">
+            ctf@neepu:~/wiki$ ls articles/<br />
+            [*] attachment ready · tcp 0.0.0.0:1337
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <p class="note">
+    打开方式：前端跑着时访问
+    <code style="color:var(--a)">http://localhost:5173/font-preview.html</code>
+    · 中文观感取决于系统字体（Win 多为微软雅黑，macOS 为苹方）· 选定后正式站改为自托管，避免再刷 CDN 切片。
+  </p>
+</body>
+</html>

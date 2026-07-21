@@ -193,7 +193,7 @@ const handleUploadFinish = ({ file, event }) => {
 }
 
 const handleImageError = (e) => {
-  e.target.src = '/assets/placeholder.png'
+  e.target.src = '/assets/avatar-placeholder.png'
 }
 
 const handlePreviewError = (e) => {
@@ -208,7 +208,7 @@ onMounted(() => {
 
 <style scoped>
 .carousel-management {
-  padding: 20px;
+  padding: var(--fib-21);
 }
 
 .page-header {

@@ -5,26 +5,33 @@
    these follow whatever theme is active via public/themes/*.css */
 
 .btn-neon {
-  background: linear-gradient(90deg, rgba(0,0,0,0.02), rgba(0,0,0,0.01));
-  border: 1px solid rgba(0,0,0,0.06);
+  background: var(--gradient-card-bg, linear-gradient(90deg, rgba(0,0,0,0.02), rgba(0,0,0,0.01)));
+  border: 1px solid var(--gradient-card-border, rgba(0,0,0,0.06));
   color: inherit;
-  transition: transform .12s ease, box-shadow .12s ease;
+  transition: transform var(--transition-fast, 200ms) ease, box-shadow var(--transition-base, 250ms) ease;
 }
-.btn-neon:hover { transform: translateY(-2px); box-shadow: var(--glow); }
+.btn-neon:hover { transform: translateY(-2px); box-shadow: var(--gradient-btn-glow-soft, var(--glow)); }
 
-/* Button hover: 全局加深（适用于 Naive UI 的 .n-button 及自定义按钮） */
-.n-button, .btn-neon { transition: filter .12s ease, box-shadow .12s ease; }
-.n-button:hover, .btn-neon:hover { filter: brightness(0.88); }
+/* Button hover: 全局渐变过渡 */
+.n-button, .btn-neon {
+  transition:
+    background var(--transition-base, 250ms) ease,
+    filter var(--transition-fast, 200ms) ease,
+    box-shadow var(--transition-base, 250ms) ease,
+    transform var(--transition-fast, 200ms) ease,
+    color var(--transition-base, 250ms) ease;
+}
+.n-button:hover, .btn-neon:hover { filter: brightness(1.06); }
 
 /* ========== 统一按钮样式规范 ========== */
 /* 标准按钮尺寸 */
-button:not(.icon-btn):not(.month-header):not(.carousel-dots button):not(.pagination button) {
+button:not(.icon-btn):not(.month-header):not(.carousel-dots button):not(.pagination button):not(.sidebar-item):not(.sidebar-nav-row):not(.game-list-item):not(.sidebar-collapse-trigger):not(.sidebar-toggle) {
   padding: 8px 16px;
   font-size: 14px;
-  border-radius: 6px;
+  border-radius: var(--card-radius);
   border: none;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all var(--transition-base, 250ms) ease;
   font-weight: 500;
   min-height: 36px;
   display: inline-flex;
@@ -33,13 +40,13 @@ button:not(.icon-btn):not(.month-header):not(.carousel-dots button):not(.paginat
   gap: 6px;
 }
 
-/* 主要按钮 */
+/* 主要按钮 — 渐变填充由 gradient-system.css 统一 */
 .btn-primary, button[type="submit"], .n-button--primary {
-  background: var(--color-primary, #00C48C);
-  color: white;
+  background: var(--gradient-btn-fill, var(--color-primary, #2DB58A));
+  color: var(--on-primary-text, #fff);
 }
 .btn-primary:hover, button[type="submit"]:hover, .n-button--primary:hover {
-  background: var(--primary-hover, rgba(0,196,140,0.9));
+  background: var(--gradient-btn-fill-hover, var(--primary-hover, #34C99A));
   transform: translateY(-1px);
 }
 
@@ -66,7 +73,7 @@ button:not(.icon-btn):not(.month-header):not(.carousel-dots button):not(.paginat
 /* 小按钮 */
 .btn-small {
   padding: 6px 12px;
-  font-size: 13px;
+  font-size: var(--text-sm);
   min-height: 32px;
 }
 
@@ -119,7 +126,7 @@ button:disabled, .btn-primary:disabled, .btn-secondary:disabled, .btn-danger:dis
 .edge-avatar.bottom-right { bottom: -22px; right: -22px; }
 
 .edge-tag {
-  position: absolute; padding: 6px 8px; border-radius: 999px; font-size: 12px;
+  position: absolute; padding: 6px 8px; border-radius: var(--radius-pill); font-size: var(--text-xs);
   background: var(--color-accent); color: #062022; font-weight: 700;
   border: 1px solid rgba(255,255,255,0.06);
   box-shadow: 0 6px 18px rgba(0,0,0,0.18);
@@ -130,9 +137,13 @@ button:disabled, .btn-primary:disabled, .btn-secondary:disabled, .btn-danger:dis
 .edge-tag.bottom-left { bottom: -10px; left: -10px; }
 
 :where(.n-card, [class*="card"]) {
-  --card-accent-fill-height: var(--card-accent-fill-height, 36px);
+  /* Accents off by default — prevents undefined-width stripes + corner poke-out */
+  --card-left-accent-width: 0px;
+  --card-top-accent-height: 0px;
+  --card-accent-fill-height: 0px;
   position: relative;
-  overflow: visible;
+  /* visible let left/top accent bars poke past border-radius ("顶出卡片") */
+  overflow: hidden;
   /* Provide a layered background that draws: 1) left stripe, 2) top stripe + filled band.
      This avoids stacking-context issues with inner wrapper backgrounds and guarantees
      the area between the top stripe and the fill height is completely colored. */
@@ -340,7 +351,7 @@ button:disabled, .btn-primary:disabled, .btn-secondary:disabled, .btn-danger:dis
   padding: 0.5rem 0.75rem !important;
   margin: 0 !important;
   border: 0 !important;
-  border-radius: 8px 8px 0 0 !important;
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0 !important;
 }
 
 .sidebar-card .n-card__content,
@@ -357,21 +368,17 @@ button:disabled, .btn-primary:disabled, .btn-secondary:disabled, .btn-danger:dis
 .n-card, .card, [class*="card"], .panel, .panel-card, .ant-card {
   border-radius: var(--card-radius, 10px) !important;
   overflow: hidden !important;
-  /* remove layered accent backgrounds so we draw header band explicitly */
-  background-image: none !important;
-  background-color: var(--card-bg) !important;
-  box-shadow: var(--card-shadow, 0 6px 18px rgba(10,20,40,0.06)) !important;
-  border: 1px solid rgba(0, 0, 0, 0.06) !important;
-  transition: transform .28s cubic-bezier(0.4, 0, 0.2, 1), 
-              box-shadow .28s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  background: var(--gradient-card-bg, var(--card-bg)) !important;
+  box-shadow: var(--gradient-card-shadow, var(--shadow-lg)) !important;
+  border: 1px solid var(--gradient-card-border, var(--border)) !important;
+  transition: box-shadow var(--transition-base, 250ms) ease, transform var(--transition-fast, 200ms) ease, border-color var(--transition-fast, 200ms) ease !important;
 }
 
-/* Hover effect: lift card slightly with enhanced shadow */
 .n-card:hover,
 .card:hover,
 [class*="card"]:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 10px 28px rgba(10,20,40,0.14) !important;
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-subtle-hover, 0 8px 24px rgba(0, 0, 0, 0.1)) !important;
 }
 
 /* Hide global pseudo-elements that draw thin stripes */
@@ -413,15 +420,15 @@ button:disabled, .btn-primary:disabled, .btn-secondary:disabled, .btn-danger:dis
 [class*="card"] .card-title {
   display: block !important;
   width: 100% !important;
-  background: var(--card-accent) !important;
-  color: var(--card-accent-foreground, #ffffff) !important;
-  padding: 0.5rem 0.8rem !important; /* 微调为更贴合标题的内边距 */
+  background: var(--gradient-card-header, var(--card-accent)) !important;
+  color: var(--gradient-card-header-text, var(--card-accent-foreground, #ffffff)) !important;
+  padding: 0.5rem 0.8rem !important;
   margin: 0 !important;
   font-weight: 700 !important;
   box-sizing: border-box !important;
   border-top-left-radius: inherit !important;
   border-top-right-radius: inherit !important;
-  transition: background-color .18s ease, color .18s ease !important;
+  transition: background var(--transition-base, 250ms) ease, color var(--transition-base, 250ms) ease !important;
 }
 
 /* Ensure inner content does not overlap header band */
@@ -439,7 +446,7 @@ button:disabled, .btn-primary:disabled, .btn-secondary:disabled, .btn-danger:dis
 
 /* Responsive: reduce header padding and radius on narrow screens */
 @media (max-width: 900px) {
-  .n-card, .card, [class*="card"], .panel, .panel-card, .ant-card { border-radius: calc(var(--card-radius, 10px) - 2px) !important; }
+  .n-card, .card, [class*="card"], .panel, .panel-card, .ant-card { border-radius: var(--card-radius, 10px) !important; }
   .n-card .n-card__header, .card-title, .sidebar-heading { padding: 0.4rem 0.6rem !important; font-size: 0.95rem !important; }
 }
 

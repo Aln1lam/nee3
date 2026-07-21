@@ -39,6 +39,7 @@ from .rate_limiting import (
     submission_rate_limit,
     login_rate_limit,
     TokenBucketStrategy,
+    configure_redis_rate_limiter,
 )
 
 # ==================== Logging ====================
@@ -67,6 +68,8 @@ from .caching import (
     no_cache,
     set_cache_headers,
     get_cache_expiration_time,
+    cache_response,
+    invalidate_cache_prefix,
 )
 
 # ==================== Error Handling ====================
@@ -104,6 +107,8 @@ __all__ = [
     'no_cache',
     'set_cache_headers',
     'get_cache_expiration_time',
+    'cache_response',
+    'invalidate_cache_prefix',
     
     # Error Handling
     'ErrorHandler',
@@ -112,9 +117,19 @@ __all__ = [
     
     # Init function
     'init_all_middleware',
+    'configure_redis_backend',
 ]
 
 logger = _logging.getLogger(__name__)
+
+
+def configure_redis_backend(redis_client) -> None:
+    """将 Redis 接入速率限制等中间件后端"""
+    configure_redis_rate_limiter(redis_client)
+    if redis_client:
+        logger.info("✓ Redis backend configured for rate limiting")
+    else:
+        logger.info("⊘ Redis backend not available, using in-memory rate limiting")
 
 
 def init_all_middleware(app, enable_compression: bool = True, security_policy: str = 'moderate') -> None:

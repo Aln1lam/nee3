@@ -1,0 +1,119 @@
+/**
+ * 西电 Ret2Shell / Tailwind 默认字号比例
+ * 参考：https://ctf.xidian.edu.cn/training/11
+ * base 16px · sm 14px · xs 12px · lg 18px · xl 20px
+ */
+
+:root {
+  --text-xs: 0.75rem;
+  --text-xs--line-height: 1rem;
+
+  --text-sm: 0.875rem;
+  --text-sm--line-height: 1.25rem;
+
+  --text-base: 1rem;
+  --text-base--line-height: 1.5rem;
+
+  --text-lg: 1.125rem;
+  --text-lg--line-height: 1.75rem;
+
+  --text-xl: 1.25rem;
+  --text-xl--line-height: 1.75rem;
+
+  --text-2xl: 1.5rem;
+  --text-2xl--line-height: 2rem;
+
+  --text-3xl: 1.875rem;
+  --text-3xl--line-height: 2.25rem;
+}
+
+.text-xs {
+  font-size: var(--text-xs);
+  line-height: var(--text-xs--line-height);
+}
+
+.text-sm {
+  font-size: var(--text-sm);
+  line-height: var(--text-sm--line-height);
+}
+
+.text-base {
+  font-size: var(--text-base);
+  line-height: var(--text-base--line-height);
+}
+
+.text-lg {
+  font-size: var(--text-lg);
+  line-height: var(--text-lg--line-height);
+}
+
+.text-xl {
+  font-size: var(--text-xl);
+  line-height: var(--text-xl--line-height);
+}
+
+.text-2xl {
+  font-size: var(--text-2xl);
+  line-height: var(--text-2xl--line-height);
+}
+
+/* Naive UI 组件默认跟随西电比例 */
+.n-button,
+.n-input,
+.n-select,
+.n-tag,
+.n-tabs,
+.n-tab,
+.n-data-table,
+.n-form-item-label,
+.n-menu-item,
+.n-dropdown-option {
+  font-size: var(--text-sm);
+}
+
+.n-button--large-type,
+.n-input--large {
+  font-size: var(--text-base);
+}
+
+.n-button--tiny-type,
+.n-tag--small {
+  font-size: var(--text-xs);
+}
+
+/* 侧栏 / 列表 / 表格等高频 UI 跟随西电比例 */
+.sidebar-layout__link,
+.sidebar-layout__subtitle,
+.game-list-item,
+.tree-item,
+.score-meta,
+.mode-tabs button,
+.bulletin-item,
+.wiki-toolbar,
+.quick-link {
+  font-size: var(--text-sm);
+  line-height: var(--text-sm--line-height);
+}
+
+.link-code,
+.item-code,
+.game-code,
+.panel-code,
+.nav-code,
+.tree-cat-count,
+.tree-cat-icon {
+  font-size: var(--text-xs);
+  line-height: var(--text-xs--line-height);
+}
+
+.matrix-page-title,
+.tree-panel-title {
+  font-size: var(--text-base);
+  line-height: var(--text-base--line-height);
+}
+
+.brief-title-row h3,
+.stage-tab-label {
+  font-size: var(--text-lg);
+  line-height: var(--text-lg--line-height);
+}

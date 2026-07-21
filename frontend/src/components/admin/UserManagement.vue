@@ -1,19 +1,24 @@
 <template>
   <div class="user-management">
-    
-
     <div class="action-bar">
-      <input 
-        v-model="searchText" 
-        placeholder="搜索用户（昵称、邮箱、姓名）..." 
+      <input
+        v-model="searchText"
+        placeholder="搜索用户（昵称、邮箱、姓名）..."
         class="search-input"
+        :disabled="loading"
         @keyup.enter="loadUsers"
       />
-      <button class="btn-primary" @click="loadUsers">搜索</button>
-      <button class="btn-secondary" @click="loadUsers">刷新</button>
+      <button class="btn-primary" :disabled="loading" @click="loadUsers">
+        {{ loading ? '加载中…' : '搜索' }}
+      </button>
+      <button class="btn-secondary" :disabled="loading" @click="loadUsers">刷新</button>
     </div>
 
-    <table class="users-table">
+    <div v-if="loadError" class="state-msg error">加载失败，请重试</div>
+    <div v-else-if="loading && !users.length" class="state-msg">加载中…</div>
+    <div v-else-if="!users.length" class="state-msg">暂无用户</div>
+
+    <table v-else class="users-table">
       <thead>
         <tr>
           <th>ID</th>
@@ -33,33 +38,32 @@
           <td class="email">{{ user.email }}</td>
           <td>{{ user.full_name || '-' }}</td>
           <td>
-            <span v-if="user.is_admin" class="badge admin">🔧 管理员</span>
-            <span v-else class="badge user">👤 用户</span>
+            <span v-if="user.is_admin" class="badge admin">管理员</span>
+            <span v-else-if="user.is_moderator" class="badge mod">协管</span>
+            <span v-else class="badge user">用户</span>
           </td>
           <td>{{ user.team_id || '-' }}</td>
           <td>{{ formatDate(user.created_at) }}</td>
           <td class="actions">
-            <button class="btn-small edit" @click="editUser(user)">编辑</button>
-            <button class="btn-small delete" @click="deleteUser(user.id)">删除</button>
+            <button class="btn-small edit" :disabled="busy" @click="editUser(user)">编辑</button>
+            <button class="btn-small delete" :disabled="busy" @click="deleteUser(user.id)">删除</button>
           </td>
         </tr>
       </tbody>
     </table>
 
-    <!-- 分页 -->
     <div class="pagination">
-      <button @click="currentPage--" :disabled="currentPage <= 1">上一页</button>
+      <button @click="prevPage" :disabled="currentPage <= 1 || loading">上一页</button>
       <span>第 {{ currentPage }} 页</span>
-      <button @click="currentPage++">下一页</button>
+      <button @click="nextPage" :disabled="loading || users.length === 0">下一页</button>
     </div>
 
-    <!-- 编辑模态框 -->
     <div v-if="showEditModal" class="modal-overlay" @click="closeModal">
       <div class="modal-content" @click.stop>
         <h3>编辑用户</h3>
         <div class="form-group">
           <label>昵称</label>
-          <input v-model="editForm.nickname" class="form-input" />
+          <input v-model="editForm.nickname" class="form-input" :disabled="saving" />
         </div>
         <div class="form-group">
           <label>邮箱</label>
@@ -67,17 +71,25 @@
         </div>
         <div class="form-group">
           <label>姓名</label>
-          <input v-model="editForm.full_name" class="form-input" />
+          <input v-model="editForm.full_name" class="form-input" :disabled="saving" />
         </div>
         <div class="form-group">
           <label>
-            <input type="checkbox" v-model="editForm.is_admin" />
+            <input type="checkbox" v-model="editForm.is_admin" :disabled="saving" />
             管理员权限
           </label>
         </div>
+        <div class="form-group">
+          <label>
+            <input type="checkbox" v-model="editForm.is_moderator" :disabled="saving" />
+            协管（Moderator：可审作弊/看统计）
+          </label>
+        </div>
         <div class="form-actions">
-          <button class="btn-primary" @click="saveUser">保存</button>
-          <button class="btn-cancel" @click="closeModal">取消</button>
+          <button class="btn-primary" :disabled="saving" @click="saveUser">
+            {{ saving ? '保存中…' : '保存' }}
+          </button>
+          <button class="btn-cancel" :disabled="saving" @click="closeModal">取消</button>
         </div>
       </div>
     </div>
@@ -85,33 +97,47 @@
 </template>
 
 <script>
-import { ref, inject, onMounted } from 'vue'
+import { ref, computed, inject, onMounted, watch } from 'vue'
+import { useMessage } from 'naive-ui'
+import { apiErrorMessage } from '@/utils/apiError'
 
 export default {
   name: 'UserManagement',
   setup() {
     const axios = inject('axios')
-    
+    const message = useMessage()
+
     const users = ref([])
+    const loading = ref(false)
+    const loadError = ref(false)
+    const saving = ref(false)
+    const deleting = ref(false)
     const searchText = ref('')
     const currentPage = ref(1)
     const showEditModal = ref(false)
     const editForm = ref({})
+    const busy = computed(() => loading.value || saving.value || deleting.value)
 
     async function loadUsers() {
+      if (loading.value) return
+      loading.value = true
+      loadError.value = false
       try {
         const token = localStorage.getItem('neepu_token')
         const res = await axios.get('/api/admin/platform/users', {
           params: {
             page: currentPage.value,
-            search: searchText.value
+            search: searchText.value,
           },
-          headers: { Authorization: `Bearer ${token}` }
+          headers: { Authorization: `Bearer ${token}` },
         })
-        users.value = res.data.items
+        users.value = res.data?.items || res.data?.users || []
       } catch (e) {
-        console.error('加载用户失败:', e)
-        alert('加载用户失败')
+        users.value = []
+        loadError.value = true
+        message.error(apiErrorMessage(e, '加载用户失败'))
+      } finally {
+        loading.value = false
       }
     }
 
@@ -121,39 +147,46 @@ export default {
     }
 
     function closeModal() {
+      if (saving.value) return
       showEditModal.value = false
       editForm.value = {}
     }
 
     async function saveUser() {
+      if (saving.value || !editForm.value?.id) return
+      saving.value = true
       try {
         const token = localStorage.getItem('neepu_token')
-        await axios.patch(`/api/admin/platform/users/${editForm.value.id}`, 
+        await axios.patch(
+          `/api/admin/platform/users/${editForm.value.id}`,
           editForm.value,
-          { headers: { Authorization: `Bearer ${token}` } }
+          { headers: { Authorization: `Bearer ${token}` } },
         )
-        alert('保存成功')
+        message.success('保存成功')
         closeModal()
-        loadUsers()
+        await loadUsers()
       } catch (e) {
-        console.error('保存失败:', e)
-        alert('保存失败')
+        message.error(apiErrorMessage(e, '保存失败'))
+      } finally {
+        saving.value = false
       }
     }
 
     async function deleteUser(userId) {
+      if (deleting.value) return
       if (!confirm('确定删除此用户吗？删除后不可恢复。')) return
-      
+      deleting.value = true
       try {
         const token = localStorage.getItem('neepu_token')
-        await axios.delete(`/api/admin/platform/users/${userId}`,
-          { headers: { Authorization: `Bearer ${token}` } }
-        )
-        alert('删除成功')
-        loadUsers()
+        await axios.delete(`/api/admin/platform/users/${userId}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        })
+        message.success('删除成功')
+        await loadUsers()
       } catch (e) {
-        console.error('删除失败:', e)
-        alert('删除失败')
+        message.error(apiErrorMessage(e, '删除失败'))
+      } finally {
+        deleting.value = false
       }
     }
 
@@ -162,12 +195,29 @@ export default {
       return new Date(dateStr).toLocaleString('zh-CN')
     }
 
+    function prevPage() {
+      if (currentPage.value <= 1) return
+      currentPage.value -= 1
+    }
+
+    function nextPage() {
+      currentPage.value += 1
+    }
+
+    watch(currentPage, () => {
+      loadUsers()
+    })
+
     onMounted(() => {
       loadUsers()
     })
 
     return {
       users,
+      loading,
+      loadError,
+      saving,
+      busy,
       searchText,
       currentPage,
       showEditModal,
@@ -177,26 +227,28 @@ export default {
       closeModal,
       saveUser,
       deleteUser,
-      formatDate
+      formatDate,
+      prevPage,
+      nextPage,
     }
-  }
+  },
 }
 </script>
 
 <style scoped>
-h2 {
-  margin-top: 0;
-  color: #333;
-  border-bottom: 3px solid var(--card-accent);
-  padding-bottom: 12px;
-  margin-bottom: 20px;
-}
-
 .action-bar {
   display: flex;
   gap: 10px;
   margin-bottom: 20px;
 }
+
+.state-msg {
+  padding: 24px;
+  text-align: center;
+  color: var(--muted, #888);
+  margin-bottom: 16px;
+}
+.state-msg.error { color: #c62828; }
 
 .search-input {
   flex: 1;
@@ -214,14 +266,14 @@ h2 {
   font-weight: 500;
   transition: all .2s ease;
 }
+.btn-primary:disabled, .btn-secondary:disabled, .btn-small:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
 
 .btn-primary {
   background: var(--card-accent);
   color: white;
-}
-
-.btn-primary:hover {
-  opacity: 0.9;
 }
 
 .btn-secondary {
@@ -229,14 +281,10 @@ h2 {
   color: #333;
 }
 
-.btn-secondary:hover {
-  background: #e0e0e0;
-}
-
 .users-table {
   width: 100%;
   border-collapse: collapse;
-  background: white;
+  background: var(--gradient-card-bg, var(--card-bg));
   border-radius: 8px;
   overflow: hidden;
   box-shadow: var(--card-shadow);
@@ -262,10 +310,6 @@ h2 {
   font-size: 13px;
 }
 
-.users-table tbody tr:hover {
-  background: rgba(0,196,140,0.03);
-}
-
 .email {
   max-width: 150px;
   overflow: hidden;
@@ -281,20 +325,11 @@ h2 {
   font-weight: 600;
 }
 
-.badge.admin {
-  background: #e3f2fd;
-  color: #1976d2;
-}
+.badge.admin { background: #e3f2fd; color: #1976d2; }
+.badge.mod { background: #fff3e0; color: #ef6c00; }
+.badge.user { background: #f3e5f5; color: #7b1fa2; }
 
-.badge.user {
-  background: #f3e5f5;
-  color: #7b1fa2;
-}
-
-.actions {
-  display: flex;
-  gap: 8px;
-}
+.actions { display: flex; gap: 8px; }
 
 .btn-small {
   padding: 6px 10px;
@@ -302,23 +337,9 @@ h2 {
   border-radius: 4px;
   cursor: pointer;
   font-size: 12px;
-  transition: all .2s ease;
 }
-
-.btn-small.edit {
-  background: #2196f3;
-  color: white;
-}
-
-.btn-small.delete {
-  background: #f44336;
-  color: white;
-}
-
-.btn-small:hover {
-  opacity: 0.9;
-  transform: scale(1.05);
-}
+.btn-small.edit { background: #2196f3; color: white; }
+.btn-small.delete { background: #f44336; color: white; }
 
 .pagination {
   display: flex;
@@ -332,17 +353,10 @@ h2 {
   padding: 8px 12px;
   border: 1px solid var(--card-accent);
   border-radius: 4px;
-  background: white;
+  background: var(--gradient-card-bg, var(--card-bg));
   color: var(--card-accent);
   cursor: pointer;
-  transition: all .2s ease;
 }
-
-.pagination button:hover:not(:disabled) {
-  background: var(--card-accent);
-  color: white;
-}
-
 .pagination button:disabled {
   opacity: 0.5;
   cursor: not-allowed;
@@ -350,10 +364,7 @@ h2 {
 
 .modal-overlay {
   position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
+  inset: 0;
   background: rgba(0,0,0,0.5);
   display: flex;
   align-items: center;
@@ -362,7 +373,7 @@ h2 {
 }
 
 .modal-content {
-  background: white;
+  background: var(--gradient-card-bg, var(--card-bg));
   padding: 25px;
   border-radius: 10px;
   max-width: 500px;
@@ -370,16 +381,7 @@ h2 {
   box-shadow: 0 10px 40px rgba(0,0,0,0.2);
 }
 
-.modal-content h3 {
-  margin-top: 0;
-  margin-bottom: 20px;
-  color: #333;
-}
-
-.form-group {
-  margin-bottom: 15px;
-}
-
+.form-group { margin-bottom: 15px; }
 .form-group label {
   display: block;
   margin-bottom: 5px;
@@ -387,7 +389,6 @@ h2 {
   color: #333;
   font-size: 13px;
 }
-
 .form-input {
   width: 100%;
   padding: 10px;
@@ -395,17 +396,8 @@ h2 {
   border-radius: 6px;
   box-sizing: border-box;
 }
-
-.form-input:disabled {
-  background: #f5f5f5;
-}
-
-.form-actions {
-  display: flex;
-  gap: 10px;
-  margin-top: 20px;
-}
-
+.form-input:disabled { background: #f5f5f5; }
+.form-actions { display: flex; gap: 10px; margin-top: 20px; }
 .btn-cancel {
   padding: 10px 16px;
   border: none;
@@ -414,9 +406,5 @@ h2 {
   color: white;
   cursor: pointer;
   flex: 1;
-}
-
-.btn-cancel:hover {
-  opacity: 0.9;
 }
 </style>

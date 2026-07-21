@@ -1,11 +1,12 @@
 """
-动态Flag生成服务 - 移植自GZCTF
+动态 Flag 生成服务
 支持：[GUID]、[TEAM_HASH]、[LEET]、[CLEET] 等占位符
 """
 
 import uuid
 import hashlib
 import random
+import secrets
 from enum import Enum
 from typing import Optional, Callable, List, Tuple, Dict
 from dataclasses import dataclass
@@ -56,7 +57,7 @@ class DynamicFlagGenerator:
     
     示例：
     - "flag{[GUID]}" -> "flag{550e8400-e29b-41d4-a716-446655440000}"
-    - "flag{hello_[TEAM_HASH]}" -> "flag{hello_abc123def456}"
+    - "flag{[TEAM_HASH]}" -> "flag{550e8400-e29b-41d4-a716-446655440000}"（同队稳定 UUID）
     - "[LEET]flag{hello}" -> "flag{h3ll0}"
     """
     
@@ -219,21 +220,21 @@ class DynamicFlagGenerator:
                 cached_hash[0] = team_hash_provider()
             return cached_hash[0]
         
-        return self._generate_flag(resolver)
+        return self._normalize_flag_prefix(self._generate_flag(resolver))
     
     def generate_test_flag(self) -> str:
         """为测试生成flag"""
         if not self.raw_template:
-            return "flag{GZCTF_dynamic_flag_test}"
+            return "flag{dynamic_flag_test}"
         
-        return self._generate_flag(lambda: "TestTeamHash")
+        return self._normalize_flag_prefix(self._generate_flag(lambda: "TestTeamHash"))
     
     def generate_random_flag(self) -> str:
         """生成包含随机性的flag"""
         if not self.raw_template:
             return f"flag{{{uuid.uuid4()}}}"
         
-        return self._generate_flag(lambda: "TestTeamHash")
+        return self._normalize_flag_prefix(self._generate_flag(lambda: "TestTeamHash"))
     
     def _generate_flag(self, team_hash_resolver: Callable[[], str]) -> str:
         """
@@ -260,6 +261,12 @@ class DynamicFlagGenerator:
                 result.append(str(uuid.uuid4()))
         
         return "".join(result)
+
+    @staticmethod
+    def _normalize_flag_prefix(flag: str) -> str:
+        if flag.startswith("FLAG{"):
+            return "flag{" + flag[5:]
+        return flag
     
     @staticmethod
     def _leet_convert(text: str, char_map: Dict[str, str]) -> str:
@@ -316,17 +323,16 @@ class ContainerFlagService:
         if not flag_template:
             return f"flag{{{uuid.uuid4()}}}"
         
-        # 生成team hash
+        # 生成team hash（UUID 格式，同队/同题稳定）
         def get_team_hash():
-            # GZCTF的算法：hash(salt::challenge_id::user_id)
             if team_hash_salt:
-                salt_str = f"{team_hash_salt}::{challenge_id}"
+                salt_source = f"{team_hash_salt}::{challenge_id}"
             else:
-                salt_str = f"game_{game_id}_challenge_{challenge_id}"
-            
-            user_str = f"{salt_str}::{user_id}"
-            hash_obj = hashlib.sha256(user_str.encode())
-            return hash_obj.hexdigest()[12:24]  # 取12-24位（12字符）
+                salt_source = f"CTF::{game_id}::{challenge_id}"
+
+            owner_id = team_id if team_id is not None else user_id
+            namespace = uuid.uuid5(uuid.NAMESPACE_DNS, salt_source)
+            return str(uuid.uuid5(namespace, str(owner_id)))
         
         return generator.generate_with_team_hash(get_team_hash)
     
@@ -335,3 +341,61 @@ class ContainerFlagService:
         """为测试生成flag"""
         generator = DynamicFlagGenerator(flag_template)
         return generator.generate_test_flag()
+
+
+SIGNUP_FLAG_PLACEHOLDER = "flag{testflag}"
+
+
+def resolve_challenge_expected_flag(challenge, user, user_id, running_instance=None) -> str:
+    """解析题目期望 flag：容器实例优先，动态附件题按模板生成（signup 模式）。"""
+    from backend.server.db_models import CtfGame
+    from backend.services.scoring_service import ChallengeCType
+
+    base = (challenge.flag or "").strip()
+    if not challenge.flag_template:
+        return base
+
+    if running_instance and getattr(running_instance, "dynamic_flag", None):
+        return running_instance.dynamic_flag.strip()
+
+    if int(challenge.challenge_type or 0) != ChallengeCType.DYNAMIC_ATTACHMENT:
+        return ""
+
+    game = CtfGame.query.get(challenge.game_id)
+    salt = ensure_team_hash_salt(game)
+    if game is not None and salt:
+        try:
+            from backend.server.extensions import db
+            db.session.commit()
+        except Exception:
+            pass
+
+    owner_id = user.team_id if user and user.team_id else int(user_id)
+    return ContainerFlagService.generate_dynamic_flag(
+        flag_template=challenge.flag_template,
+        challenge_id=challenge.id,
+        user_id=int(user_id),
+        game_id=challenge.game_id,
+        team_id=owner_id,
+        team_hash_salt=salt,
+    )
+
+
+def personalize_signup_attachment(data: bytes, dynamic_flag: str) -> bytes:
+    """将 signup 模板附件中的 flag{testflag} 替换为队伍专属动态 flag。"""
+    try:
+        text = data.decode("utf-8")
+    except UnicodeDecodeError:
+        return data
+    if SIGNUP_FLAG_PLACEHOLDER not in text:
+        return data
+    return text.replace(SIGNUP_FLAG_PLACEHOLDER, dynamic_flag).encode("utf-8")
+
+
+def ensure_team_hash_salt(game) -> Optional[str]:
+    """Ensure a game has an unpredictable salt for [TEAM_HASH] dynamic flags."""
+    if game is None:
+        return None
+    if not getattr(game, "team_hash_salt", None):
+        game.team_hash_salt = hashlib.sha256(f"CTF@{secrets.token_hex(32)}@PK".encode()).hexdigest()
+    return game.team_hash_salt

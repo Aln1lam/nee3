@@ -1,11 +1,11 @@
 <template>
   <div class="events-root">
     <div class="calendar-toolbar">
-      <h2>赛事日历</h2>
+      <h2 class="events-title"><span class="link-code">CAL</span> 赛事日历</h2>
       <div class="toolbar-actions">
         <n-space>
-          <n-button :size="'small'" :type="mode==='domestic'? 'primary' : 'default'" @click="mode='domestic'">国内</n-button>
-          <n-button :size="'small'" :type="mode==='foreign'? 'primary' : 'default'" @click="mode='foreign'">国外</n-button>
+          <n-button :size="'small'" :type="mode==='domestic'? 'primary' : 'default'" round @click="mode='domestic'">国内</n-button>
+          <n-button :size="'small'" :type="mode==='foreign'? 'primary' : 'default'" round @click="mode='foreign'">国外</n-button>
         </n-space>
       </div>
     </div>
@@ -25,7 +25,7 @@
               <div v-for="e in cell.events.slice(0,3)" :key="e.id" class="evt" @click="openEvent(e)">
                 {{ e.title || e['比赛名称'] }}
               </div>
-              <div v-if="cell.events.length>3" class="more">+{{ cell.events.length-3 }} more</div>
+              <div v-if="cell.events.length>3" class="more">+{{ cell.events.length-3 }} 场</div>
             </div>
           </div>
         </div>
@@ -35,7 +35,7 @@
         <n-card>
           <template #header>
             <div class="side-header">
-              <div>赛程列表</div>
+              <div class="side-title"><span class="link-code">LST</span> 赛程列表</div>
               <div>
                 <n-select v-model:value="statusFilter" :options="statusOptions" size="small" clearable @update:value="fetchEvents" />
               </div>
@@ -146,22 +146,80 @@ export default {
 </script>
 
 <style scoped>
-.events-root { padding: var(--events-padding, 16px); }
-.calendar-toolbar { display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; }
-.toolbar-actions { display:flex; align-items:center }
-.events-layout { display:flex; gap: var(--events-gap, 20px); align-items:flex-start }
-.events-main { width: var(--events-main-width, 720px) }
-.calendar-grid { display:grid; grid-template-columns: repeat(7, 1fr); gap: var(--calendar-gap, 6px) }
-.cal-cell { min-height: var(--cal-cell-min-height, 96px); border: var(--cal-cell-border, 1px solid #eee); padding: var(--cal-cell-padding, 6px); background: var(--cal-cell-bg, #fff) }
-.cal-cell.head { background: var(--cal-head-bg, #fafafa); font-weight:700; text-align:center }
-.cell-date { font-size: var(--cell-date-font-size, 12px); color: var(--cell-date-color, #666) }
-.cell-events { margin-top:6px }
-.evt { background: var(--evt-bg, #e6f7ff); padding: var(--evt-padding, 2px 4px); margin-bottom:4px; border-radius:3px; cursor:pointer; font-size: var(--evt-font-size, 12px) }
-.more { font-size: var(--more-font-size, 12px); color: var(--more-color, #999) }
-.events-side { flex:1 }
-.side-header { display:flex; justify-content:space-between; align-items:center }
-.side-list { max-height:520px; overflow:auto }
-.list-item { padding: var(--list-item-padding, 8px 6px); border-bottom: var(--list-item-border, 1px solid #f5f5f5); cursor:pointer }
-.list-title { font-weight:600 }
-.list-time { font-size: var(--cell-date-font-size, 12px); color: var(--cell-date-color, #666) }
+.calendar-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  gap: 12px;
+}
+.events-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  font-family: var(--font-ui);
+  font-weight: 700;
+  color: var(--text);
+}
+.toolbar-actions { display: flex; align-items: center; }
+.calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: var(--calendar-gap, 6px);
+}
+.cell-date {
+  font-size: var(--text-sm);
+  color: var(--muted);
+  font-weight: 600;
+  font-family: var(--font-ui);
+}
+.cell-events { margin-top: 6px; }
+.evt {
+  background: rgba(var(--primary-rgb), 0.14);
+  color: var(--text);
+  padding: 4px 8px;
+  margin-bottom: 4px;
+  border-radius: var(--radius-pill, 10px);
+  border-left: 3px solid var(--primary);
+  cursor: pointer;
+  font-size: var(--text-xs);
+  font-weight: 600;
+  font-family: var(--font-ui);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.more {
+  font-size: var(--text-xs);
+  color: var(--primary);
+  font-weight: 600;
+}
+.events-side { flex: 1; }
+.side-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+.side-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 700;
+}
+.side-list { max-height: 520px; overflow: auto; }
+.list-item {
+  padding: var(--fib-13, 13px);
+  border-radius: var(--card-radius);
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.list-item:hover { background: rgba(var(--primary-rgb), 0.06); }
+.list-title { font-weight: 600; font-family: var(--font-ui); }
+.list-time {
+  font-size: var(--text-xs);
+  color: var(--muted);
+  margin-top: 4px;
+}
 </style>
