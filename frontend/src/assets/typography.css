@@ -5,7 +5,7 @@
  */
 
 :root {
-  --font-ui: "Inter", -apple-system, "BlinkMacSystemFont", "PingFang SC", "Microsoft YaHei", sans-serif;
+  --font-ui: "M PLUS Rounded 1c", "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif;
   --font-mono: "JetBrains Mono", "Fira Code", monospace;
 
   --text-xs: 0.75rem;

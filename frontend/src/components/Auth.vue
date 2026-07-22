@@ -274,7 +274,7 @@ export default {
 
 .bracket {
   font-weight: 300;
-  color: var(--muted, #64748B);
+  color: var(--muted, var(--muted));
 }
 
 /* 2. 红色小按钮区域 */
@@ -304,8 +304,8 @@ export default {
 
 /* 1) Fade + Scale (Entrance) - subtle elevation and fade */
 @keyframes md-fade-scale-in {
-  0% { opacity: 0; transform: translateY(8px) scale(0.98); filter: blur(2px); }
-  60% { opacity: 1; transform: translateY(0) scale(1.02); filter: blur(0); }
+  0% { opacity: 0; transform: translateY(8px) scale(0.98); filter: none; }
+  60% { opacity: 1; transform: translateY(0) scale(1.02); filter: none; }
   100% { opacity: 1; transform: translateY(0) scale(1); }
 }
 .md-fade-scale .n-modal__card {
@@ -375,7 +375,7 @@ export default {
 }
 .auth-captcha { margin: 12px 0; }
 
-/* anime-ui: auth contrast */
+/* auth contrast */
 .n-card :deep(.n-button--default-type) {
   background: var(--gradient-btn-fill, var(--primary)) !important;
   color: var(--on-primary-text, #fff) !important;

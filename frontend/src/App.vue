@@ -266,7 +266,7 @@ export default {
         inputColor: '#232838',
         tableColor: '#232838',
         borderColor: 'rgba(94, 217, 168, 0.22)',
-        borderRadius: '12px',
+        borderRadius: '10px',
         fontSize: '16px',
         fontSizeMini: '12px',
         fontSizeTiny: '12px',
@@ -274,7 +274,7 @@ export default {
         fontSizeMedium: '16px',
         fontSizeLarge: '18px',
         fontSizeHuge: '20px',
-        fontFamily: "Inter, 'Noto Sans SC', 'PingFang SC', 'Microsoft YaHei UI', sans-serif",
+        fontFamily: '"M PLUS Rounded 1c", "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif',
         fontFamilyMono: "'JetBrains Mono', 'Fira Code', Consolas, monospace",
       },
       Button: {
@@ -373,14 +373,14 @@ export default {
   min-height: calc(100vh - var(--nav-height, 72px));
   max-height: calc(100vh - var(--nav-height, 72px));
   overflow: hidden;
-  background: #0B0E14;
+  background: var(--page-bg);
 }
 .app-shell.full-height-mode .main-content {
   flex: 1;
   min-height: 0;
   height: 100%;
   overflow: hidden;
-  background: #0B0E14;
+  background: var(--page-bg);
 }
 .app-shell.full-height-mode .main-content > * {
   height: 100%;

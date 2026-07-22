@@ -1,7 +1,7 @@
 <template>
-  <div class="games-hub r2s-games">
+  <div class="games-hub r2s-games layout-with-sidebar lab-deck" style="--sidebar-width: 248px">
     <div class="r2s-games__stage">
-      <aside class="r2s-games__list-pane">
+      <aside class="r2s-games__list-pane sidebar-rail">
         <div v-if="canCreateGame" class="sidebar-actions">
           <button type="button" class="btn btn-md btn-primary" @click="openCreate">创建赛事</button>
         </div>
@@ -31,9 +31,15 @@
           size="small"
           class="side-pagination"
         />
+      <div class="sidebar-rail-footer sidebar-footer sidebar-footer-copy-wrap">
+        <div class="sidebar-footer-copy">
+          © 2022-2026
+          <a href="https://www.neepu.edu.cn/" target="_blank" rel="noopener">东北电力大学</a>
+        </div>
+      </div>
       </aside>
 
-      <main class="r2s-games__cover">
+      <main class="r2s-games__cover sidebar-main">
         <div v-if="detailLoading && !selectedDetail" class="poster-loading">
           <UiLoadingTips />
         </div>
@@ -319,5 +325,49 @@ export default {
   text-overflow: ellipsis;
   white-space: nowrap;
   text-align: left;
+}
+
+/* Home 锚点：清爽柔光 Hero 比赛 Banner */
+.r2s-games__cover-card {
+  position: relative;
+  overflow: hidden;
+  width: 100%;
+  max-width: 920px;
+  margin: 0 auto;
+  border-radius: var(--card-radius) !important;
+  border: 1px solid rgba(var(--primary-rgb), 0.2) !important;
+  background: linear-gradient(135deg, rgba(35, 40, 56, 0.7) 0%, rgba(20, 24, 35, 0.9) 100%) !important;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3) !important;
+  text-align: left;
+  cursor: pointer;
+}
+.r2s-games__cover-card::before {
+  content: '';
+  position: absolute;
+  top: -50px;
+  left: -50px;
+  width: 260px;
+  height: 260px;
+  background: radial-gradient(circle, rgba(var(--primary-rgb), 0.12) 0%, transparent 70%);
+  pointer-events: none;
+  z-index: 0;
+}
+.r2s-games__cover-visual {
+  position: relative;
+  z-index: 1;
+  min-height: 180px;
+  background: transparent !important;
+}
+.r2s-games__info {
+  position: relative;
+  z-index: 1;
+}
+.r2s-games__status-pill {
+  border-radius: var(--radius-pill) !important;
+}
+.games-hub.r2s-games {
+  height: calc(100vh - var(--nav-height, 72px));
+  max-height: calc(100vh - var(--nav-height, 72px));
+  overflow: hidden;
 }
 </style>

@@ -258,8 +258,8 @@
 }
 
 .matrix-layout__sidebar {
-  width: var(--sidebar-width, 256px);
-  min-width: var(--sidebar-width, 256px);
+  width: var(--sidebar-width, 248px);
+  min-width: var(--sidebar-width, 248px);
   flex-shrink: 0;
   display: flex;
   flex-direction: column;

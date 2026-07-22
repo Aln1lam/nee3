@@ -51,6 +51,7 @@
           :end-time="gameMeta.end_time"
         />
         <UiTimeProgress v-else-if="isTrainingMode" permanent />
+        <UiThemeBox />
         <InstanceBox v-if="user" />
         <UiNotificationBox />
         <template v-if="user">
@@ -77,7 +78,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { NButton, NDropdown, useMessage } from 'naive-ui'
 import LogoAnimate from './LogoAnimate.vue'
 import { InstanceBox } from '@/components/shared'
-import { UiTimer, UiTimeProgress, UiNotificationBox } from '@/components/ui'
+import { UiTimer, UiTimeProgress, UiNotificationBox, UiThemeBox } from '@/components/ui'
 import { usePlatformStore } from '@/stores/platform'
 import { resolveUploadUrl } from '../utils/uploadUrl'
 import { fetchSession } from '../services/auth'
@@ -107,7 +108,7 @@ function enrichNav(items) {
 export default {
   name: 'TitleBar',
   components: {
-    NButton, NDropdown, LogoAnimate, InstanceBox,
+    NButton, NDropdown, LogoAnimate, InstanceBox, UiThemeBox,
     UiTimer, UiTimeProgress, UiNotificationBox,
   },
   props: { user: { type: Object, default: null } },
@@ -317,8 +318,8 @@ export default {
   box-sizing: border-box;
 }
 .title-bar-left { display: flex; align-items: center; gap: 12px; justify-self: start; flex-shrink: 0; }
-.brand { display: flex; align-items: center; gap: 10px; cursor: pointer; font-weight: 700; color: #E2E8F0; }
-.brand .logo-animate { color: #5ED9A8; }
+.brand { display: flex; align-items: center; gap: 10px; cursor: pointer; font-weight: 700; color: var(--text); }
+.brand .logo-animate { color: var(--primary); }
 .brand-game-logo { font-size: var(--text-2xl); line-height: 1; }
 .brand-name {
   font-family: var(--font-ui);
@@ -368,6 +369,7 @@ export default {
 }
 /* NSSCTF 风：无白药丸，图标哑光 + 用户扁平行 */
 .title-bar-right :deep(.notif-btn),
+.title-bar-right :deep(.theme-btn),
 .title-bar-right :deep(.instance-btn) {
   width: 32px !important;
   height: 32px !important;
@@ -383,10 +385,10 @@ export default {
   overflow: visible !important;
 }
 .title-bar-right :deep(.instance-btn) {
-  color: #64748B !important;
+  color: var(--muted) !important;
 }
 .title-bar-right :deep(.instance-btn:hover) {
-  color: #94A3B8 !important;
+  color: var(--muted) !important;
   background: rgba(148, 163, 184, 0.08) !important;
 }
 .title-bar-right :deep(.instance-btn.active) {
@@ -394,10 +396,10 @@ export default {
   background: rgba(36, 150, 237, 0.1) !important;
 }
 .title-bar-right :deep(.notif-btn) {
-  color: #94A3B8 !important;
+  color: var(--muted) !important;
 }
 .title-bar-right :deep(.notif-btn:hover) {
-  color: #5ED9A8 !important;
+  color: var(--primary) !important;
   background: rgba(94, 217, 168, 0.08) !important;
 }
 .title-bar-right :deep(.instance-icon) {

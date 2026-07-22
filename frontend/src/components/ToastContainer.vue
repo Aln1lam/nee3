@@ -54,7 +54,7 @@ export default {
   background: var(--card-bg);
   border: 1px solid var(--border);
   box-shadow: var(--shadow-lg);
-  backdrop-filter: blur(8px);
+  backdrop-filter: none;
   font-size: var(--text-sm);
   cursor: pointer;
   pointer-events: auto;

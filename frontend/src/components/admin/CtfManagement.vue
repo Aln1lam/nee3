@@ -2297,6 +2297,6 @@ export default {
   width: 18px !important;
   height: 18px !important;
   font-size: 18px;
-  color: #5ED9A8;
+  color: var(--primary);
 }
 </style>

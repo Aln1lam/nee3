@@ -49,6 +49,13 @@
           <span>查看赛事</span>
         </router-link>
       </div>
+      <div class="sidebar-rail-footer sidebar-footer sidebar-footer-copy-wrap">
+        <div class="sidebar-footer-copy">
+          © 2022-2026
+          <a href="https://www.neepu.edu.cn/" target="_blank" rel="noopener">东北电力大学</a>
+        </div>
+      </div>
+
     </aside>
 
     <button
@@ -437,7 +444,7 @@ export default {
   font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.06em;
-  color: var(--color-accent, #D97706);
+  color: var(--accent);
 }
 .item-title {
   font-size: 13px;
@@ -474,7 +481,7 @@ export default {
   font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.06em;
-  color: var(--color-accent, #D97706);
+  color: var(--accent);
 }
 
 .training-main {
@@ -484,6 +491,8 @@ export default {
 
 .game-quick-list {
   display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(var(--card-grid-min-golden, 324px), 1fr));
+  gap: var(--fib-21);
   margin-bottom: var(--fib-21);
 }
 .quick-card {
@@ -510,7 +519,7 @@ export default {
   font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.08em;
-  color: var(--color-accent, #D97706);
+  color: var(--accent);
 }
 .quick-title { font-weight: 600; color: var(--text); font-size: 0.95rem; }
 .quick-meta { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }

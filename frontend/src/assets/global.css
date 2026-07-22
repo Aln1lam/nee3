@@ -14,8 +14,8 @@
   --radius-pill: 10px;
   --card-radius: 10px;
 
-  /* HTB / NSSCTF 极客 UI：Inter 系；mono 仅数值/Flag/代码 */
-  --font-ui: "Inter", -apple-system, "BlinkMacSystemFont", "PingFang SC", "Microsoft YaHei", sans-serif;
+  /* UI：M PLUS Rounded + Noto Sans SC；mono 仅代码/Flag/分数 */
+  --font-ui: "M PLUS Rounded 1c", "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif;
   --font-mono: "JetBrains Mono", "Fira Code", monospace;
   --font-display: var(--font-ui);
   --font-hacker: var(--font-mono);
@@ -58,9 +58,9 @@ html {
   margin: 0;
   padding: 0;
 }
-html ,
+html,
 html body {
-  background: #0B0E14 !important;
+  background: var(--page-bg, #0B0E14) !important;
 }
 
 *, *::before, *::after {
@@ -210,4 +210,9 @@ html, body {
 .u-btn-small {
   padding: 0.375rem 0.625rem;
   font-size: 0.875rem;
+}
+
+/* 允许 Docker 状态图标使用 drop-shadow 呼吸（不影响文字） */
+.docker-status-icon.is-active {
+  filter: drop-shadow(0 0 6px rgba(36, 150, 237, 0.6)) !important;
 }

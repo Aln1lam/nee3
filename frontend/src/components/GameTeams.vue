@@ -960,5 +960,5 @@ export default {
     grid-template-columns: 1fr;
   }
 }
-.field-hint { margin: 6px 0 0; font-size: 12px; color: var(--text-muted, #64748b); }
+.field-hint { margin: 6px 0 0; font-size: 12px; color: var(--text-muted, var(--muted)); }
 </style>

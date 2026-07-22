@@ -22,7 +22,7 @@ export default {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  color: #5ED9A8;
+  color: var(--primary);
 }
 .logo-svg {
   width: 100%;

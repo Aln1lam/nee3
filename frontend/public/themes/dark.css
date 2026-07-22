@@ -6,6 +6,7 @@
   --color-neon: #5ED9A8;
   --accent-red: #F472B6;
   --primary: var(--color-primary);
+  --accent: var(--color-accent);
   --muted: #9CA8C4;
   --success: #4ADE80;
   --warning: #FBBF24;
@@ -21,7 +22,7 @@
   --code-bg: #131722;
   --term-bg: #020617;
   --term-fg: var(--color-primary);
-  --card-radius: 12px;
+  --card-radius: 10px;
   --radius-xs: 6px;
   --radius-sm: 8px;
   --radius-md: 10px;

@@ -494,7 +494,7 @@ export default {
 .docker-icon {
   display: inline-flex;
   align-items: center;
-  color: #5ED9A8;
+  color: var(--primary);
   vertical-align: -2px;
 }
 .docker-icon .docker-whale-icon {

@@ -1,41 +1,71 @@
-import { computed } from 'vue'
+import { ref, computed } from 'vue'
 
-/**
- * Dark Obsidian — 全站唯一主题。
- * 无切换、无 localStorage、无跟随系统。
- */
-export function applyTheme() {
-  const link = document.getElementById('theme-css')
-  if (link) link.href = '/themes/dark.css'
-  document.documentElement.setAttribute('data-theme', 'dark')
-  document.documentElement.classList.add('theme-dark-locked')
-}
+const theme = ref('dark')
+const followSystem = ref(false)
+let mediaListener = null
 
-/** @deprecated 保留空实现以免旧调用报错 */
-export function setTheme() {
-  applyTheme()
-}
-
-/** @deprecated */
-export function setFollowSystem() {
-  applyTheme()
-}
-
-export function initTheme() {
-  applyTheme()
+function readStorage() {
   try {
-    localStorage.removeItem('neepu_theme')
-    localStorage.removeItem('neepu_theme_follow')
-    localStorage.removeItem('neepu_htb_dark_v1')
+    theme.value = localStorage.getItem('neepu_theme') || 'dark'
+    followSystem.value = localStorage.getItem('neepu_theme_follow') === '1'
   } catch { /* ignore */ }
 }
 
+export function applyTheme(name) {
+  const next = name === 'light' ? 'light' : 'dark'
+  theme.value = next
+  const link = document.getElementById('theme-css')
+  if (link) link.href = `/themes/${next}.css`
+  document.documentElement.setAttribute('data-theme', next)
+  document.documentElement.classList.remove('theme-dark-locked')
+  if (!followSystem.value) {
+    try { localStorage.setItem('neepu_theme', next) } catch { /* ignore */ }
+  }
+}
+
+export function setTheme(name) {
+  followSystem.value = false
+  try { localStorage.setItem('neepu_theme_follow', '0') } catch { /* ignore */ }
+  applyTheme(name)
+}
+
+export function setFollowSystem(enabled) {
+  followSystem.value = !!enabled
+  try { localStorage.setItem('neepu_theme_follow', enabled ? '1' : '0') } catch { /* ignore */ }
+  if (enabled) {
+    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches
+    applyTheme(prefersDark ? 'dark' : 'light')
+  }
+}
+
+export function initTheme() {
+  readStorage()
+  try {
+    localStorage.removeItem('neepu_htb_dark_v1')
+  } catch { /* ignore */ }
+  if (followSystem.value) {
+    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches
+    applyTheme(prefersDark ? 'dark' : 'light')
+  } else {
+    applyTheme(theme.value)
+  }
+  if (mediaListener) {
+    window.matchMedia('(prefers-color-scheme: dark)').removeEventListener('change', mediaListener)
+  }
+  mediaListener = (e) => {
+    if (followSystem.value) applyTheme(e.matches ? 'dark' : 'light')
+  }
+  window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', mediaListener)
+}
+
 export function useThemeStore() {
+  const isDark = computed(() => theme.value === 'dark')
+  const label = computed(() => (isDark.value ? '深色模式' : '浅色模式'))
   return {
-    theme: computed(() => 'dark'),
-    followSystem: computed(() => false),
-    isDark: computed(() => true),
-    label: computed(() => '深色模式'),
+    theme,
+    followSystem,
+    isDark,
+    label,
     applyTheme,
     setTheme,
     setFollowSystem,

@@ -75,11 +75,11 @@ export default {
   align-items: center;
   justify-content: center;
   position: relative;
-  color: #94A3B8 !important;
+  color: var(--muted) !important;
   box-shadow: none;
 }
 .notif-btn:hover {
-  color: #5ED9A8 !important;
+  color: var(--primary) !important;
   background: rgba(94, 217, 168, 0.08);
 }
 .notif-ico {
@@ -94,7 +94,7 @@ export default {
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: #5ED9A8;
+  background: var(--primary);
   box-shadow: 0 0 0 0 rgba(94, 217, 168, 0.55);
   animation: notif-pulse 1.8s ease-out infinite;
 }

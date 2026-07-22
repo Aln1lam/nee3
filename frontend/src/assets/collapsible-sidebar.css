@@ -262,7 +262,7 @@
 
 .sidebar-collapse-trigger {
   position: absolute;
-  left: calc(var(--sidebar-width, 256px) - 14px);
+  left: calc(var(--sidebar-width, 248px) - 14px);
   top: 50%;
   transform: translateY(-50%);
   z-index: 25;

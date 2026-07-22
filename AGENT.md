@@ -13,12 +13,12 @@
 |----------|------|
 | 任意改动 | 本文 `AGENT.md` |
 | 路由 / API / 页面映射 | `docs/route-architecture-topology.md` |
-| 前端 UI / 视觉 | `docs/ui-style-guide.md` + `.cursor/skills/neepu-anime-ui/SKILL.md` |
+| 前端 UI / 视觉 | `docs/ui-style.md` + `.cursor/skills/neepu-anime-ui/SKILL.md` |
 | 前端工程验收 | `docs/frontend-ui-harness.md` |
 | API↔前端对接 | `docs/api-frontend-checklist.md` |
 | 生产部署相关 | `docs/deploy-single-server.md` |
 
-**UI Skill 优先级**：改前端视觉时优先使用 `.cursor/skills/neepu-anime-ui/`，禁止默认套用 Matrix / 终端黑客风 skill。
+**UI 规范优先级**：改前端视觉时只认 `docs/ui-style.md` + `Home.vue` 锚点；**禁止**引用已废弃的 `neepu-anime-ui`。
 
 ---
 
@@ -122,7 +122,7 @@ neepu/
 - 状态：使用现有 `frontend/src/stores/` 与 `services/auth.js` 模块缓存；**不要引入 Pinia/Vuex**，除非任务明确要求并更新文档
 - 路由守卫：鉴权页设 `meta.requiresAuth`；管理页设 `meta.requiresAdmin`（见 `frontend/src/router/index.js`、`frontend/src/config/adminMenu.js`）
 - 主题：改颜色写 CSS 变量到 `frontend/public/themes/light.css` / `dark.css`，经 `html[data-theme]` 切换
-- **含中文的 `.vue` 文件**：禁止直接用 Cursor Write/StrReplace（易乱码）；按 `docs/ui-style-guide.md` 用 **UTF-8 Python 脚本**改写
+- **含中文的 `.vue` 文件**：禁止直接用 Cursor Write/StrReplace（易乱码）；按 `docs/ui-style.md` 用 **UTF-8 Python 脚本**改写
 - Vue scoped 样式：避免在 scoped 里硬写会破坏黄金分割布局的 `padding` / `grid-template-columns`（见 UI 指南禁用清单）
 
 ### 2.3 通用
@@ -266,7 +266,7 @@ route（Controller） → services（业务） → server/db_models + Redis/Dock
 
 ## 6. UI / 前端专项约束（摘要）
 
-完整规范见 `docs/ui-style-guide.md`。Agent 必须遵守：
+完整规范见 `docs/ui-style.md`。Agent 必须遵守：
 
 - 气质：**二次元 / 轻游戏 UI**；禁用 Matrix 绿雨、终端主导导航、Inter/IBM Plex 作为主 UI 字体
 - 布局：黄金分割 φ；侧栏 **248px** 可折叠 rail（对齐 `/training`）
@@ -387,10 +387,10 @@ cd e2e && npx playwright test
 - `docs/README.md` — 文档总目录
 - `docs/route-architecture-topology.md` — 路由拓扑与双轨 API
 - `docs/deploy-single-server.md` — 单机生产部署
-- `docs/ui-style-guide.md` — UI 规范
+- `docs/ui-style.md` — UI 规范
 - `docs/frontend-ui-harness.md` — UI 验收
 - `docs/api-frontend-checklist.md` — 对接清单
-- `.cursor/skills/neepu-anime-ui/SKILL.md` — 本项目 UI Skill
+- `docs/ui-style.md` — 本项目 UI 规范（唯一）
 
 ---
 

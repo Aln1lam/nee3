@@ -1740,8 +1740,8 @@ export default {
 
 .conn-box {
   padding: 10px 12px;
-  background: var(--term-bg, #1A1D2E);
-  color: var(--term-fg, #5ED9A8);
+  background: var(--term-bg, var(--page-bg));
+  color: var(--term-fg, var(--primary));
   border-radius: var(--radius-md);
   font-family: 'JetBrains Mono', 'Fira Code', ui-monospace, monospace;
   font-size: var(--text-sm);

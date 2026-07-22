@@ -43,6 +43,13 @@
           <span>训练靶场</span>
         </router-link>
       </div>
+      <div class="sidebar-rail-footer sidebar-footer sidebar-footer-copy-wrap">
+        <div class="sidebar-footer-copy">
+          © 2022-2026
+          <a href="https://www.neepu.edu.cn/" target="_blank" rel="noopener">东北电力大学</a>
+        </div>
+      </div>
+
     </aside>
 
     <button
@@ -222,7 +229,7 @@ export default {
 <style scoped>
 .wiki-layout {
   width: 100%;
-  min-height: calc(100vh - var(--nav-height, 72px));
+  height: calc(100vh - var(--nav-height, 72px)); overflow: hidden;
   margin: 0;
 }
 
@@ -248,36 +255,42 @@ export default {
 .wiki-main {
   flex: 1;
   min-width: 0;
+  min-height: 0;
   width: 100%;
   box-sizing: border-box;
+  overflow: auto;
 }
 
-/* 多列卡片铺满主区，避免宽屏上「左竖条 + 大片空白」 */
+/* 单列纵向 Feed — 对齐 Home BUL 公告栏 */
 .wiki-list-panel {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr));
-  gap: var(--fib-21, 21px);
-  padding: var(--fib-13, 13px);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 0;
   border: none;
   background: transparent;
   box-shadow: none;
+  max-width: 720px;
 }
 
 .wiki-item {
-  padding: var(--fib-21, 21px);
-  border: 1px solid var(--border);
-  border-radius: var(--card-radius, 12px);
-  background: var(--r2s-card, var(--card-bg, #fff));
+  padding: 12px 16px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: var(--card-radius);
+  background: rgba(255, 255, 255, 0.02);
   cursor: pointer;
-  transition: background 0.15s, border-color 0.15s, transform 0.15s;
-  min-height: 148px;
+  transition: border-color 0.15s, background 0.15s;
+  min-height: 0;
+  height: auto;
   box-sizing: border-box;
+  box-shadow: none;
+  transform: none;
 }
 
 .wiki-item:hover {
-  background: var(--hover);
-  border-color: rgba(var(--primary-rgb, 8, 145, 237), 0.35);
-  transform: translateY(-2px);
+  background: rgba(255, 255, 255, 0.035);
+  border-color: rgba(var(--primary-rgb), 0.22);
+  transform: none;
 }
 
 .wiki-item-head {
@@ -295,10 +308,16 @@ export default {
 }
 
 .wiki-item-title {
-  margin: 0 0 8px;
-  font-size: var(--text-lg);
+  margin: 0 0 6px;
+  font-size: 13px;
   font-weight: 600;
   line-height: 1.35;
+  color: var(--text);
+  font-family: var(--font-ui);
+}
+.wiki-main {
+  overflow: auto;
+  min-height: 0;
 }
 
 .wiki-item-summary {
@@ -347,7 +366,7 @@ export default {
   color: var(--muted);
   font-size: var(--text-sm);
   border: 1px dashed var(--border);
-  border-radius: var(--card-radius, 12px);
-  background: var(--r2s-card, var(--card-bg, #fff));
+  border-radius: var(--card-radius);
+  background: var(--r2s-card, var(--card-bg));
 }
 </style>

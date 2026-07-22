@@ -810,8 +810,26 @@ html .n-dialog {
 
 /* anime-ui: ensure r2s does not re-assert Reverier / cyber blue */
 :root {
-  --font-ui: "Inter", -apple-system, "BlinkMacSystemFont", "PingFang SC", "Microsoft YaHei", sans-serif;
+  --font-ui: "M PLUS Rounded 1c", "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif;
   --font-mono: "JetBrains Mono", "Fira Code", monospace;
   --font-display: var(--font-ui);
   --font-hacker: var(--font-mono);
+}
+
+/* games-hub 100vh shell */
+.games-hub.r2s-games.layout-with-sidebar {
+  height: calc(100vh - var(--nav-height, 72px));
+  max-height: calc(100vh - var(--nav-height, 72px));
+  overflow: hidden;
+  box-sizing: border-box;
+}
+.r2s-games__list-pane.sidebar-rail {
+  width: 248px !important;
+  min-width: 248px !important;
+  max-width: 248px !important;
+  display: flex;
+  flex-direction: column;
+}
+.r2s-games__list-pane .sidebar-footer-copy-wrap {
+  margin-top: auto;
 }

@@ -46,14 +46,14 @@ export default {
   display: block;
   flex-shrink: 0;
   overflow: visible;
-  color: #64748B;
+  color: var(--muted);
   transition: color 0.3s ease, filter 0.3s ease, opacity 0.3s ease, transform 0.3s ease;
   cursor: pointer;
   vertical-align: middle;
 }
 
 .docker-status-icon:hover {
-  color: #94A3B8;
+  color: var(--muted);
 }
 
 /* 核心交互：有容器运行 → Docker Blue */

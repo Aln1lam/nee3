@@ -1091,6 +1091,6 @@ button:disabled {
 .docker-heading-ico {
   width: 18px !important;
   height: 18px !important;
-  color: #5ED9A8;
+  color: var(--primary);
 }
 </style>

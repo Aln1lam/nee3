@@ -182,13 +182,13 @@ export default {
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #64748B;
+  color: var(--muted);
   box-shadow: none;
   overflow: visible;
   transition: background 0.3s ease, color 0.3s ease;
 }
 .instance-btn:hover {
-  color: #94A3B8;
+  color: var(--muted);
   background: rgba(148, 163, 184, 0.08);
 }
 .instance-btn.active {

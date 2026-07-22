@@ -931,7 +931,7 @@ export default {
 .home-page .level-badge {
   clip-path: none !important;
   border-radius: 3px !important;
-  text-shadow: none !important;
+  text-shadow: none;
   box-shadow: none !important;
 }
 
@@ -953,13 +953,13 @@ export default {
 
 .home-page .home-surface {
   background: #FFFFFF;
-  border: 1px solid #E2E8F0;
+  border: 1px solid var(--text);
   border-radius: 8px;
   box-shadow: 0 4px 16px rgba(15, 23, 42, 0.08);
   transition: border-color 0.2s, box-shadow 0.2s;
 }
 html .home-page .home-surface {
-  background: #131722;
+  background: var(--card-bg);
   border-color: rgba(255, 255, 255, 0.07);
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
 }
@@ -1199,7 +1199,7 @@ html .home-page .home-surface {
   font-weight: 700;
   font-family: var(--font-mono);
   letter-spacing: 0.06em;
-  color: #5ED9A8;
+  color: var(--primary);
   background: rgba(94, 217, 168, 0.12);
   border: 1px solid rgba(94, 217, 168, 0.35);
 }
@@ -1226,7 +1226,7 @@ html .home-page .home-surface {
   padding: 5px 11px;
   border: 1px solid rgba(94, 217, 168, 0.5);
   background: rgba(94, 217, 168, 0.16);
-  color: #5ed9a8;
+  color: var(--primary);
   font-size: 12px;
   font-weight: 700;
   font-family: var(--font-ui);
@@ -1654,14 +1654,14 @@ html .side-stack-head {
 .home-page .side-console .bulletin-title {
   font-size: 13px;
   font-weight: 600;
-  color: #E2E8F0;
+  color: var(--text);
   margin: 0 0 6px !important;
   line-height: 1.35;
   font-family: var(--font-ui);
 }
 .home-page .side-console .bulletin-content {
   font-size: 12px;
-  color: #94A3B8;
+  color: var(--muted);
   line-height: 1.6;
   margin: 0 !important;
   display: -webkit-box;
@@ -1722,7 +1722,7 @@ html .side-stack-head {
   font-family: var(--font-mono, "JetBrains Mono", monospace);
   font-size: 11px;
   line-height: 1.45;
-  color: #5ED9A8;
+  color: var(--primary);
   background: transparent;
   border: 0;
 }
@@ -1739,7 +1739,7 @@ html .side-stack-head {
   flex-shrink: 0;
   font-family: var(--font-mono, "JetBrains Mono", monospace);
   font-size: 11px;
-  color: #5ED9A8;
+  color: var(--primary);
   font-weight: 700;
 }
 .term-input {
@@ -1749,17 +1749,17 @@ html .side-stack-head {
   outline: none !important;
   box-shadow: none !important;
   background: transparent !important;
-  color: #E2E8F0 !important;
+  color: var(--text) !important;
   font-family: var(--font-mono, "JetBrains Mono", monospace) !important;
   font-size: 11px !important;
   padding: 0 !important;
   height: 18px !important;
-  caret-color: #5ED9A8;
+  caret-color: var(--primary);
 }
 .term-caret {
   width: 7px;
   height: 13px;
-  background: #5ED9A8;
+  background: var(--primary);
   flex-shrink: 0;
   animation: term-blink 1.05s step-end infinite;
 }

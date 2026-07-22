@@ -27,7 +27,7 @@ export default {
   background: var(--card-bg);
   border: 1px solid var(--border);
   border-radius: var(--card-radius, 10px);
-  backdrop-filter: blur(8px);
+  backdrop-filter: none;
   box-shadow: var(--card-shadow, var(--shadow));
   overflow: hidden;
 }

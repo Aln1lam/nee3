@@ -618,7 +618,7 @@ export default {
   inset: 0;
   z-index: 80;
   background: rgba(248, 48, 48, 0.15);
-  backdrop-filter: blur(4px);
+  backdrop-filter: none;
   display: flex;
   align-items: center;
   justify-content: center;

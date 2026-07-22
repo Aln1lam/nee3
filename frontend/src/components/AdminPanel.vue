@@ -38,6 +38,13 @@
           <span>查看赛事</span>
         </router-link>
       </div>
+      <div class="sidebar-rail-footer sidebar-footer sidebar-footer-copy-wrap">
+        <div class="sidebar-footer-copy">
+          © 2022-2026
+          <a href="https://www.neepu.edu.cn/" target="_blank" rel="noopener">东北电力大学</a>
+        </div>
+      </div>
+
     </aside>
 
     <button

@@ -310,12 +310,12 @@ export default {
   margin: 0;
   font-size: 1.1rem;
   font-weight: 700;
-  color: var(--text, #1a1d2e);
+  color: var(--text, var(--page-bg));
 }
 .dpm-desc {
   margin: 4px 0 0;
   font-size: 13px;
-  color: var(--text-muted, #64748b);
+  color: var(--text-muted, var(--muted));
 }
 .dpm-alert {
   margin-bottom: 14px;
@@ -329,7 +329,7 @@ export default {
 }
 .dpm-label {
   font-size: 13px;
-  color: var(--text-muted, #64748b);
+  color: var(--text-muted, var(--muted));
 }
 .dpm-toolbar {
   display: flex;
@@ -339,7 +339,7 @@ export default {
 }
 .dpm-count {
   font-size: 13px;
-  color: var(--text-muted, #64748b);
+  color: var(--text-muted, var(--muted));
 }
 .dpm-empty {
   padding: 32px 0;

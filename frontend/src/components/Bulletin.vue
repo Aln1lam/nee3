@@ -47,6 +47,13 @@
           <span>查看赛事</span>
         </router-link>
       </div>
+      <div class="sidebar-rail-footer sidebar-footer sidebar-footer-copy-wrap">
+        <div class="sidebar-footer-copy">
+          © 2022-2026
+          <a href="https://www.neepu.edu.cn/" target="_blank" rel="noopener">东北电力大学</a>
+        </div>
+      </div>
+
     </aside>
 
     <button
@@ -302,21 +309,24 @@ export default {
 .bulletin-list {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  max-width: none;
+  gap: 12px;
+  max-width: 720px;
   width: 100%;
 }
 
 .bulletin-item {
-  border: 1px solid var(--border);
-  border-radius: 2px;
-  background: var(--card-bg);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: var(--card-radius);
+  background: rgba(255, 255, 255, 0.02);
   cursor: pointer;
-  transition: border-color 0.15s;
+  transition: border-color 0.15s, background 0.15s;
+  padding: 12px 16px;
+  height: auto;
 }
 
 .bulletin-item:hover {
-  border-color: rgba(var(--primary-rgb), 0.45);
+  border-color: rgba(var(--primary-rgb), 0.22);
+  background: rgba(255, 255, 255, 0.035);
 }
 
 .item-head {
@@ -336,9 +346,9 @@ export default {
   font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.06em;
-  color: var(--gradient-tag-text, #9D174D);
-  background: var(--gradient-tag-fill, rgba(244, 114, 182, 0.16));
-  border: 1px solid var(--gradient-tag-border, rgba(244, 114, 182, 0.28));
+  color: var(--gradient-tag-text, var(--accent));
+  background: var(--gradient-tag-fill, rgba(var(--primary-rgb), 0.12));
+  border: 1px solid var(--gradient-tag-border, rgba(var(--primary-rgb), 0.28));
   border-radius: var(--radius-pill);
   font-family: var(--font-ui);
 }

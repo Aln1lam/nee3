@@ -104,7 +104,7 @@ export default {
 }
 :deep(.vue-command input), :deep(.vue-command span) {
   color: var(--term-fg, #00ff41) !important; /* 经典的黑客绿 */
-  text-shadow: 0 0 var(--term-glow-blur, 5px) var(--term-fg, #00ff41);
+  text-shadow: none;
 }
 
 /* CRT 扫描线特效 (增加复古感) */
