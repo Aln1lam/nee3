@@ -5,6 +5,9 @@
  */
 
 :root {
+  --font-ui: "Inter", -apple-system, "BlinkMacSystemFont", "PingFang SC", "Microsoft YaHei", sans-serif;
+  --font-mono: "JetBrains Mono", "Fira Code", monospace;
+
   --text-xs: 0.75rem;
   --text-xs--line-height: 1rem;
 
@@ -25,6 +28,17 @@
 
   --text-3xl: 1.875rem;
   --text-3xl--line-height: 2.25rem;
+
+  /* NSSCTF 字重 / 对比度语义色 */
+  --text-main: var(--text, #0f172a);
+  --text-label: #64748b;
+  --font-weight-regular: 400;
+  --font-weight-title: 600;
+  --font-weight-data: 700;
+}
+
+html {
+  --text-label: #9ca8c4;
 }
 
 .text-xs {
@@ -107,13 +121,75 @@
 }
 
 .matrix-page-title,
-.tree-panel-title {
-  font-size: var(--text-base);
-  line-height: var(--text-base--line-height);
+.tree-panel-title,
+h1.page-title,
+h2.page-title,
+.home-page .matrix-page-title,
+.page-title,
+.account-title {
+  font-size: 16px !important;
+  font-weight: 600 !important;
+  line-height: 1.35 !important;
+  color: var(--text-main, var(--text)) !important;
+  font-family: var(--font-ui) !important;
+  letter-spacing: -0.01em;
 }
 
 .brief-title-row h3,
 .stage-tab-label {
-  font-size: var(--text-lg);
-  line-height: var(--text-lg--line-height);
+  font-size: 16px;
+  line-height: 1.35;
+  font-weight: 600;
+  color: var(--text-main, var(--text));
+  font-family: var(--font-ui);
+}
+
+/* 禁用超粗黑体 */
+.matrix-page-title,
+.page-title,
+.account-title,
+.attr-val,
+h1, h2, h3 {
+  font-weight: 600;
+}
+.attr-val,
+.data-num,
+.flag-text,
+code.flag {
+  font-family: var(--font-mono) !important;
+  font-weight: 700 !important;
+}
+
+/* 数据数值：仅数字高亮主色 */
+.data-num,
+.attr-val,
+.rank-score,
+.rank-pos,
+.agenda-day,
+.agenda-date-badge {
+  font-family: var(--font-mono);
+  font-weight: var(--font-weight-data, 800);
+}
+
+.attr-val {
+  font-size: 22px;
+  font-weight: 800 !important;
+  color: #5ED9A8;
+  font-family: var(--font-mono) !important;
+}
+
+/* 说明文字 / 标签：Regular + 高可读灰 */
+.panel-head-title,
+.panel-head-meta,
+.attr-unit,
+.agenda-meta,
+.announcement-content,
+.empty-hint,
+.profile-signature,
+.sidebar-desc,
+.matrix-page-prompt,
+.group-label,
+.search-label {
+  font-weight: var(--font-weight-regular, 400);
+  color: var(--text-label, var(--muted));
 }

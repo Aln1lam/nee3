@@ -25,7 +25,7 @@
   --r2s-icon: 20px;
 }
 
-html[data-theme='dark'] {
+html {
   --r2s-bg: #12151c;
   --r2s-text: #e8ecf2;
   --r2s-muted: rgba(232, 236, 242, 0.6);
@@ -145,10 +145,10 @@ body {
   background: var(--r2s-card);
   border-radius: var(--r2s-radius-card);
   border: 1px solid rgba(0, 0, 0, 0.06);
-  backdrop-filter: blur(12px);
+  backdrop-filter: none;
   box-sizing: border-box;
 }
-html[data-theme='dark'] .card {
+html .card {
   border-color: rgba(255, 255, 255, 0.08);
 }
 
@@ -216,10 +216,6 @@ html[data-theme='dark'] .card {
   opacity: 1 !important;
   background-image: none !important;
 }
-html[data-theme='light'] body,
-html[data-theme='light'] #app {
-  background: #eef1f6 !important;
-}
 
 /* —— TitleBar —— */
 .title-bar {
@@ -229,8 +225,8 @@ html[data-theme='light'] #app {
   height: auto !important;
   min-height: var(--r2s-nav-height) !important;
   background: color-mix(in srgb, var(--r2s-bg) 60%, transparent) !important;
-  backdrop-filter: blur(8px) !important;
-  -webkit-backdrop-filter: blur(8px) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
   border-bottom: 1px solid rgba(0, 0, 0, 0.08) !important;
   box-shadow: none !important;
 }
@@ -272,11 +268,18 @@ html[data-theme='light'] #app {
 .title-bar-nav .nav-code {
   display: none !important;
 }
-.title-bar-right .n-button,
-.title-bar-right .avatar-btn,
-.title-bar-right button {
+.title-bar-right .n-button {
   border-radius: var(--r2s-radius-btn) !important;
   font-family: var(--font-ui) !important;
+}
+.title-bar-right .user-trigger,
+.title-bar-right .notif-btn,
+.title-bar-right .theme-btn,
+.title-bar-right .instance-btn {
+  border-radius: 6px !important;
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
 }
 
 /* —— Landing —— */
@@ -485,7 +488,7 @@ html[data-theme='light'] #app {
   padding: 6px 12px;
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.72);
-  backdrop-filter: blur(8px);
+  backdrop-filter: none;
   font-size: 14px;
   font-weight: 700;
   color: var(--r2s-muted);
@@ -508,7 +511,7 @@ html[data-theme='light'] #app {
   padding: 14px 16px;
   border-radius: 12px;
   background: rgba(255, 255, 255, 0.72);
-  backdrop-filter: blur(14px);
+  backdrop-filter: none;
   border: 1px solid rgba(255, 255, 255, 0.5);
 }
 .r2s-games__info-icon {
@@ -707,8 +710,8 @@ html[data-theme='light'] #app {
   border: 1px solid rgba(var(--r2s-primary-rgb), 0.32) !important;
   font-weight: 600 !important;
 }
-html[data-theme='dark'] .n-tag,
-html[data-theme='dark'] .wiki-item-tags .n-tag {
+html .n-tag,
+html .wiki-item-tags .n-tag {
   --n-color: rgba(var(--r2s-primary-rgb), 0.2) !important;
   --n-text-color: #9ec9ef !important;
   --n-border-color: rgba(var(--r2s-primary-rgb), 0.4) !important;
@@ -759,21 +762,12 @@ html[data-theme='dark'] .wiki-item-tags .n-tag {
   border-left-color: var(--r2s-primary) !important;
   background: rgba(var(--r2s-primary-rgb), 0.1) !important;
 }
-html[data-theme='light'] .article-content code,
-html[data-theme='light'] .article-content pre {
-  background: var(--code-bg, rgba(0, 0, 0, 0.04)) !important;
-  color: var(--r2s-text) !important;
-}
-html[data-theme='light'] .article-panel {
-  background: rgba(255, 255, 255, 0.92) !important;
-  border-color: rgba(0, 0, 0, 0.08) !important;
-}
 
 /* 深色：Naive 默认控件禁止白底 / 近黑字 */
-html[data-theme='dark'] .n-input,
-html[data-theme='dark'] .n-input .n-input-wrapper,
-html[data-theme='dark'] .n-input__input-el,
-html[data-theme='dark'] .n-input__textarea-el {
+html .n-input,
+html .n-input .n-input-wrapper,
+html .n-input__input-el,
+html .n-input__textarea-el {
   --n-color: rgba(30, 34, 44, 0.92) !important;
   --n-color-focus: rgba(30, 34, 44, 0.98) !important;
   --n-text-color: #e8ecf2 !important;
@@ -785,7 +779,7 @@ html[data-theme='dark'] .n-input__textarea-el {
   background: rgba(30, 34, 44, 0.92) !important;
   color: #e8ecf2 !important;
 }
-html[data-theme='dark'] .n-button:not(.n-button--primary-type):not(.n-button--error-type):not(.n-button--success-type):not(.n-button--warning-type):not(.n-button--info-type) {
+html .n-button:not(.n-button--primary-type):not(.n-button--error-type):not(.n-button--success-type):not(.n-button--warning-type):not(.n-button--info-type) {
   --n-text-color: #e8ecf2 !important;
   --n-text-color-hover: #ffffff !important;
   --n-text-color-pressed: #ffffff !important;
@@ -800,25 +794,24 @@ html[data-theme='dark'] .n-button:not(.n-button--primary-type):not(.n-button--er
   background: rgba(255, 255, 255, 0.06) !important;
   border-color: rgba(255, 255, 255, 0.18) !important;
 }
-html[data-theme='dark'] .n-card {
+html .n-card {
   --n-color: rgba(30, 34, 44, 0.92) !important;
   --n-text-color: #e8ecf2 !important;
   --n-border-color: rgba(255, 255, 255, 0.08) !important;
   background: rgba(30, 34, 44, 0.92) !important;
   color: #e8ecf2 !important;
 }
-html[data-theme='dark'] .n-modal .n-card,
-html[data-theme='dark'] .n-dialog {
+html .n-modal .n-card,
+html .n-dialog {
   --n-color: #1e222c !important;
   background: #1e222c !important;
   color: #e8ecf2 !important;
 }
 
-
 /* anime-ui: ensure r2s does not re-assert Reverier / cyber blue */
 :root {
-  --font-ui: 'M PLUS Rounded 1c', 'Noto Sans SC', 'PingFang SC', 'Microsoft YaHei UI', sans-serif;
-  --font-mono: 'JetBrains Mono', 'Fira Code', Consolas, monospace;
+  --font-ui: "Inter", -apple-system, "BlinkMacSystemFont", "PingFang SC", "Microsoft YaHei", sans-serif;
+  --font-mono: "JetBrains Mono", "Fira Code", monospace;
   --font-display: var(--font-ui);
   --font-hacker: var(--font-mono);
 }

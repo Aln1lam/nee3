@@ -68,8 +68,11 @@
 .matrix-layout__main,
 .sidebar-layout__main,
 .sidebar-main {
-  width: 100%;
   max-width: none !important;
+}
+
+.layout-with-sidebar > .sidebar-main {
+  width: auto !important;
 }
 
 .challenge-workspace-matrix,

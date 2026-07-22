@@ -2,7 +2,11 @@
   <n-popover trigger="click" placement="bottom-end" :width="320" @update:show="onShow">
     <template #trigger>
       <button class="notif-btn" aria-label="通知消息" :class="{ unread: hasUnread }">
-        <span class="notif-icon">{{ hasUnread ? '🔔' : '🔕' }}</span>
+        <svg class="notif-ico" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <path d="M6 9.5C6 6.46 8.46 4 11.5 4H12.5C15.54 4 18 6.46 18 9.5V12.2L19.6 14.8C19.86 15.22 19.56 15.8 19.06 15.8H4.94C4.44 15.8 4.14 15.22 4.4 14.8L6 12.2V9.5Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+          <path d="M10 16.5C10.3 17.4 11.1 18 12 18C12.9 18 13.7 17.4 14 16.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+        </svg>
+        <span v-if="hasUnread" class="notif-dot" aria-hidden="true"></span>
       </button>
     </template>
     <div class="notif-panel">
@@ -60,28 +64,45 @@ export default {
 <style scoped>
 .notif-btn {
   background: transparent;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
+  border: 0;
+  border-radius: 6px;
   width: 32px;
   height: 32px;
+  min-height: 0;
+  padding: 0;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
   position: relative;
+  color: #94A3B8 !important;
+  box-shadow: none;
 }
-.notif-btn.unread { border-color: var(--primary); }
-.notif-btn.unread::after {
-  content: '';
+.notif-btn:hover {
+  color: #5ED9A8 !important;
+  background: rgba(94, 217, 168, 0.08);
+}
+.notif-ico {
+  width: 18px;
+  height: 18px;
+  display: block;
+}
+.notif-dot {
   position: absolute;
-  top: 4px;
-  right: 4px;
+  top: 5px;
+  right: 5px;
   width: 6px;
   height: 6px;
-  background: var(--primary);
   border-radius: 50%;
+  background: #5ED9A8;
+  box-shadow: 0 0 0 0 rgba(94, 217, 168, 0.55);
+  animation: notif-pulse 1.8s ease-out infinite;
 }
-.notif-icon { font-size: 14px; }
+@keyframes notif-pulse {
+  0% { box-shadow: 0 0 0 0 rgba(94, 217, 168, 0.45); }
+  70% { box-shadow: 0 0 0 5px rgba(94, 217, 168, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(94, 217, 168, 0); }
+}
 .notif-panel { max-height: 360px; overflow-y: auto; }
 .notif-header { font-weight: 700; margin-bottom: 8px; color: var(--text); }
 .notif-empty { color: var(--muted); font-size: 13px; padding: 12px 0; }

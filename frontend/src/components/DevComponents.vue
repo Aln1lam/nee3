@@ -88,8 +88,7 @@
     <section class="dev-section">
       <h2>ThemeBox / NotificationBox</h2>
       <div class="dev-row">
-        <UiThemeBox />
-        <UiNotificationBox />
+                <UiNotificationBox />
         <UiButton @click="toast.info('这是一条 info 通知')">触发 Toast</UiButton>
         <UiButton @click="toast.confirm('确认执行操作？', { onAccept: () => toast.success('已确认') })">
           确认 Toast
@@ -150,7 +149,7 @@ import { ref } from 'vue'
 import {
   UiButton, UiCard, UiLink, UiInput, UiAvatar, UiTag, UiSelect,
   UiTabs, UiSplitter, UiTimer, UiTimeProgress, UiLoadingTips,
-  UiChart, UiThemeBox, UiNotificationBox, UiDivider, UiPopover, UiPicture,
+  UiChart, UiNotificationBox, UiDivider, UiPopover, UiPicture,
 } from '@/components/ui'
 import { Article, SidebarLayout, MatrixShell, Terminal, Captcha, HammerPanel, ScoreboardChart, InstanceBox } from '@/components/shared'
 import { useToast } from '@/composables/toast'
@@ -160,7 +159,7 @@ export default {
   components: {
     UiButton, UiCard, UiLink, UiInput, UiAvatar, UiTag, UiSelect,
     UiTabs, UiSplitter, UiTimer, UiTimeProgress, UiLoadingTips,
-    UiChart, UiThemeBox, UiNotificationBox, UiDivider, UiPopover, UiPicture,
+    UiChart, UiNotificationBox, UiDivider, UiPopover, UiPicture,
     Article, SidebarLayout, MatrixShell, Terminal, Captcha, HammerPanel, ScoreboardChart, InstanceBox,
   },
   setup() {

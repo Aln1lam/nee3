@@ -44,7 +44,7 @@
 
 .layout-with-sidebar,
 .sidebar-layout {
-  --sidebar-width: calc(var(--layout-space) * 64);
+  --sidebar-width: 248px;
 }
 
 .training-main:not(.training-main--game),

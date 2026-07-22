@@ -104,8 +104,8 @@
   cursor: pointer;
 }
 
-html[data-theme="dark"] .admin-panel .btn-primary,
-html[data-theme="dark"] .admin-panel button.btn-primary {
+html .admin-panel .btn-primary,
+html .admin-panel button.btn-primary {
   background-color: #2DB58A !important;
   color: #0B0C14 !important;
   border-color: #2DB58A !important;
@@ -122,9 +122,9 @@ html[data-theme="dark"] .admin-panel button.btn-primary {
   cursor: pointer;
 }
 
-html[data-theme="dark"] .admin-panel .btn-secondary,
-html[data-theme="dark"] .admin-panel .btn-cancel,
-html[data-theme="dark"] .admin-panel button.btn-secondary {
+html .admin-panel .btn-secondary,
+html .admin-panel .btn-cancel,
+html .admin-panel button.btn-secondary {
   background-color: rgba(22, 24, 31, 0.92) !important;
   color: #E2E8F0 !important;
   border-color: rgba(148, 163, 184, 0.35) !important;
@@ -150,7 +150,7 @@ html[data-theme="dark"] .admin-panel button.btn-secondary {
   font-weight: 600 !important;
 }
 
-html[data-theme="dark"] .admin-panel .btn-small.btn-edit {
+html .admin-panel .btn-small.btn-edit {
   background-color: rgba(45, 181, 138, 0.18) !important;
   color: #6EE7B7 !important;
   border-color: rgba(45, 181, 138, 0.45) !important;
@@ -184,7 +184,7 @@ html[data-theme="dark"] .admin-panel .btn-small.btn-edit {
   border-color: rgba(59, 130, 246, 0.28) !important;
 }
 
-html[data-theme="dark"] .admin-panel .btn-small.btn-info {
+html .admin-panel .btn-small.btn-info {
   color: #93C5FD !important;
 }
 
@@ -291,7 +291,7 @@ html[data-theme="dark"] .admin-panel .btn-small.btn-info {
 }
 
 .admin-panel .badge-blue { color: #2563EB !important; background: rgba(59,130,246,0.1) !important; }
-html[data-theme="dark"] .admin-panel .badge-blue { color: #93C5FD !important; background: rgba(59,130,246,0.12) !important; }
+html .admin-panel .badge-blue { color: #93C5FD !important; background: rgba(59,130,246,0.12) !important; }
 .admin-panel .badge-green { color: var(--ops-primary) !important; }
 .admin-panel .badge-gray { color: var(--ops-muted) !important; background: var(--ops-hover) !important; }
 
@@ -389,7 +389,7 @@ html[data-theme="dark"] .admin-panel .badge-blue { color: #93C5FD !important; ba
   border: 1px solid rgba(59, 130, 246, 0.28) !important;
 }
 
-html[data-theme="dark"] .admin-panel .status-message.info {
+html .admin-panel .status-message.info {
   color: #93C5FD !important;
 }
 
@@ -514,7 +514,6 @@ html[data-theme="dark"] .admin-panel .status-message.info {
 .admin-panel .content-management {
   width: 100%;
 }
-
 
 /* anime-ui: dashboard chart clamp + 卡片圆角 */
 .admin-panel .chart,

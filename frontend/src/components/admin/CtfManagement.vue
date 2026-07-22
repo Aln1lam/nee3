@@ -355,7 +355,7 @@
 
             <!-- 容器相关配置 -->
             <div v-if="[1, 3].includes(challengeForm.challenge_type)" class="container-config">
-              <h4>🐳 容器配置</h4>
+              <h4 class="docker-heading"><DockerWhaleIcon class="docker-heading-ico" /> 容器配置</h4>
               <div class="form-row">
                 <div class="form-group">
                   <label>Docker 镜像 *</label>
@@ -737,9 +737,12 @@ import { apiErrorFromPayload } from '@/utils/apiError'
 import { ctfAdmin } from '@/services/admin/ctf'
 import { parseJsonResponse, isApiSuccess } from '@/utils/http'
 
+import DockerWhaleIcon from '@/components/icons/DockerWhaleIcon.vue'
+
 export default {
   name: 'CtfManagement',
   components: {
+    DockerWhaleIcon,
     DynamicPackageManager,
     SeasonManager,
     TrafficCapturePanel,
@@ -2284,5 +2287,16 @@ export default {
 
 .form-input[placeholder] {
   padding: 8px 10px;
+}
+.docker-heading {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.docker-heading-ico {
+  width: 18px !important;
+  height: 18px !important;
+  font-size: 18px;
+  color: #5ED9A8;
 }
 </style>

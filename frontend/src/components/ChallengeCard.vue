@@ -12,7 +12,7 @@
       <div class="chal-content">
         <h4>{{ challenge.title }}</h4>
         <p class="category">
-          <span v-if="isContainerChallenge" class="docker-icon">🐳</span>
+          <span v-if="isContainerChallenge" class="docker-icon" title="容器题"><DockerWhaleIcon /></span>
           {{ getChallengeType() }}
         </p>
         <div v-if="isContainerChallenge && instance" class="instance-status">
@@ -161,8 +161,11 @@ import {
   pickRunningInstance,
 } from '@/services/container'
 
+import DockerWhaleIcon from '@/components/icons/DockerWhaleIcon.vue'
+
 export default {
   components: {
+    DockerWhaleIcon,
     NCard, NButton, NSpace, NInput, NInputGroup, NModal, Challenge,
     ChallengeModal: Challenge  // 别名兼容
   },
@@ -489,7 +492,14 @@ export default {
 }
 
 .docker-icon {
-  font-size: 14px;
+  display: inline-flex;
+  align-items: center;
+  color: #5ED9A8;
+  vertical-align: -2px;
+}
+.docker-icon .docker-whale-icon {
+  width: 16px !important;
+  height: 16px !important;
 }
 
 .instance-status {

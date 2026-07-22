@@ -94,7 +94,7 @@ export default {
     const route = useRoute()
     const toast = useToast()
     const user = ref(null)
-    const { isDark, initTheme } = useThemeStore()
+    const { initTheme } = useThemeStore()
 
     const footerOrg = ref('东北电力大学')
     const footerUrl = ref('https://www.neepu.edu.cn/')
@@ -119,12 +119,12 @@ export default {
     const isFullHeightRoute = computed(() => (
       !isLandingRoute.value && !isAdminRoute.value
     ))
-    const showFooter = computed(() => (
-      !isLandingRoute.value
-      && !isAdminRoute.value
-      && !isImmersiveRoute.value
-      && !showMaintenanceOverlay.value
-    ))
+    // 版权收纳进侧栏底部；全屏 HUD 不再挂割裂大 Footer
+    const showFooter = computed(() => false)
+    watch(isFullHeightRoute, (v) => {
+      document.documentElement.classList.toggle('hud-lock', !!v)
+    }, { immediate: true })
+    onUnmounted(() => document.documentElement.classList.remove('hud-lock'))
     const showMaintenanceOverlay = computed(() => {
       if (isAdminRoute.value) return false
       if (user.value?.is_admin) return false
@@ -252,84 +252,58 @@ export default {
       window.removeEventListener('neepu_platform_updated', onPlatformUpdated)
     })
 
-    const themeOverrides = computed(() => {
-      if (isDark.value) {
-        return {
-          common: {
-            primaryColor: '#5ED9A8',
-            primaryColorHover: '#7EE8C0',
-            bodyColor: 'transparent',
-            textColor1: '#E2E8F0',
-            textColor2: '#9CA8C4',
-            textColor3: '#9CA8C4',
-            cardColor: '#232838',
-            modalColor: '#232838',
-            popoverColor: '#232838',
-            inputColor: '#232838',
-            tableColor: '#232838',
-            borderColor: 'rgba(94, 217, 168, 0.22)',
-            borderRadius: '12px',
-            fontSize: '16px',
-            fontSizeMini: '12px',
-            fontSizeTiny: '12px',
-            fontSizeSmall: '14px',
-            fontSizeMedium: '16px',
-            fontSizeLarge: '18px',
-            fontSizeHuge: '20px',
-            fontFamily: "'M PLUS Rounded 1c', 'Noto Sans SC', 'PingFang SC', 'Microsoft YaHei UI', sans-serif",
-            fontFamilyMono: "'JetBrains Mono', 'Fira Code', Consolas, monospace",
-          },
-          Button: {
-            textColorPrimary: '#0F172A',
-            textColorHover: '#FFFFFF',
-            textColorPressed: '#FFFFFF',
-            textColorFocus: '#FFFFFF',
-            border: '1px solid rgba(94, 217, 168, 0.28)',
-            borderHover: '1px solid rgba(94, 217, 168, 0.55)',
-            color: 'rgba(94, 217, 168, 0.12)',
-            colorHover: 'rgba(94, 217, 168, 0.22)',
-            colorPressed: 'rgba(94, 217, 168, 0.28)',
-          },
-          Input: {
-            color: '#232838',
-            colorFocus: '#2A3144',
-            textColor: '#E2E8F0',
-            placeholderColor: 'rgba(156, 168, 196, 0.75)',
-            border: '1px solid rgba(255, 255, 255, 0.12)',
-            borderHover: '1px solid rgba(94, 217, 168, 0.45)',
-            borderFocus: '1px solid rgba(94, 217, 168, 0.7)',
-            caretColor: '#5ED9A8',
-          },
-          Card: {
-            color: '#232838',
-            textColor: '#E2E8F0',
-            borderColor: 'rgba(255, 255, 255, 0.08)',
-          },
-        }
-      }
-      return {
-        common: {
-          primaryColor: '#2DB58A',
-          primaryColorHover: '#249E76',
-          bodyColor: 'transparent',
-          textColor1: '#0F172A',
-          textColor2: '#64748B',
-          textColor3: '#64748B',
-          cardColor: '#FFFFFF',
-          borderColor: 'rgba(45, 181, 138, 0.18)',
-          borderRadius: '12px',
-          fontSize: '16px',
-          fontSizeMini: '12px',
-          fontSizeTiny: '12px',
-          fontSizeSmall: '14px',
-          fontSizeMedium: '16px',
-          fontSizeLarge: '18px',
-          fontSizeHuge: '20px',
-          fontFamily: "'M PLUS Rounded 1c', 'Noto Sans SC', 'PingFang SC', 'Microsoft YaHei UI', sans-serif",
-          fontFamilyMono: "'JetBrains Mono', 'Fira Code', Consolas, monospace",
-        },
-      }
-    })
+    const themeOverrides = computed(() => ({
+      common: {
+        primaryColor: '#5ED9A8',
+        primaryColorHover: '#7EE8C0',
+        bodyColor: 'transparent',
+        textColor1: '#E2E8F0',
+        textColor2: '#9CA8C4',
+        textColor3: '#9CA8C4',
+        cardColor: '#232838',
+        modalColor: '#232838',
+        popoverColor: '#232838',
+        inputColor: '#232838',
+        tableColor: '#232838',
+        borderColor: 'rgba(94, 217, 168, 0.22)',
+        borderRadius: '12px',
+        fontSize: '16px',
+        fontSizeMini: '12px',
+        fontSizeTiny: '12px',
+        fontSizeSmall: '14px',
+        fontSizeMedium: '16px',
+        fontSizeLarge: '18px',
+        fontSizeHuge: '20px',
+        fontFamily: "Inter, 'Noto Sans SC', 'PingFang SC', 'Microsoft YaHei UI', sans-serif",
+        fontFamilyMono: "'JetBrains Mono', 'Fira Code', Consolas, monospace",
+      },
+      Button: {
+        textColorPrimary: '#0F172A',
+        textColorHover: '#FFFFFF',
+        textColorPressed: '#FFFFFF',
+        textColorFocus: '#FFFFFF',
+        border: '1px solid rgba(94, 217, 168, 0.28)',
+        borderHover: '1px solid rgba(94, 217, 168, 0.55)',
+        color: 'rgba(94, 217, 168, 0.12)',
+        colorHover: 'rgba(94, 217, 168, 0.22)',
+        colorPressed: 'rgba(94, 217, 168, 0.28)',
+      },
+      Input: {
+        color: '#232838',
+        colorFocus: '#2A3144',
+        textColor: '#E2E8F0',
+        placeholderColor: 'rgba(156, 168, 196, 0.75)',
+        border: '1px solid rgba(255, 255, 255, 0.12)',
+        borderHover: '1px solid rgba(94, 217, 168, 0.45)',
+        borderFocus: '1px solid rgba(94, 217, 168, 0.7)',
+        caretColor: '#5ED9A8',
+      },
+      Card: {
+        color: '#232838',
+        textColor: '#E2E8F0',
+        borderColor: 'rgba(255, 255, 255, 0.08)',
+      },
+    }))
 
     return {
       user, themeOverrides, isAdminRoute, isLandingRoute, isImmersiveRoute, isFullHeightRoute, showFooter,
@@ -393,13 +367,26 @@ export default {
   box-sizing: border-box;
 }
 
-/* 非首页 / 非管理：顶栏以下占满视口高度 */
+/* 非首页 / 非管理：顶栏以下占满视口，禁止整页滚动溢出 */
 .app-shell.full-height-mode {
+  height: calc(100vh - var(--nav-height, 72px));
   min-height: calc(100vh - var(--nav-height, 72px));
+  max-height: calc(100vh - var(--nav-height, 72px));
+  overflow: hidden;
+  background: #0B0E14;
 }
 .app-shell.full-height-mode .main-content {
   flex: 1;
   min-height: 0;
+  height: 100%;
+  overflow: hidden;
+  background: #0B0E14;
+}
+.app-shell.full-height-mode .main-content > * {
+  height: 100%;
+  min-height: 0;
+  max-height: 100%;
+  overflow: hidden;
 }
 
 /* 题目 / 训练工作台：顶栏以下全屏，无页脚 */
@@ -435,13 +422,7 @@ export default {
 }
 
 .site-footer {
-  margin-top: auto;
-  padding: 20px 24px 28px;
-  color: var(--muted);
-  font-size: 14px;
-  width: 100%;
-  box-sizing: border-box;
-  border: none;
+  display: none !important;
 }
 .footer-inner {
   width: 100%;
@@ -489,7 +470,7 @@ export default {
   align-items: center;
   justify-content: center;
   background: rgba(8, 12, 18, 0.82);
-  backdrop-filter: blur(6px);
+  backdrop-filter: none;
   padding: 24px;
 }
 .maintenance-box {

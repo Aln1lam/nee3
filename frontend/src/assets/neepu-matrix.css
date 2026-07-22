@@ -237,7 +237,10 @@
   gap: 0;
   width: 100%;
   margin: 0;
-  min-height: calc(100vh - var(--nav-height, 72px) - 52px);
+  min-height: calc(100vh - var(--nav-height, 72px));
+  height: calc(100vh - var(--nav-height, 72px));
+  overflow: hidden;
+  background: #0B0E14;
 }
 
 .matrix-layout--flat {
@@ -260,7 +263,7 @@
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
-  backdrop-filter: blur(8px);
+  backdrop-filter: none;
 }
 
 .matrix-sidebar-title {
@@ -338,7 +341,7 @@
 
 /* 居中认证 / 表单页 */
 .matrix-auth-page {
-  min-height: calc(100vh - var(--nav-height, 72px) - 52px);
+  min-height: calc(100vh - var(--nav-height, 72px));
   display: flex;
   align-items: center;
   justify-content: center;
@@ -352,7 +355,7 @@
   border: 1px solid var(--gradient-card-border, var(--border));
   border-radius: var(--card-radius, 10px);
   background: var(--gradient-card-bg, var(--card-bg));
-  backdrop-filter: blur(16px);
+  backdrop-filter: none;
   box-shadow: var(--gradient-card-shadow, none);
 }
 
@@ -419,4 +422,72 @@
 .sidebar-layout__main .n-input,
 .sidebar-layout__main .n-input__textarea-el {
   border-radius: var(--card-radius) !important;
+}
+
+/* ========== Chip / Tag — Mint Cyber（薄荷绿，与主色统一） ========== */
+.link-code,
+.item-code,
+.anime-chip-cut,
+.chip-pink,
+.level-badge,
+.user-role-chip,
+.chip-cut:not(.attr-badge):not(.hero-cta):not(.side-tab):not(.region-chip):not(.rank-pos):not(.side-stack-label) {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  box-sizing: border-box !important;
+
+  height: 20px !important;
+  min-height: 20px !important;
+  max-height: 20px !important;
+  padding: 0 6px !important;
+  line-height: 1 !important;
+
+  font-family: var(--font-mono, "JetBrains Mono", monospace) !important;
+  font-size: 10px !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.05em !important;
+  white-space: nowrap !important;
+
+  border-radius: 3px !important;
+  clip-path: none !important;
+
+  background: rgba(94, 217, 168, 0.1) !important;
+  color: #5ED9A8 !important;
+  border: 1px solid rgba(94, 217, 168, 0.25) !important;
+
+  text-shadow: none !important;
+  box-shadow: none !important;
+  filter: none !important;
+  -webkit-font-smoothing: antialiased !important;
+  -moz-osx-font-smoothing: grayscale !important;
+}
+
+.link-code:hover,
+.item-code:hover,
+.anime-chip-cut:hover,
+.chip-pink:hover,
+.level-badge:hover,
+.user-role-chip:hover {
+  background: rgba(94, 217, 168, 0.2) !important;
+  border-color: rgba(94, 217, 168, 0.5) !important;
+  color: #5ED9A8 !important;
+  text-shadow: none !important;
+  box-shadow: none !important;
+}
+
+.sidebar-item .item-code,
+.sidebar-layout__link .link-code,
+.home-page .link-code,
+.home-page .item-code,
+.home-page .level-badge {
+  clip-path: none !important;
+  border-radius: 3px !important;
+  background: rgba(94, 217, 168, 0.1) !important;
+  color: #5ED9A8 !important;
+  border: 1px solid rgba(94, 217, 168, 0.25) !important;
+  font-family: var(--font-mono, monospace) !important;
+  text-shadow: none !important;
+  box-shadow: none !important;
+  filter: none !important;
 }

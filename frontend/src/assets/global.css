@@ -14,9 +14,9 @@
   --radius-pill: 10px;
   --card-radius: 10px;
 
-  /* 二次元 UI：圆润正文字体；mono 仅 Flag/代码 */
-  --font-ui: 'M PLUS Rounded 1c', 'Noto Sans SC', 'PingFang SC', 'Microsoft YaHei UI', sans-serif;
-  --font-mono: 'JetBrains Mono', 'Fira Code', Consolas, monospace;
+  /* HTB / NSSCTF 极客 UI：Inter 系；mono 仅数值/Flag/代码 */
+  --font-ui: "Inter", -apple-system, "BlinkMacSystemFont", "PingFang SC", "Microsoft YaHei", sans-serif;
+  --font-mono: "JetBrains Mono", "Fira Code", monospace;
   --font-display: var(--font-ui);
   --font-hacker: var(--font-mono);
 
@@ -37,11 +37,30 @@
   --text-3xl--line-height: 2.25rem;
 }
 
+/* ========== 全局高清去糊 ========== */
+html, body, #app, body * {
+  -webkit-font-smoothing: antialiased !important;
+  -moz-osx-font-smoothing: grayscale !important;
+  text-shadow: none !important;
+}
+
+/* 禁止把文字容器做成毛玻璃糊片（保留极轻或不使用） */
+body, #app, .main-content, .home-page, .sidebar-main,
+.matrix-page-title, .panel-head-title, .attr-val,
+.link-code, .item-code, p, h1, h2, h3, h4, span, a, button, li {
+  filter: none !important;
+  text-shadow: none !important;
+}
+
 html {
   box-sizing: border-box;
   -webkit-text-size-adjust: 100%;
   margin: 0;
   padding: 0;
+}
+html ,
+html body {
+  background: #0B0E14 !important;
 }
 
 *, *::before, *::after {
@@ -62,13 +81,24 @@ body {
   font-family: var(--font-ui) !important;
 }
 
-html[data-theme="dark"] body,
-html[data-theme="dark"] #app,
-html[data-theme="light"] body,
-html[data-theme="light"] #app {
+html body,
+html #app {
   color: var(--text) !important;
-  background: transparent !important;
+  background: #0B0E14 !important;
   font-family: var(--font-ui) !important;
+}
+/* full-height HUD 路由由 App.vue 挂 html.hud-lock，禁止 Window 滚动 */
+html.hud-lock,
+html.hud-lock body,
+html.hud-lock #app {
+  height: 100%;
+  max-height: 100%;
+  overflow: hidden !important;
+  background: #0B0E14 !important;
+}
+html.hud-lock .gradient-page-bg,
+html.hud-lock .bg-overlay.app-overlay {
+  background: #0B0E14 !important;
 }
 
 code, pre, kbd, samp {
@@ -129,8 +159,8 @@ input, textarea, select {
 
 .glass-card {
   background: var(--gradient-card-bg, var(--card-bg));
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
   border: 1px solid var(--gradient-card-border, var(--border));
   border-radius: var(--card-radius, 10px);
   box-shadow: var(--gradient-card-shadow, var(--shadow-lg));
@@ -143,16 +173,6 @@ input, textarea, select {
 .glass-card:hover {
   transform: translateY(-2px);
   box-shadow: var(--gradient-card-shadow-hover, var(--shadow-lg));
-}
-
-:root[data-theme="light"] .n-card,
-:root:not([data-theme]) .n-card,
-:root[data-theme="dark"] .n-card {
-  background: var(--gradient-card-bg, var(--card-bg)) !important;
-  border: 1px solid var(--gradient-card-border, var(--border)) !important;
-  box-shadow: var(--gradient-card-shadow, var(--shadow-lg)) !important;
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
 }
 
 :deep(.n-card__content) {

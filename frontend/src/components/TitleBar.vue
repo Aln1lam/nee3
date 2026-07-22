@@ -8,8 +8,7 @@
     <div class="title-bar-inner" :data-print-time="printTime">
       <div class="title-bar-left">
         <div class="brand" @click="goHome">
-          <span v-if="isGameMode && gameEmoji" class="brand-game-logo">{{ gameEmoji }}</span>
-          <LogoAnimate v-else :size="32" />
+          <LogoAnimate :size="28" />
           <span class="brand-name">{{ displayName }}</span>
         </div>
       </div>
@@ -54,15 +53,15 @@
         <UiTimeProgress v-else-if="isTrainingMode" permanent />
         <InstanceBox v-if="user" />
         <UiNotificationBox />
-        <UiThemeBox />
         <template v-if="user">
           <n-dropdown :options="userMenuOptions" trigger="click" @select="onUserMenuSelect">
-            <button type="button" class="avatar-btn" aria-label="用户菜单">
+            <button type="button" class="user-trigger" aria-label="用户菜单">
               <span class="header-avatar">
                 <img v-if="avatarUrl && !avatarBroken" :src="avatarUrl" alt="" @error="avatarBroken = true" />
                 <span v-else class="avatar-initial">{{ avatarInitial }}</span>
               </span>
               <span class="user-nick">{{ user.nickname || user.username || '用户' }}</span>
+              <span class="user-role-chip">{{ userRoleBadge }}</span>
             </button>
           </n-dropdown>
         </template>
@@ -78,11 +77,10 @@ import { useRoute, useRouter } from 'vue-router'
 import { NButton, NDropdown, useMessage } from 'naive-ui'
 import LogoAnimate from './LogoAnimate.vue'
 import { InstanceBox } from '@/components/shared'
-import { UiTimer, UiTimeProgress, UiThemeBox, UiNotificationBox } from '@/components/ui'
+import { UiTimer, UiTimeProgress, UiNotificationBox } from '@/components/ui'
 import { usePlatformStore } from '@/stores/platform'
 import { resolveUploadUrl } from '../utils/uploadUrl'
 import { fetchSession } from '../services/auth'
-import { getGameEmoji } from '../utils/gameDisplay'
 
 const NAV_CODE_FALLBACK = {
   '/home': 'HOM',
@@ -110,7 +108,7 @@ export default {
   name: 'TitleBar',
   components: {
     NButton, NDropdown, LogoAnimate, InstanceBox,
-    UiTimer, UiTimeProgress, UiThemeBox, UiNotificationBox,
+    UiTimer, UiTimeProgress, UiNotificationBox,
   },
   props: { user: { type: Object, default: null } },
   emits: ['logout'],
@@ -145,8 +143,6 @@ export default {
     })
 
     const isTrainingMode = computed(() => route.path.startsWith('/training'))
-    const gameEmoji = computed(() => getGameEmoji({ title: gameMeta.value?.title || '' }))
-
     const displayName = computed(() => {
       if (isGameMode.value && gameMeta.value?.title) return gameMeta.value.title
       if (isTrainingMode.value && trainingTitle.value) return trainingTitle.value
@@ -185,6 +181,14 @@ export default {
 
     const avatarUrl = computed(() => resolveUploadUrl(props.user?.avatar) || null)
     const avatarInitial = computed(() => (props.user?.nickname || props.user?.username || 'U').slice(0, 1).toUpperCase())
+
+    const userRoleBadge = computed(() => {
+      const u = props.user || {}
+      if (u.is_admin) return 'ADM'
+      if (u.is_moderator) return 'MOD'
+      if (u.team_id) return 'RNK'
+      return 'USR'
+    })
 
     const printTime = computed(() => {
       try { return new Date().toLocaleString('zh-CN', { hour12: false }) } catch { return '' }
@@ -261,9 +265,9 @@ export default {
     onUnmounted(() => window.removeEventListener('neepu_platform_updated', onPlatformUpdated))
 
     return {
-      highlightBanner, bannerDismissed, displayName, gameEmoji, globalNav, gameNav,
+      highlightBanner, bannerDismissed, displayName, globalNav, gameNav,
       isGameMode, isTrainingMode, gameMeta, userMenuOptions, avatarUrl, avatarBroken,
-      avatarInitial, printTime, isActive, navigate, goHome, onUserMenuSelect,
+      avatarInitial, userRoleBadge, printTime, isActive, navigate, goHome, onUserMenuSelect,
     }
   },
 }
@@ -275,7 +279,7 @@ export default {
   top: 0;
   z-index: 60;
   background: var(--nav-bg);
-  backdrop-filter: blur(6px) saturate(1.05);
+  backdrop-filter: none;
   border-bottom: 1px solid var(--border);
   width: 100%;
   overflow: visible;
@@ -313,7 +317,8 @@ export default {
   box-sizing: border-box;
 }
 .title-bar-left { display: flex; align-items: center; gap: 12px; justify-self: start; flex-shrink: 0; }
-.brand { display: flex; align-items: center; gap: 10px; cursor: pointer; font-weight: 700; color: var(--primary); }
+.brand { display: flex; align-items: center; gap: 10px; cursor: pointer; font-weight: 700; color: #E2E8F0; }
+.brand .logo-animate { color: #5ED9A8; }
 .brand-game-logo { font-size: var(--text-2xl); line-height: 1; }
 .brand-name {
   font-family: var(--font-ui);
@@ -350,24 +355,127 @@ export default {
 .title-bar-nav a.active .nav-code { color: var(--primary); }
 .title-bar-nav a:hover { color: var(--text); background: var(--gradient-nav-hover, var(--hover)); }
 .title-bar-nav a.active { color: var(--primary); font-weight: 700; background: var(--gradient-nav-active, var(--hover)); }
-.title-bar-right { display: flex; align-items: center; gap: 8px; justify-self: end; flex-shrink: 0; }
+.title-bar-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  justify-self: end;
+  flex-shrink: 0;
+  padding-right: 24px;
+  margin-right: 8px;
+  min-width: 0;
+  overflow: visible;
+}
+/* NSSCTF 风：无白药丸，图标哑光 + 用户扁平行 */
+.title-bar-right :deep(.notif-btn),
+.title-bar-right :deep(.instance-btn) {
+  width: 32px !important;
+  height: 32px !important;
+  min-height: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 6px !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  transform: none !important;
+  font-size: 18px !important;
+  line-height: 1 !important;
+  overflow: visible !important;
+}
+.title-bar-right :deep(.instance-btn) {
+  color: #64748B !important;
+}
+.title-bar-right :deep(.instance-btn:hover) {
+  color: #94A3B8 !important;
+  background: rgba(148, 163, 184, 0.08) !important;
+}
+.title-bar-right :deep(.instance-btn.active) {
+  color: #2496ED !important;
+  background: rgba(36, 150, 237, 0.1) !important;
+}
+.title-bar-right :deep(.notif-btn) {
+  color: #94A3B8 !important;
+}
+.title-bar-right :deep(.notif-btn:hover) {
+  color: #5ED9A8 !important;
+  background: rgba(94, 217, 168, 0.08) !important;
+}
+.title-bar-right :deep(.instance-icon) {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  color: inherit !important;
+  line-height: 0 !important;
+}
+.title-bar-right :deep(.docker-status-icon),
+.title-bar-right :deep(.docker-whale-icon) {
+  width: 20px !important;
+  height: 20px !important;
+  display: block !important;
+  overflow: visible !important;
+}
 .header-avatar {
-  width: 36px; height: 36px; border-radius: var(--radius-lg); overflow: hidden;
-  display: flex; align-items: center; justify-content: center;
-  background: var(--primary); color: #fff; font-size: var(--text-xs); font-weight: 600;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  background: rgba(var(--primary-rgb), 0.16);
+  color: rgb(var(--primary-rgb));
+  font-size: 12px;
+  font-weight: 600;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-sizing: border-box;
 }
-.header-avatar img { width: 100%; height: 100%; object-fit: cover; }
-.avatar-btn {
-  display: flex; align-items: center; gap: 6px;
-  background: var(--gradient-card-bg, transparent);
-  border: 1px solid var(--gradient-card-border, var(--border));
-  border-radius: var(--radius-lg); padding: 4px 10px 4px 4px; cursor: pointer; color: var(--text);
+.header-avatar img {
+  width: 32px;
+  height: 32px;
+  object-fit: cover;
+  display: block;
+  border-radius: 50%;
 }
-.user-nick { font-size: var(--text-sm); max-width: 80px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.user-trigger {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 8px;
+  margin: 0;
+  margin-right: 2px;
+  padding: 2px 0 !important;
+  overflow: visible;
+  min-height: 0 !important;
+  height: auto !important;
+  background: transparent !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  transform: none !important;
+  cursor: pointer;
+  color: var(--text-main, var(--text));
+}
+.user-trigger:hover .user-nick { color: rgb(var(--primary-rgb)); }
+.user-nick {
+  font-size: 13px;
+  font-weight: 600;
+  font-family: var(--font-ui);
+  max-width: 96px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  line-height: 1.2;
+}
+.user-role-chip {
+  flex-shrink: 0;
+  /* 视觉由全局 Chip 标准接管，禁止局部 clip-path */
+  clip-path: none !important;
+}
+
 @media (max-width: 1024px) {
   .title-bar-inner { padding: 0 16px; gap: 8px; }
   .title-bar-nav a { padding: 4px 8px; font-size: 0.82rem; }
-  .user-nick { display: none; }
+  .user-nick, .user-role-chip { display: none; }
   .brand-name { max-width: 140px; }
 }
 @media print {

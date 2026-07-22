@@ -5,19 +5,10 @@
 
 :root {
   --linux-chrome-bg: #1C2029;
-  --linux-chrome-bg-light: #E8ECF0;
   --linux-prompt-user: #5ED9A8;
   --linux-prompt-host: #7EB8FF;
   --linux-prompt-path: #F472B6;
   --linux-prompt-cmd: #E8ECF4;
-}
-
-html[data-theme="light"] {
-  --linux-chrome-bg: #E2E8F0;
-  --linux-prompt-user: #15803D;
-  --linux-prompt-host: #2563EB;
-  --linux-prompt-path: #BE185D;
-  --linux-prompt-cmd: #334155;
 }
 
 /* ── Shell prompt（仅真实终端组件；页眉改走 UI 字体）── */
@@ -129,12 +120,6 @@ html[data-theme="light"] {
   box-shadow: 14px 0 0 #fbbf24, 28px 0 0 #4ade80;
 }
 
-html[data-theme="light"] .linux-chrome,
-html[data-theme="light"] .panel-head.linux-chrome {
-  background: var(--linux-chrome-bg-light) !important;
-  color: #64748b !important;
-}
-
 .linux-chrome-path {
   margin-left: auto;
   font-size: var(--text-xs);
@@ -165,10 +150,6 @@ html[data-theme="light"] .panel-head.linux-chrome {
   border-top: 1px solid var(--border);
   background: var(--linux-chrome-bg);
   border-radius: 0 0 var(--card-radius) var(--card-radius);
-}
-
-html[data-theme="light"] .linux-uname {
-  background: var(--linux-chrome-bg-light);
 }
 
 /* ── 命令行按钮前缀 ── */

@@ -450,8 +450,6 @@ button:disabled, .btn-primary:disabled, .btn-secondary:disabled, .btn-danger:dis
   .n-card .n-card__header, .card-title, .sidebar-heading { padding: 0.4rem 0.6rem !important; font-size: 0.95rem !important; }
 }
 
-
-
 /* =======================================================
    Vditor icons global fallback
    Ensures svg <use> references to #vditor-icon-* are visible
@@ -497,6 +495,4 @@ svg use[href^="#vditor-icon-"], svg use[xlink\:href^="#vditor-icon-"] {
 
 /* If a global rule set svg size to zero via font-size or line-height, reset those */
 .vditor-toolbar svg { font-size: initial !important; line-height: normal !important; }
-
-
 

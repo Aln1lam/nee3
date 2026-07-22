@@ -1,8 +1,8 @@
 <template>
   <n-popover trigger="click" placement="bottom-end" :width="360" @update:show="onShow">
     <template #trigger>
-      <button class="instance-btn" aria-label="容器实例" :class="{ active: runningCount > 0 }">
-        <span class="instance-icon">🖥</span>
+      <button class="instance-btn" aria-label="容器实例" :class="{ active: hasActiveContainer }">
+        <span class="instance-icon"><DockerWhaleIcon :active="hasActiveContainer" :size="20" /></span>
         <span v-if="runningCount" class="instance-badge">{{ runningCount }}</span>
       </button>
     </template>
@@ -51,15 +51,16 @@
 </template>
 
 <script>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { NPopover, NSpin, NButton, useMessage } from 'naive-ui'
 import { fetchSession } from '@/services/auth'
 import { listMyInstances, extendContainer, stopContainer } from '@/services/instances'
 import { apiErrorMessage } from '@/utils/apiError'
+import DockerWhaleIcon from '@/components/icons/DockerWhaleIcon.vue'
 
 export default {
   name: 'InstanceBox',
-  components: { NPopover, NSpin, NButton },
+  components: { NPopover, NSpin, NButton, DockerWhaleIcon },
   setup() {
     const message = useMessage()
     const instances = ref([])
@@ -69,6 +70,8 @@ export default {
     const extending = ref(null)
 
     const runningCount = computed(() => instances.value.filter(i => i.is_running).length)
+    const hasActiveContainer = computed(() => runningCount.value > 0)
+    let pollTimer = null
 
     function statusLabel(inst) {
       if (inst.is_running) return '运行中'
@@ -89,19 +92,23 @@ export default {
       return `${m}m ${s}s`
     }
 
-    async function load() {
+    async function load(opts = {}) {
+      const silent = !!opts.silent
       if (!(await fetchSession())) { instances.value = []; return }
-      loading.value = true
-      loadError.value = false
+      if (!silent) loading.value = true
+      if (!silent) loadError.value = false
       try {
         const data = await listMyInstances()
         instances.value = data?.data || data || []
+        loadError.value = false
       } catch (e) {
-        instances.value = []
-        loadError.value = true
-        message.error(apiErrorMessage(e, '加载实例失败'))
+        if (!silent) {
+          instances.value = []
+          loadError.value = true
+          message.error(apiErrorMessage(e, '加载实例失败'))
+        }
       } finally {
-        loading.value = false
+        if (!silent) loading.value = false
       }
     }
 
@@ -144,8 +151,16 @@ export default {
         .catch(() => message.error('复制失败，请手动选择'))
     }
 
+    onMounted(() => {
+      load({ silent: true })
+      pollTimer = setInterval(() => { load({ silent: true }) }, 30000)
+    })
+    onUnmounted(() => {
+      if (pollTimer) clearInterval(pollTimer)
+    })
+
     return {
-      instances, loading, loadError, stopping, extending, runningCount,
+      instances, loading, loadError, stopping, extending, runningCount, hasActiveContainer,
       statusLabel, statusClass, formatRemain,
       onShow, extendInstance, stopInstance, copyUrl,
     }
@@ -156,22 +171,38 @@ export default {
 <style scoped>
 .instance-btn {
   background: transparent;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
+  border: 0;
+  border-radius: 6px;
   width: 32px;
   height: 32px;
+  min-height: 0;
+  padding: 0;
   cursor: pointer;
   position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
+  color: #64748B;
+  box-shadow: none;
+  overflow: visible;
+  transition: background 0.3s ease, color 0.3s ease;
 }
-.instance-btn.active { border-color: var(--success, #51cf66); color: var(--success); }
+.instance-btn:hover {
+  color: #94A3B8;
+  background: rgba(148, 163, 184, 0.08);
+}
+.instance-btn.active {
+  color: #2496ED;
+  background: rgba(36, 150, 237, 0.1);
+}
 .instance-icon {
-  font-size: 14px;
-  color: var(--primary);
-  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: inherit;
+  line-height: 0;
 }
+
 .instance-badge {
   position: absolute;
   top: -4px;

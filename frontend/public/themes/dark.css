@@ -17,9 +17,9 @@
   --hex-grid-color: rgba(255, 255, 255, 0.03);
   --grid-line-color: rgba(94, 217, 168, 0.08);
   --grid-opacity: 0.35;
-  --bg-layer: rgba(26, 29, 46, 0.92);
-  --code-bg: #232838;
-  --term-bg: #12141D;
+  --bg-layer: rgba(11, 14, 20, 0.96);
+  --code-bg: #131722;
+  --term-bg: #020617;
   --term-fg: var(--color-primary);
   --card-radius: 12px;
   --radius-xs: 6px;
@@ -29,11 +29,17 @@
   --radius-xl: 14px;
   --radius-pill: 10px;
 
-  --light-page-bg: #1A1D2E;
-  --light-nav-bg: rgba(26, 29, 46, 0.78);
-  --light-card-bg: #232838;
-  --light-text: #E2E8F0;
-  --light-border: rgba(255, 255, 255, 0.1);
+  /* surface tokens (formerly misnamed --light-*) */
+  --surface-page-bg: #0B0E14;
+  --surface-nav-bg: rgba(11, 14, 20, 0.92);
+  --surface-card-bg: #131722;
+  --surface-text: #E2E8F0;
+  --surface-border: rgba(255, 255, 255, 0.07);
+  --light-page-bg: var(--surface-page-bg);
+  --light-nav-bg: var(--surface-nav-bg);
+  --light-card-bg: var(--surface-card-bg);
+  --light-text: var(--surface-text);
+  --light-border: var(--surface-border);
 
   --nav-height: 72px;
   --content-max-width: none;
@@ -41,8 +47,8 @@
   --hover: rgba(94, 217, 168, 0.12);
 
   --landing-page-bg: transparent;
-  --landing-panel-bg: rgba(35, 40, 56, 0.86);
-  --landing-splash-bg: #1A1D2E;
+  --landing-panel-bg: rgba(19, 23, 34, 0.94);
+  --landing-splash-bg: #0B0E14;
   --on-primary-text: #0F172A;
   --landing-mask: none;
   --carousel-caption-gradient: linear-gradient(
@@ -52,18 +58,17 @@
     transparent 100%
   );
 
-  --gradient-page-base: #1A1D2E;
-  --gradient-page-glow: radial-gradient(ellipse at 15% 0%, rgba(94, 217, 168, 0.18), transparent 50%),
-    radial-gradient(ellipse at 90% 8%, rgba(244, 114, 182, 0.12), transparent 45%);
+  --gradient-page-base: #0B0E14;
+  --gradient-page-glow: radial-gradient(ellipse at 10% 0%, rgba(94, 217, 168, 0.04), transparent 50%);
   --noise-opacity: 0;
-  --main-surface-bg: #1A1D2E;
-  --main-surface-grid: rgba(94, 217, 168, 0.06);
+  --main-surface-bg: #0B0E14;
+  --main-surface-grid: rgba(148, 163, 184, 0.04);
   --sidebar-shadow: 0 8px 28px rgba(0, 0, 0, 0.35);
 
-  --gradient-card-bg: #232838;
-  --gradient-card-border: rgba(255, 255, 255, 0.08);
+  --gradient-card-bg: #131722;
+  --gradient-card-border: rgba(255, 255, 255, 0.07);
   --gradient-card-border-hover: rgba(94, 217, 168, 0.4);
-  --gradient-card-shadow: 0 10px 28px rgba(0, 0, 0, 0.28);
+  --gradient-card-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
   --gradient-card-shadow-hover: 0 14px 32px rgba(94, 217, 168, 0.12);
   --gradient-card-header: rgba(94, 217, 168, 0.08);
   --gradient-card-header-text: #E2E8F0;
@@ -73,11 +78,11 @@
   --gradient-btn-glow: none;
   --gradient-btn-glow-soft: none;
   --gradient-border: rgba(94, 217, 168, 0.35);
-  --gradient-tag-fill: rgba(244, 114, 182, 0.16);
-  --gradient-tag-text: #F9A8D4;
-  --gradient-tag-border: rgba(244, 114, 182, 0.28);
+  --gradient-tag-fill: rgba(236, 72, 153, 0.12);
+  --gradient-tag-text: #F472B6;
+  --gradient-tag-border: rgba(236, 72, 153, 0.3);
 
-  --gradient-nav-bg: rgba(26, 29, 46, 0.78);
+  --gradient-nav-bg: rgba(11, 14, 20, 0.94);
   --gradient-nav-active: rgba(94, 217, 168, 0.16);
   --gradient-nav-hover: rgba(94, 217, 168, 0.1);
 
@@ -85,8 +90,8 @@
   --nav-bg: var(--gradient-nav-bg);
   --card-bg: var(--gradient-card-bg);
   --sidebar-bg: transparent;
-  --glass-sidebar-bg: rgba(35, 40, 56, 0.78);
-  --glass-sidebar-border: rgba(255, 255, 255, 0.08);
+  --glass-sidebar-bg: rgba(19, 23, 34, 0.92);
+  --glass-sidebar-border: rgba(255, 255, 255, 0.07);
   --surface-shine: rgba(255, 255, 255, 0.04);
   --surface-edge: rgba(255, 255, 255, 0.06);
   --text: var(--light-text);

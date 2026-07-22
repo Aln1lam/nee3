@@ -387,77 +387,166 @@
   margin-bottom: var(--fib-21);
 }
 
-/* ── 个人工作台 /home（248px 侧栏，与 /training 一致）── */
-.home-page.home-wrap {
-  min-height: var(--workspace-height);
-  box-sizing: border-box;
-  width: 100%;
-  max-width: none;
-}
-
-.home-page .home-main {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-gutter-lg);
-  width: 100%;
-  max-width: none;
-}
-
-.home-page .large-hero {
-  width: 100%;
-}
-
-.home-page .large-hero .carousel {
-  border-radius: var(--card-radius);
-  overflow: hidden;
-  position: relative;
-  min-height: 200px;
-  background: linear-gradient(135deg, rgba(var(--primary-rgb), 0.12), rgba(236, 72, 153, 0.08));
-}
-
-.home-page .large-hero .carousel,
-.home-page .large-hero .slide img {
-  height: clamp(var(--fib-233), 38.2vh, calc(var(--fib-233) * var(--phi-minor)));
-}
-
-.home-page .home-bottom-grid {
+/* ── φ 双栏：主 1.618fr : 侧 1fr（可复用）── */
+.golden-dual-column {
   display: grid;
   grid-template-columns: 1fr;
   gap: var(--space-gutter-lg);
+  width: 100%;
 }
 
 @media (min-width: 900px) {
-  .home-page .home-bottom-grid {
-    grid-template-columns: minmax(0, 1.618fr) minmax(280px, 1fr);
+  .golden-dual-column {
+    grid-template-columns: minmax(0, 1.618fr) minmax(0, 1fr);
+    gap: var(--space-gutter-lg);
   }
 }
 
-.home-page .sidebar-card,
-.home-page .calendar-card,
-.home-page .announce-card {
-  border-radius: var(--card-radius);
+/* ── 个人工作台 /home — HUD 高密度 + φ 双栏 ── */
+.home-page.home-wrap.layout-with-sidebar {
+  height: calc(100vh - var(--nav-height, 72px));
+  min-height: calc(100vh - var(--nav-height, 72px));
+  max-height: calc(100vh - var(--nav-height, 72px));
+  box-sizing: border-box;
+  width: 100%;
+  max-width: none;
+  display: flex;
+  align-items: stretch;
+  overflow: hidden;
+  background: #0B0E14;
+  --sidebar-width: 248px;
 }
 
-.home-page .mini-calendar {
-  padding: var(--fib-13);
+.home-page.layout-with-sidebar > .sidebar-rail,
+.home-page .home-sidebar.sidebar-rail {
+  width: 248px !important;
+  min-width: 248px !important;
+  max-width: 248px !important;
+  flex: 0 0 248px !important;
+  flex-shrink: 0 !important;
+  flex-grow: 0 !important;
 }
 
-.home-page .announcement-item {
-  padding: var(--fib-13);
+.home-page.layout-with-sidebar.sidebar-collapsed > .sidebar-rail {
+  width: 0 !important;
+  min-width: 0 !important;
+  max-width: 0 !important;
+  flex-basis: 0 !important;
 }
 
-.home-page .days-grid {
-  gap: var(--fib-8);
+.home-page .home-main.sidebar-main {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  width: auto;
+  max-width: none;
+  padding: 12px 16px 14px;
+  overflow: hidden; /* 主区绝不产生页面滚动 */
+  background: #0B0E14;
 }
 
-.home-page .day {
-  min-height: var(--fib-55);
-  padding: var(--fib-8);
-  border-radius: var(--card-radius);
+.home-page .home-page-head {
+  margin-bottom: 0;
+}
+
+.home-page .home-hero-hud {
+  width: 100%;
+  max-width: 100%;
+  flex-shrink: 0;
+  height: 148px;
+  max-height: 160px;
+}
+
+.home-page .home-bottom-grid.golden-dual-column,
+.home-page .home-bottom-grid,
+.home-page .main-grid-container {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+  width: 100%;
+  min-width: 0;
+  flex: 1 1 auto;
+  min-height: 0;
+  align-items: stretch;
+  overflow: hidden;
+}
+
+/* 左宽右窄：CAL 1.3fr / BUL+SYS 1fr 黄金平衡 */
+@media (min-width: 900px) {
+  .home-page .home-bottom-grid.golden-dual-column,
+  .home-page .home-bottom-grid,
+  .home-page .main-grid-container {
+    grid-template-columns: 1.3fr 1fr !important;
+    gap: 16px !important;
+  }
+}
+
+.home-page .home-col {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+}
+.home-page .home-col-main {
+  width: 100%;
+  max-width: none;
+}
+.home-page .home-col-side {
+  align-self: stretch;
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.home-page .agenda-panel {
+  padding: 14px 16px;
+  flex: 1 1 auto;
+  height: 100%;
+  min-height: 0;
+  max-height: none;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+.home-page .agenda-list {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* 右侧：BUL/SYS Tab 控制台撑满 */
+.home-page .side-console {
+  flex: 1 1 auto;
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 0;
+}
+
+.home-page .bulletin-item {
+  height: auto !important;
+  flex: none !important;
 }
 
 @media (max-width: 899px) {
+  .golden-dual-column,
+  .home-page .home-bottom-grid.golden-dual-column,
   .home-page .home-bottom-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .home-page .dash-stats {
     grid-template-columns: 1fr;
   }
 
@@ -1164,7 +1253,6 @@
 .site-footer {
   padding: var(--fib-21) var(--fib-21) var(--fib-34);
 }
-
 
 /* anime-ui: games hub — 248px rail + φ 主区，避免「突然变细」 */
 .games-hub.r2s-games,

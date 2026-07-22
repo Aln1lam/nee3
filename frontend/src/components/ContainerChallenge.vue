@@ -13,7 +13,7 @@
 
     <!-- 容器管理区域 -->
     <div class="card container-management">
-      <h4>🐳 容器实例</h4>
+      <h4 class="docker-heading"><DockerWhaleIcon class="docker-heading-ico" /> 容器实例</h4>
       
       <!-- 加载中 -->
       <div v-if="loadingStatus" class="loading-state">
@@ -166,8 +166,11 @@ import {
   pickRunningInstance,
 } from '@/services/container'
 
+import DockerWhaleIcon from '@/components/icons/DockerWhaleIcon.vue'
+
 export default {
   name: 'ContainerChallenge',
+  components: { DockerWhaleIcon },
   props: {
     challengeId: {
       type: Number,
@@ -1079,5 +1082,15 @@ button:disabled {
   .modal-footer .btn-danger {
     width: 100%;
   }
+}
+.docker-heading {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.docker-heading-ico {
+  width: 18px !important;
+  height: 18px !important;
+  color: #5ED9A8;
 }
 </style>
