@@ -118,23 +118,7 @@ const platformAdmin = {
     return http.delete(`/announcements/${id}`)
   },
 
-  getCarousel() {
-    return http.get('/carousel')
-  },
-
-  createCarouselSlide(data) {
-    return http.post('/carousel', data)
-  },
-
-  updateCarouselSlide(id, data) {
-    return http.patch(`/carousel/${id}`, data)
-  },
-
-  deleteCarouselSlide(id) {
-    return http.delete(`/carousel/${id}`)
-  },
-
-  /** 图片上传（轮播等），配合 n-upload with-credentials 使用 */
+  /** 通用图片上传，配合 n-upload with-credentials 使用 */
   uploadImageUrl: '/api/uploads/upload-image/',
 }
 

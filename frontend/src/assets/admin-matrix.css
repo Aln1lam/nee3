@@ -6,9 +6,9 @@
   --ops-surface: var(--card-bg);
   --ops-surface-2: var(--code-bg);
   --ops-border: var(--border);
-  --ops-text: var(--text);
-  --ops-muted: var(--muted);
-  --ops-primary: var(--primary);
+  --ops-text: #f3f4f6;
+  --ops-muted: #9ca3af;
+  --ops-primary: #10b981;
   --ops-accent: var(--color-accent);
   --ops-danger: var(--error);
   --ops-info: var(--info);
@@ -156,7 +156,7 @@ html .admin-panel .btn-small.btn-edit {
   border-color: rgba(45, 181, 138, 0.45) !important;
 }
 
-.admin-panel .btn-small:not(.btn-edit):not(.delete):not(.btn-danger):not(.btn-warning):not(.btn-info):not(.btn-primary) {
+.admin-panel .btn-small:not(.btn-edit):not(.edit):not(.view):not(.publish):not(.delete):not(.btn-danger):not(.btn-warning):not(.btn-info):not(.btn-primary) {
   background-color: transparent !important;
   background-image: none !important;
   color: var(--ops-text) !important;
@@ -220,11 +220,11 @@ html .admin-panel .btn-small.btn-info {
 .admin-panel table th {
   padding: 10px 12px !important;
   text-align: left;
-  font-size: 11px !important;
+  font-size: 13px !important;
   font-weight: 600 !important;
-  color: var(--ops-muted) !important;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
+  color: #9ca3af !important;
+  text-transform: none;
+  letter-spacing: 0.02em;
 }
 
 .admin-panel .users-table td,
@@ -232,8 +232,9 @@ html .admin-panel .btn-small.btn-info {
 .admin-panel table td {
   padding: 10px 12px !important;
   border-bottom: 1px solid var(--ops-border) !important;
-  font-size: 13px !important;
-  color: var(--ops-text) !important;
+  font-size: 14px !important;
+  font-weight: 500 !important;
+  color: #f3f4f6 !important;
 }
 
 .admin-panel .users-table tbody tr:hover,
@@ -473,31 +474,6 @@ html .admin-panel .status-message.info {
   border-color: var(--ops-border) !important;
 }
 
-.admin-panel .carousel-management .form-grid input[type="text"],
-.admin-panel .carousel-management .form-grid input[type="number"] {
-  background: var(--ops-surface) !important;
-  border: 1px solid var(--ops-border) !important;
-  color: var(--ops-text) !important;
-}
-
-.admin-panel .carousel-management .form-panel {
-  background: var(--ops-surface) !important;
-  border-color: var(--ops-border) !important;
-  color: var(--ops-text) !important;
-}
-
-.admin-panel .carousel-management .slides-table {
-  background: var(--ops-surface) !important;
-  color: var(--ops-text) !important;
-}
-
-.admin-panel .carousel-management .slides-table th {
-  color: var(--ops-muted) !important;
-}
-
-.admin-panel .carousel-management .hint {
-  color: var(--ops-muted) !important;
-}
 
 .admin-panel .metrics-grid {
   grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
@@ -515,11 +491,13 @@ html .admin-panel .status-message.info {
   width: 100%;
 }
 
-/* anime-ui: dashboard chart clamp + 卡片圆角 */
+/* anime-ui: dashboard charts — 完整可见，禁止裁切柱体 */
 .admin-panel .chart,
 .dashboard .chart {
-  overflow: hidden;
-  max-height: 280px;
+  overflow: visible;
+  max-height: none;
+  min-height: 220px;
+  height: auto;
 }
 .admin-panel .chart-container,
 .dashboard .chart-container,
@@ -529,11 +507,10 @@ html .admin-panel .status-message.info {
   box-shadow: var(--gradient-card-shadow);
   background: var(--gradient-card-bg, var(--card-bg));
   border: 1px solid var(--gradient-card-border, var(--border));
-  /* No border-left accent — it square-cuts past border-radius ("顶出卡片") */
   border-left-width: 1px;
   padding: var(--fib-21, 21px);
   margin-bottom: var(--fib-21, 21px);
-  overflow: hidden;
+  overflow: visible;
   box-sizing: border-box;
 }
 .admin-panel .bar-chart,
@@ -541,10 +518,12 @@ html .admin-panel .status-message.info {
   display: flex;
   align-items: flex-end;
   gap: var(--fib-8, 8px);
-  height: 200px;
-  max-height: 200px;
-  overflow: hidden;
-  padding-top: var(--fib-13, 13px);
+  min-height: 220px;
+  height: 240px;
+  max-height: none;
+  overflow: visible;
+  padding: 8px 4px 0;
+  box-sizing: border-box;
 }
 .admin-panel .bar-chart .bar-item,
 .dashboard .bar-chart .bar-item {
@@ -555,14 +534,62 @@ html .admin-panel .status-message.info {
   justify-content: flex-end;
   min-width: 0;
   height: 100%;
+  overflow: visible;
 }
 .admin-panel .bar-chart .bar,
 .dashboard .bar-chart .bar {
   width: 61.8%;
   max-width: 28px;
-  max-height: 160px !important;
+  max-height: none !important;
+  flex: 0 0 auto;
   border-radius: var(--radius-sm, 8px) var(--radius-sm, 8px) 0 0;
-  background: linear-gradient(180deg, var(--color-depth, #60A5FA), var(--primary));
+  background: linear-gradient(180deg, #7ee7bc, #5ED9A8);
+}
+.admin-panel .active-users,
+.dashboard .active-users,
+.admin-panel .active-users *,
+.dashboard .active-users * {
+  opacity: 1 !important;
+  filter: none !important;
+  text-shadow: none !important;
+  -webkit-font-smoothing: antialiased !important;
+  -moz-osx-font-smoothing: grayscale !important;
+  text-rendering: optimizeLegibility;
+}
+.admin-panel .users-table th,
+.dashboard .users-table th,
+.admin-panel .active-users .users-table th {
+  color: #9ca3af !important;
+  font-weight: 600 !important;
+  font-size: 13px !important;
+  text-transform: none !important;
+  letter-spacing: 0.02em !important;
+  opacity: 1 !important;
+}
+.admin-panel .users-table td,
+.dashboard .users-table td,
+.admin-panel .active-users .users-table td {
+  color: #f3f4f6 !important;
+  font-weight: 500 !important;
+  font-size: 14px !important;
+  opacity: 1 !important;
+}
+.admin-panel .users-table td.nick-cell,
+.dashboard .users-table td.nick-cell,
+.admin-panel .users-table .nick-cell {
+  color: #f3f4f6 !important;
+  font-weight: 500 !important;
+  opacity: 1 !important;
+}
+.admin-panel .users-table td.rank-cell,
+.dashboard .users-table td.rank-cell,
+.admin-panel .users-table .rank-cell,
+.admin-panel .users-table td.rank-cell strong,
+.dashboard .users-table td.rank-cell strong {
+  color: #10b981 !important;
+  font-weight: 700 !important;
+  font-variant-numeric: tabular-nums;
+  opacity: 1 !important;
 }
 .admin-panel .users-table .badge,
 .dashboard .users-table .badge {
@@ -571,9 +598,522 @@ html .admin-panel .status-message.info {
   justify-content: center;
   min-width: 2rem;
   padding: 2px 10px;
-  border-radius: var(--radius-pill, 10px);
-  background: rgba(var(--primary-rgb), 0.12);
-  color: var(--primary);
-  font-family: var(--font-ui);
-  font-weight: 600;
+  border-radius: 6px;
+  background: rgba(16, 185, 129, 0.16) !important;
+  color: #10b981 !important;
+  border: 1px solid rgba(16, 185, 129, 0.4);
+  font-family: inherit;
+  font-weight: 700 !important;
+  opacity: 1 !important;
 }
+
+/* NEEPU_ADMIN_HD_TYPO */
+/* ========== /admin 全站高清字体层（覆盖所有子路由） ========== */
+.admin-layout,
+.admin-panel,
+.admin-main,
+.admin-content-wrap {
+  -webkit-font-smoothing: antialiased !important;
+  -moz-osx-font-smoothing: grayscale !important;
+  text-rendering: optimizeLegibility !important;
+  --ops-text: #f3f4f6;
+  --ops-muted: #9ca3af;
+  --ops-primary: #10b981;
+  color: #f3f4f6;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial,
+    "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif !important;
+}
+
+.admin-layout *,
+.admin-panel *,
+.admin-main *,
+.admin-content-wrap * {
+  -webkit-font-smoothing: antialiased !important;
+  -moz-osx-font-smoothing: grayscale !important;
+  text-rendering: optimizeLegibility;
+  text-shadow: none !important;
+  filter: none !important;
+}
+
+/* 常规正文：亮白 + 中字重，禁止文字半透明（不误伤图标容器） */
+.admin-layout,
+.admin-panel,
+.admin-main {
+  color: #f3f4f6 !important;
+  font-weight: 500;
+  opacity: 1 !important;
+}
+.admin-panel p,
+.admin-panel li,
+.admin-panel td,
+.admin-panel .nick-cell,
+.admin-panel .n-thing-header__title,
+.admin-panel .n-text,
+.admin-panel .n-ellipsis,
+.admin-panel .n-data-table-td,
+.admin-panel .n-base-selection-label,
+.admin-panel .n-input__input-el,
+.admin-panel .n-input__textarea-el,
+.admin-panel .content,
+.admin-panel .item-title,
+.admin-panel .row-label {
+  color: #f3f4f6 !important;
+  font-weight: 500 !important;
+  opacity: 1 !important;
+}
+.admin-panel .icon-wrap,
+.admin-panel .section-icon,
+.admin-panel .n-icon,
+.admin-panel .metric-card .value,
+.admin-panel .bar-item .value {
+  color: #10b981 !important;
+  opacity: 1 !important;
+}
+.admin-panel .metric-card .value {
+  font-weight: 700 !important;
+}
+
+/* 标题 */
+.admin-layout .matrix-page-title,
+.admin-layout .matrix-page-desc,
+.admin-panel h1,
+.admin-panel h2,
+.admin-panel h3,
+.admin-panel h4,
+.admin-panel .section-title,
+.admin-panel .panel-title,
+.admin-panel .card-title {
+  color: #f3f4f6 !important;
+  font-weight: 600 !important;
+  opacity: 1 !important;
+}
+
+.admin-layout .matrix-page-prompt,
+.admin-layout .matrix-page-desc {
+  color: #9ca3af !important;
+  font-weight: 500 !important;
+  opacity: 1 !important;
+}
+
+/* 表头 / 标签 / 辅助说明 */
+.admin-panel th,
+.admin-panel thead th,
+.admin-panel .users-table th,
+.admin-panel .data-table th,
+.admin-panel table th,
+.admin-panel .n-data-table-th,
+.admin-panel .n-data-table-th__title,
+.admin-panel label,
+.admin-panel .form-group label,
+.admin-panel .help-text,
+.admin-panel .hint,
+.admin-panel .muted,
+.admin-panel .subtext,
+.admin-panel .metric-card .title,
+.admin-panel .stat-label,
+.admin-panel .group-label {
+  color: #9ca3af !important;
+  font-weight: 600 !important;
+  font-size: 13px !important;
+  text-transform: none !important;
+  letter-spacing: 0.02em !important;
+  opacity: 1 !important;
+}
+
+/* 表格单元格正文 */
+.admin-panel td,
+.admin-panel .users-table td,
+.admin-panel .data-table td,
+.admin-panel table td,
+.admin-panel .n-data-table-td {
+  color: #f3f4f6 !important;
+  font-weight: 500 !important;
+  font-size: 14px !important;
+  opacity: 1 !important;
+}
+
+/* 排名 / 强调数字 / 主色徽章 */
+.admin-panel .rank-cell,
+.admin-panel .rank-cell strong,
+.admin-panel .badge,
+.admin-panel .users-table .badge,
+.admin-panel .n-tag--success,
+.admin-panel .primary-text,
+.admin-panel .metric-card .value {
+  color: #10b981 !important;
+  font-weight: 700 !important;
+  opacity: 1 !important;
+}
+
+.admin-panel .badge,
+.admin-panel .users-table .badge {
+  background: rgba(16, 185, 129, 0.16) !important;
+  border: 1px solid rgba(16, 185, 129, 0.4) !important;
+}
+
+/* 输入框文字保持清晰 */
+.admin-panel input,
+.admin-panel select,
+.admin-panel textarea,
+.admin-panel .n-input,
+.admin-panel .n-base-selection,
+.admin-panel .n-input__input-el,
+.admin-panel .n-input__textarea-el {
+  color: #f3f4f6 !important;
+  font-weight: 500 !important;
+  opacity: 1 !important;
+  -webkit-font-smoothing: antialiased !important;
+}
+
+.admin-panel input::placeholder,
+.admin-panel textarea::placeholder,
+.admin-panel .n-input__placeholder {
+  color: #9ca3af !important;
+  opacity: 1 !important;
+  font-weight: 500 !important;
+}
+
+/* 按钮文字不发虚 */
+.admin-panel button,
+.admin-panel .n-button,
+.admin-panel .btn-primary,
+.admin-panel .btn-secondary {
+  font-weight: 600 !important;
+  opacity: 1 !important;
+  -webkit-font-smoothing: antialiased !important;
+}
+
+/* disabled 仍可读，但不沿用文字半透明糊法 */
+.admin-panel input:disabled,
+.admin-panel .form-input:disabled {
+  opacity: 1 !important;
+  color: #9ca3af !important;
+  background: rgba(255, 255, 255, 0.04) !important;
+}
+
+/* Naive UI 空态 / 描述 */
+.admin-panel .n-empty__description,
+.admin-panel .n-form-item-label,
+.admin-panel .n-form-item-feedback {
+  color: #9ca3af !important;
+  font-weight: 500 !important;
+  opacity: 1 !important;
+}
+
+/* 覆盖旧的 11px uppercase 表头 */
+.admin-panel .users-table th,
+.admin-panel .data-table th,
+.admin-panel table th {
+  font-size: 13px !important;
+  text-transform: none !important;
+  color: #9ca3af !important;
+  font-weight: 600 !important;
+}
+/* /NEEPU_ADMIN_HD_TYPO */
+
+/* NEEPU_ADMIN_TABLE_UI */
+/* 用户管理 / 内容管理：操作钮、工具栏、Chip */
+.admin-panel .action-bar {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  align-items: center !important;
+  gap: 10px !important;
+}
+.admin-panel .action-bar .search-input {
+  flex: 1 1 220px !important;
+  min-width: 200px !important;
+  max-width: 420px !important;
+  width: auto !important;
+  height: 36px !important;
+  padding: 8px 12px !important;
+  background: rgba(20, 26, 33, 0.72) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  border-radius: 8px !important;
+  color: #f3f4f6 !important;
+  font-size: 13px !important;
+  font-weight: 500 !important;
+}
+.admin-panel .action-bar .filter-select {
+  flex: 0 0 auto !important;
+  width: auto !important;
+  min-width: 140px !important;
+  height: 36px !important;
+  padding: 8px 12px !important;
+  background: rgba(20, 26, 33, 0.72) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  border-radius: 8px !important;
+  color: #f3f4f6 !important;
+  font-size: 13px !important;
+  font-weight: 500 !important;
+}
+.admin-panel .action-bar .btn-primary,
+.admin-panel .action-bar .btn-secondary,
+.admin-panel .content-management .action-bar .btn-primary,
+.admin-panel .user-management .action-bar .btn-primary {
+  flex: 0 0 auto !important;
+  width: auto !important;
+  min-width: 0 !important;
+  padding: 8px 18px !important;
+  height: 36px !important;
+  border-radius: 8px !important;
+  white-space: nowrap !important;
+}
+
+.admin-panel .actions {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  gap: 6px !important;
+  align-items: center !important;
+}
+.admin-panel .btn-small,
+.admin-panel button.btn-small {
+  padding: 4px 10px !important;
+  border-radius: 6px !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.02em !important;
+  border: 1px solid transparent !important;
+  cursor: pointer !important;
+  line-height: 1.4 !important;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease !important;
+  transform: none !important;
+  filter: none !important;
+}
+.admin-panel .btn-small.edit,
+.admin-panel .btn-small.view,
+.admin-panel .btn-small.publish,
+.admin-panel .btn-small.btn-edit {
+  background: rgba(16, 185, 129, 0.1) !important;
+  color: #10b981 !important;
+  border-color: rgba(16, 185, 129, 0.28) !important;
+}
+.admin-panel .btn-small.edit:hover,
+.admin-panel .btn-small.view:hover,
+.admin-panel .btn-small.publish:hover,
+.admin-panel .btn-small.btn-edit:hover {
+  background: rgba(16, 185, 129, 0.2) !important;
+  border-color: rgba(16, 185, 129, 0.45) !important;
+  color: #34d399 !important;
+  filter: none !important;
+  transform: none !important;
+}
+.admin-panel .btn-small.delete,
+.admin-panel .btn-small.btn-danger {
+  background: rgba(239, 68, 68, 0.1) !important;
+  color: #ef4444 !important;
+  border-color: rgba(239, 68, 68, 0.28) !important;
+}
+.admin-panel .btn-small.delete:hover,
+.admin-panel .btn-small.btn-danger:hover {
+  background: rgba(239, 68, 68, 0.2) !important;
+  border-color: rgba(239, 68, 68, 0.45) !important;
+  color: #f87171 !important;
+  filter: none !important;
+}
+
+.admin-panel .users-table td,
+.admin-panel .articles-table td,
+.admin-panel .content-management table td,
+.admin-panel .user-management table td {
+  color: #e5e7eb !important;
+  font-weight: 500 !important;
+  font-size: 13px !important;
+}
+.admin-panel .users-table th,
+.admin-panel .articles-table th {
+  color: #9ca3af !important;
+  font-weight: 600 !important;
+  font-size: 13px !important;
+}
+
+.admin-panel .badge,
+.admin-panel .users-table .badge,
+.admin-panel .articles-table .badge {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  height: 22px !important;
+  padding: 0 8px !important;
+  border-radius: 999px !important;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.02em !important;
+  border: 1px solid transparent !important;
+  line-height: 1 !important;
+}
+.admin-panel .badge.admin,
+.admin-panel .badge.success {
+  background: rgba(16, 185, 129, 0.12) !important;
+  color: #10b981 !important;
+  border-color: rgba(16, 185, 129, 0.3) !important;
+}
+.admin-panel .badge.mod,
+.admin-panel .badge.warning {
+  background: rgba(245, 158, 11, 0.12) !important;
+  color: #fbbf24 !important;
+  border-color: rgba(245, 158, 11, 0.3) !important;
+}
+.admin-panel .badge.user,
+.admin-panel .badge.default {
+  background: rgba(148, 163, 184, 0.12) !important;
+  color: #cbd5e1 !important;
+  border-color: rgba(148, 163, 184, 0.28) !important;
+}
+/* /NEEPU_ADMIN_TABLE_UI */
+
+/* NEEPU_ADMIN_UNIFY_V2 */
+/* ========== 全后台表格表头统一 ========== */
+.admin-panel table thead,
+.admin-panel .users-table thead,
+.admin-panel .articles-table thead,
+.admin-panel .data-table thead,
+.admin-panel .logs-table thead,
+.admin-panel .n-data-table-thead,
+.admin-panel .n-data-table .n-data-table-th {
+  background: rgba(20, 30, 38, 0.8) !important;
+}
+.admin-panel table th,
+.admin-panel .users-table th,
+.admin-panel .articles-table th,
+.admin-panel .data-table th,
+.admin-panel .logs-table th,
+.admin-panel .n-data-table-th,
+.admin-panel .n-data-table .n-data-table-th,
+.admin-panel .n-data-table-th__title {
+  background: rgba(20, 30, 38, 0.8) !important;
+  color: #9ca3af !important;
+  font-weight: 600 !important;
+  font-size: 13px !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+  text-transform: none !important;
+  opacity: 1 !important;
+}
+
+/* 表格正文高对比 */
+.admin-panel table td,
+.admin-panel .data-table td,
+.admin-panel .logs-table td,
+.admin-panel .logs-table .description,
+.admin-panel .n-data-table-td {
+  color: #e5e7eb !important;
+  font-weight: 500 !important;
+  opacity: 1 !important;
+}
+
+/* ========== 操作钮统一微光 Chip ========== */
+.admin-panel .btn-small,
+.admin-panel button.btn-small,
+.admin-panel .announcement-management .n-button {
+  padding: 4px 10px !important;
+  border-radius: 6px !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.02em !important;
+  border: 1px solid transparent !important;
+  line-height: 1.4 !important;
+  transform: none !important;
+  filter: none !important;
+}
+.admin-panel .btn-small.btn-edit,
+.admin-panel .btn-small.edit,
+.admin-panel .btn-small.view,
+.admin-panel .btn-small.btn-info,
+.admin-panel .announcement-management .n-button--primary-type {
+  background: rgba(16, 185, 129, 0.12) !important;
+  color: #10b981 !important;
+  border-color: rgba(16, 185, 129, 0.3) !important;
+}
+.admin-panel .btn-small.btn-danger,
+.admin-panel .btn-small.delete,
+.admin-panel .btn-danger,
+.admin-panel button.btn-danger,
+.admin-panel .announcement-management .n-button--error-type {
+  background: rgba(239, 68, 68, 0.12) !important;
+  color: #ef4444 !important;
+  border-color: rgba(239, 68, 68, 0.3) !important;
+}
+.admin-panel .btn-small.btn-warning,
+.admin-panel .btn-small.btn-secondary,
+.admin-panel .btn-small:not(.btn-edit):not(.edit):not(.view):not(.publish):not(.delete):not(.btn-danger):not(.btn-warning):not(.btn-info):not(.btn-primary) {
+  background: rgba(107, 114, 128, 0.12) !important;
+  color: #d1d5db !important;
+  border-color: rgba(107, 114, 128, 0.3) !important;
+}
+.admin-panel .btn-small.publish {
+  background: rgba(16, 185, 129, 0.12) !important;
+  color: #10b981 !important;
+  border-color: rgba(16, 185, 129, 0.3) !important;
+}
+
+/* 靶场 Tab：微光 Tag */
+.admin-panel .ctf-management .tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+.admin-panel .ctf-management .tab-btn {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  padding: 8px 12px !important;
+  border-radius: 8px !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  background: rgba(20, 26, 33, 0.55) !important;
+  color: #e5e7eb !important;
+  font-weight: 500 !important;
+  font-size: 13px !important;
+}
+.admin-panel .ctf-management .tab-btn .tab-code {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 34px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: #10b981 !important;
+  background: rgba(16, 185, 129, 0.12) !important;
+  border: 1px solid rgba(16, 185, 129, 0.28) !important;
+}
+.admin-panel .ctf-management .tab-btn.active {
+  background: rgba(16, 185, 129, 0.1) !important;
+  border-color: rgba(16, 185, 129, 0.35) !important;
+  color: #f3f4f6 !important;
+}
+.admin-panel .ctf-management .tab-btn:hover {
+  border-color: rgba(16, 185, 129, 0.28) !important;
+}
+
+/* 状态 Chip */
+.admin-panel .status-chip,
+.admin-panel .announcement-management .status-chip {
+  display: inline-flex !important;
+  align-items: center !important;
+  height: 22px !important;
+  padding: 0 8px !important;
+  border-radius: 999px !important;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+}
+.admin-panel .status-chip.is-on {
+  background: rgba(16, 185, 129, 0.12) !important;
+  color: #10b981 !important;
+  border: 1px solid rgba(16, 185, 129, 0.3) !important;
+}
+.admin-panel .status-chip.is-off {
+  background: rgba(107, 114, 128, 0.12) !important;
+  color: #d1d5db !important;
+  border: 1px solid rgba(107, 114, 128, 0.3) !important;
+}
+
+/* 隐藏后台侧栏残余跳转 */
+.admin-layout .sidebar-links.sidebar-rail-footer,
+.admin-panel .sidebar-links.sidebar-rail-footer {
+  display: none !important;
+}
+/* /NEEPU_ADMIN_UNIFY_V2 */
+

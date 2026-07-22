@@ -74,10 +74,6 @@
             </p>
           </header>
 
-          <section v-if="trainingWelcomeHtml" class="hub-welcome-banner">
-            <div class="welcome-md markdown-body" v-html="trainingWelcomeHtml"></div>
-          </section>
-
           <LoadingTips v-if="loading" />
 
           <template v-else-if="trainingGames.length || archivedGames.length">
@@ -365,16 +361,18 @@ export default {
   gap: 8px;
 }
 .sidebar-title {
-  font-weight: 700;
-  color: var(--primary);
+  font-weight: 600;
+  color: #ffffff;
   text-decoration: none;
+  font-size: 16px;
 }
 .group-label {
-  font-size: 11px;
-  color: var(--muted);
-  margin: 12px 0 6px;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
+  font-size: 12px;
+  font-weight: 500;
+  color: #9ca3af;
+  margin: 0 0 12px;
+  text-transform: none;
+  letter-spacing: 0.04em;
 }
 .sidebar-item {
   display: flex;
@@ -437,22 +435,6 @@ export default {
   width: 100%;
   box-sizing: border-box;
   padding-bottom: 24px;
-}
-
-.hub-welcome-banner {
-  margin: 0 0 18px;
-  padding: 14px 16px;
-  border: 1px solid rgba(94, 217, 168, 0.16);
-  border-radius: 10px;
-  background: rgba(255, 255, 255, 0.02);
-}
-.hub-welcome-banner :deep(p) { margin: 0 0 6px; line-height: 1.65; color: var(--muted); font-size: 13px; }
-.hub-welcome-banner :deep(h1),
-.hub-welcome-banner :deep(h2),
-.hub-welcome-banner :deep(h3) {
-  margin: 0 0 8px;
-  font-size: 15px;
-  color: var(--text);
 }
 
 .hub-section { margin-bottom: 28px; }

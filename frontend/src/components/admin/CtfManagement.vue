@@ -2,13 +2,15 @@
   <div class="ctf-management">
     <!-- 选项卡 -->
     <div class="tabs">
-      <button 
+      <button
         v-for="tab in tabs"
         :key="tab"
+        type="button"
         :class="['tab-btn', { active: activeTab === tab }]"
         @click="activeTab = tab"
       >
-        {{ getTabLabel(tab) }}
+        <span class="tab-code">{{ getTabCode(tab) }}</span>
+        <span>{{ getTabLabel(tab) }}</span>
       </button>
     </div>
 
@@ -16,7 +18,7 @@
     <div v-show="activeTab === 'games'" class="tab-content">
       <div class="card">
         <div class="card-header">
-          <h3>📅 竞赛列表</h3>
+          <h3>竞赛列表</h3>
           <button class="btn-primary" @click="showCreateGameModal = true">新建竞赛</button>
         </div>
         <div class="games-filters">
@@ -66,7 +68,7 @@
                 <span class="badge badge-green">{{ game.challenge_count || 0 }}</span>
               </td>
               <td>
-                <span v-if="game.archived_at" class="badge badge-gray">📦 已归档</span>
+                <span v-if="game.archived_at" class="badge badge-gray">已归档</span>
                 <span v-else class="badge badge-success">进行中</span>
               </td>
               <td>
@@ -234,7 +236,7 @@
     <div v-show="activeTab === 'challenges'" class="tab-content">
       <div class="card">
         <div class="card-header">
-          <h3>🎯 题目列表</h3>
+          <h3>题目列表</h3>
           <div style="display: flex; gap: 10px;">
             <select v-model="selectedGameId" class="form-input" style="width: 200px;">
               <option value="">选择竞赛...</option>
@@ -274,7 +276,7 @@
                 <span class="badge badge-orange">{{ challenge.solved_count || 0 }}</span>
               </td>
               <td>
-                <button v-if="challenge.attachment_id" class="btn-small btn-info" @click.stop="viewAttachment(challenge)">📎 有附件</button>
+                <button v-if="challenge.attachment_id" class="btn-small btn-info" @click.stop="viewAttachment(challenge)">有附件</button>
                 <span v-else class="text-muted">无附件</span>
               </td>
               <td>
@@ -400,7 +402,7 @@
 
             <!-- 附件上传：静态/动态附件题 -->
             <div v-if="[0, 2].includes(challengeForm.challenge_type)" class="attachment-section">
-              <h4>📎 题目附件</h4>
+              <h4>题目附件</h4>
               <div class="form-group">
                 <label>上传题目附件（单文件，建议 &lt; 20MB）</label>
                 <div class="file-upload-box">
@@ -413,7 +415,7 @@
                   <label for="attachment" class="file-label">
                     点击选择文件
                     <span v-if="challengeForm.attachment_file" style="display: block; margin-top: 8px;">
-                      ✓ {{ challengeForm.attachment_file.name }}
+                      {{ challengeForm.attachment_file.name }}
                     </span>
                   </label>
                 </div>
@@ -442,7 +444,7 @@
     <div v-show="activeTab === 'cheat'" class="tab-content">
       <div class="card">
         <div class="card-header">
-          <h3>⚠️ 作弊检测记录</h3>
+          <h3>作弊检测记录</h3>
           <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
             <select v-model="selectedCheatGameId" class="form-input" style="width: 200px;">
               <option value="">全部竞赛</option>
@@ -461,7 +463,7 @@
         </div>
 
         <div v-if="cheatRecords.length === 0" class="empty-state">
-          <p>📭 暂无作弊记录</p>
+          <p>暂无作弊记录</p>
         </div>
 
         <div v-else class="cheat-list">
@@ -469,7 +471,7 @@
             <div class="cheat-header">
               <span class="cheat-id">#{{ record.id }}</span>
               <span class="cheat-type-badge" :class="`type-${record.cheat_type}`">
-                {{ record.cheat_type === 'flag_origin' ? '🚨 Flag来源' : record.cheat_type === 'similar_flag' ? '⚠️ 相似答案' : record.cheat_type === 'rapid_submission' ? '⚡ 快速提交' : '❓ ' + record.cheat_type }}
+                {{ record.cheat_type === 'flag_origin' ? 'Flag来源' : record.cheat_type === 'similar_flag' ? '相似答案' : record.cheat_type === 'rapid_submission' ? '快速提交' : record.cheat_type }}
               </span>
               <span class="cheat-status-badge" :class="`status-${record.status}`">
                 {{ record.status === 'pending' ? '待审核' : record.status === 'confirmed' ? '已确认' : record.status === 'dismissed' ? '已驳回' : record.status }}
@@ -512,14 +514,14 @@
             </div>
             <div class="cheat-actions">
               <button class="btn-small btn-warning" @click="handleCheatRecord(record, 'review')">
-                🔍 备注
+                备注
               </button>
               <template v-if="(record.status || 'pending') === 'pending'">
                 <button class="btn-small btn-danger" @click="handleCheatRecord(record, 'confirm')">
-                  ✓ 确认作弊
+                  确认作弊
                 </button>
                 <button class="btn-small btn-secondary" @click="handleCheatRecord(record, 'dismiss')">
-                  ✗ 驳回
+                  驳回
                 </button>
               </template>
               <span v-else class="text-muted">已处理，可刷新查看最新状态</span>
@@ -533,7 +535,7 @@
     <div v-show="activeTab === 'scoreboard'" class="tab-content">
       <div class="card">
         <div class="card-header">
-          <h3>🏆 排行榜 / 赛事统计</h3>
+          <h3>排行榜 / 赛事统计</h3>
           <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
             <select v-model="selectedScoreboardGameId" class="form-input" style="width: 200px;">
               <option value="">选择竞赛...</option>
@@ -574,9 +576,9 @@
             <tbody>
               <tr v-for="(item, index) in scoreboard" :key="item.team_id" :class="{ 'podium': index < 3 }">
                 <td style="text-align: center; font-weight: bold;">
-                  <span v-if="index === 0" class="medal">🥇</span>
-                  <span v-else-if="index === 1" class="medal">🥈</span>
-                  <span v-else-if="index === 2" class="medal">🥉</span>
+                  <span v-if="index === 0" class="medal">#1</span>
+                  <span v-else-if="index === 1" class="medal">#2</span>
+                  <span v-else-if="index === 2" class="medal">#3</span>
                   <span v-else>{{ index + 1 }}</span>
                 </td>
                 <td>{{ item.team_name }}</td>
@@ -594,14 +596,14 @@
     <div v-show="activeTab === 'firstsolve'" class="tab-content">
       <div class="card">
         <div class="card-header">
-          <h3>🩸 首解 / 血榜</h3>
+          <h3>首解 / 血榜</h3>
           <select v-model="selectedFirstSolveGameId" class="form-input" style="width: 220px;">
             <option value="">选择竞赛...</option>
             <option v-for="game in games" :key="game.id" :value="game.id">{{ game.title }}</option>
           </select>
         </div>
         <div v-if="!selectedFirstSolveGameId" class="empty-state"><p>请选择竞赛查看首解</p></div>
-        <div v-else-if="firstSolves.length === 0" class="empty-state"><p>📭 暂无首解记录</p></div>
+        <div v-else-if="firstSolves.length === 0" class="empty-state"><p>暂无首解记录</p></div>
         <table v-else class="data-table">
           <thead>
             <tr>
@@ -629,7 +631,7 @@
     <div v-show="activeTab === 'hammer'" class="tab-content">
       <div class="card">
         <div class="card-header">
-          <h3>🔨 锤子消息</h3>
+          <h3>锤子消息</h3>
           <div style="display:flex;gap:10px;align-items:center;">
             <select v-model="selectedHammerGameId" class="form-input" style="width: 220px;">
               <option value="">全部竞赛</option>
@@ -638,7 +640,7 @@
             <button class="btn-small" @click="loadHammerMessages">刷新</button>
           </div>
         </div>
-        <div v-if="hammerMessages.length === 0" class="empty-state"><p>📭 暂无锤子消息</p></div>
+        <div v-if="hammerMessages.length === 0" class="empty-state"><p>暂无锤子消息</p></div>
         <div v-else class="cheat-list">
           <div v-for="m in hammerMessages" :key="m.id" class="cheat-card">
             <div class="cheat-header">
@@ -680,7 +682,7 @@
     <div v-show="activeTab === 'teams'" class="tab-content">
       <div class="card">
         <div class="card-header" style="align-items:center; gap:12px;">
-          <h3 style="margin:0;">👥 管理端：战队列表</h3>
+          <h3 style="margin:0;">管理端：战队列表</h3>
 
           <div style="margin-left:12px; flex:1; display:flex; gap:12px; align-items:center;">
             <input v-model="searchQuery" placeholder="搜索队名、邀请码或成员" class="form-input" style="max-width:360px;" />
@@ -857,17 +859,33 @@ export default {
   },
 
   methods: {
+    getTabCode(tab) {
+      const codes = {
+        games: 'GMS',
+        challenges: 'CHL',
+        packages: 'PKG',
+        seasons: 'SEA',
+        traffic: 'TRF',
+        cheat: 'CHT',
+        scoreboard: 'SCR',
+        firstsolve: 'FST',
+        hammer: 'HMR',
+        teams: 'TMS',
+      };
+      return codes[tab] || 'TAB';
+    },
     getTabLabel(tab) {
       const labels = {
-        games: '📅 竞赛管理',
-        challenges: '🎯 题目管理',
-        cheat: '⚠️ 作弊检测',
-        scoreboard: '🏆 排行榜',
-        firstsolve: '🩸 首解',
-        hammer: '🔨 锤子',
-        traffic: '🚨 流量捕获',
-        packages: '📦 动态附件包',
-                teams: '👥 队伍管理'
+        games: '竞赛管理',
+        challenges: '题目管理',
+        cheat: '作弊检测',
+        scoreboard: '排行榜',
+        firstsolve: '首解',
+        hammer: '锤子',
+        traffic: '流量捕获',
+        packages: '动态附件包',
+        seasons: '赛季管理',
+        teams: '队伍管理',
       };
       return labels[tab] || tab;
     },
@@ -1778,15 +1796,21 @@ export default {
 }
 
 .data-table thead {
-  background: #f5f5f5;
-  font-weight: bold;
+  background: rgba(20, 30, 38, 0.8);
+  font-weight: 600;
 }
 
 .data-table th,
 .data-table td {
   padding: 12px;
   text-align: left;
-  border-bottom: 1px solid #e0e0e0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  color: #e5e7eb;
+  font-weight: 500;
+}
+.data-table th {
+  color: #9ca3af;
+  font-weight: 600;
 }
 
 .data-table tbody tr:hover {

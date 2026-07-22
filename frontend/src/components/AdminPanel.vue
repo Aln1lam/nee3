@@ -28,16 +28,6 @@
         </div>
       </nav>
 
-      <div class="sidebar-links sidebar-rail-footer">
-        <router-link to="/home" class="sidebar-link">
-          <span class="link-code">HOM</span>
-          <span>返回首页</span>
-        </router-link>
-        <router-link to="/games" class="sidebar-link">
-          <span class="link-code">CTF</span>
-          <span>查看赛事</span>
-        </router-link>
-      </div>
       <div class="sidebar-rail-footer sidebar-footer sidebar-footer-copy-wrap">
         <div class="sidebar-footer-copy">
           © 2022-2026
@@ -98,6 +88,36 @@ export default {
 </script>
 
 <style scoped>
+
+/* NEEPU_ADMIN_PANEL_HD */
+.admin-layout,
+.admin-main,
+.admin-content-wrap {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial,
+    "PingFang SC", "Microsoft YaHei", sans-serif;
+  color: #f3f4f6;
+}
+.admin-layout :deep(.matrix-page-title) {
+  color: #f3f4f6 !important;
+  font-weight: 700 !important;
+  opacity: 1 !important;
+}
+.admin-layout :deep(.matrix-page-prompt),
+.admin-layout :deep(.matrix-page-desc) {
+  color: #9ca3af !important;
+  font-weight: 500 !important;
+  opacity: 1 !important;
+}
+.admin-layout :deep(.admin-panel),
+.admin-layout :deep(.admin-panel *) {
+  -webkit-font-smoothing: antialiased !important;
+  -moz-osx-font-smoothing: grayscale !important;
+}
+/* /NEEPU_ADMIN_PANEL_HD */
+
 .admin-layout {
   width: 100%;
   min-height: calc(100vh - var(--nav-height, 72px));

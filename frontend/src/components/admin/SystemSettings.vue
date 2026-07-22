@@ -201,14 +201,14 @@
         <p class="help-text">用于邮件头的发件人地址（例如 no-reply@neepu.edu.cn）</p>
       </div>
 
-      <button class="btn-test" @click="testEmail">📤 发送测试邮件</button>
+      <button class="btn-test" @click="testEmail">发送测试邮件</button>
     </div>
 
     <div class="settings-actions">
       <button class="btn-primary" @click="saveSettings" :disabled="saving">
         {{ saving ? '保存中...' : '💾 保存设置' }}
       </button>
-      <button class="btn-secondary" @click="loadSettings">🔄 重新加载</button>
+      <button class="btn-secondary" @click="loadSettings">重新加载</button>
     </div>
 
     <div v-if="saveStatus" :class="['status-message', saveStatus.type]">

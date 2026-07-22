@@ -20,10 +20,10 @@
 }
 
 .sidebar-title {
-  font-weight: 700;
-  color: var(--primary);
+  font-weight: 600;
+  color: #ffffff;
   text-decoration: none;
-  font-size: 1rem;
+  font-size: 16px;
 }
 
 .sidebar-title:hover {
@@ -32,11 +32,12 @@
 
 .group-label,
 .wiki-section-title {
-  font-size: var(--text-xs);
-  color: var(--muted);
-  margin: var(--fib-13, 13px) 0 var(--fib-8, 8px);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
+  font-size: 12px;
+  font-weight: 500;
+  color: #9ca3af;
+  margin: 0 0 12px;
+  text-transform: none;
+  letter-spacing: 0.04em;
 }
 
 .sidebar-item {
@@ -176,17 +177,17 @@
 
 .layout-with-sidebar .sidebar-rail-title {
   margin: 0;
-  font-size: 1rem;
-  color: var(--primary);
-  font-weight: 700;
+  font-size: 16px;
+  color: #ffffff;
+  font-weight: 600;
   white-space: nowrap;
 }
 
 .layout-with-sidebar .sidebar-rail-sub {
   margin: 4px 0 16px;
-  font-size: var(--text-xs);
-  letter-spacing: 0.1em;
-  color: var(--muted);
+  font-size: 11px;
+  letter-spacing: 1px;
+  color: #6b7280;
   text-transform: uppercase;
   white-space: nowrap;
 }
@@ -351,12 +352,14 @@
   align-items: center;
   column-gap: var(--sidebar-row-gap);
   width: 100%;
-  padding: 10px 0;
+  padding: 8px 12px;
   border: 1px solid transparent;
   border-radius: var(--card-radius);
   background: transparent;
   color: var(--muted);
-  font-size: var(--text-sm);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.5;
   text-align: left;
   text-decoration: none;
   cursor: pointer;
@@ -410,12 +413,90 @@
   height: 0;
 }
 .sidebar-item {
-  min-height: 40px;
+  min-height: 0;
   align-items: center;
 }
 .sidebar-item .item-title {
-  line-height: 1.35;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.5;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+/* NEEPU_SIDEBAR_TYPO */
+/* 全站侧栏排版规范 —— 知识库 / 公告 / 训练 / 首页 / MatrixShell 共用 */
+.layout-with-sidebar .sidebar-rail,
+.layout-with-sidebar .sidebar-rail :where(*) {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif !important;
+}
+
+.layout-with-sidebar .sidebar-title,
+.layout-with-sidebar .sidebar-rail-title {
+  font-size: 16px !important;
+  font-weight: 600 !important;
+  line-height: 1.35 !important;
+  color: #ffffff !important;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif !important;
+  text-decoration: none !important;
+}
+
+.layout-with-sidebar .sidebar-rail-sub,
+.layout-with-sidebar .sidebar-desc.sidebar-rail-sub,
+.layout-with-sidebar .sidebar-desc {
+  margin: 4px 0 16px !important;
+  font-size: 11px !important;
+  font-weight: 500 !important;
+  letter-spacing: 1px !important;
+  color: #6b7280 !important;
+  text-transform: uppercase !important;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace !important;
+}
+
+.layout-with-sidebar .group-label,
+.layout-with-sidebar .wiki-section-title {
+  font-size: 12px !important;
+  font-weight: 500 !important;
+  color: #9ca3af !important;
+  margin: 0 0 12px !important;
+  letter-spacing: 0.04em !important;
+  text-transform: none !important;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif !important;
+}
+
+.layout-with-sidebar .sidebar-item,
+.layout-with-sidebar .sidebar-link,
+.layout-with-sidebar .sidebar-layout__link,
+.layout-with-sidebar .wiki-link {
+  padding: 8px 12px !important;
+  font-size: 13px !important;
+  font-weight: 500 !important;
+  line-height: 1.5 !important;
+  min-height: 0 !important;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif !important;
+}
+
+.layout-with-sidebar .sidebar-item .item-title,
+.layout-with-sidebar .sidebar-link .item-title,
+.layout-with-sidebar .item-title {
+  font-size: 13px !important;
+  font-weight: 500 !important;
+  line-height: 1.5 !important;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif !important;
+}
+
+.layout-with-sidebar .sidebar-item .item-code,
+.layout-with-sidebar .sidebar-item .link-code,
+.layout-with-sidebar .item-code {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif !important;
+  font-weight: 600 !important;
+}
+
+.layout-with-sidebar .item-count {
+  font-size: 12px !important;
+  font-weight: 500 !important;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif !important;
+}
+/* /NEEPU_SIDEBAR_TYPO */
+

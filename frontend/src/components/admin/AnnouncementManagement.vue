@@ -143,7 +143,9 @@ const columns = [
     title: '状态',
     key: 'is_active',
     width: 80,
-    render: (row) => row.is_active ? '已发布' : '已下线'
+    render: (row) => h('span', {
+      class: ['status-chip', row.is_active ? 'is-on' : 'is-off']
+    }, row.is_active ? '已发布' : '已下线')
   },
   {
     title: '创建时间',
@@ -158,19 +160,17 @@ const columns = [
     align: 'center',
     fixed: 'right',
     render: (row) => [
-      h(NButton, {
-        type: 'primary',
-        secondary: true,
-        size: 'small',
+      h('button', {
+        class: 'btn-small btn-edit',
+        type: 'button',
         onClick: () => openEditModal(row)
-      }, { default: () => '编辑' }),
-      h(NButton, {
-        type: 'error',
-        secondary: true,
-        size: 'small',
+      }, '编辑'),
+      h('button', {
+        class: 'btn-small btn-danger',
+        type: 'button',
         style: { marginLeft: '8px' },
         onClick: () => deleteAnnouncement(row.id)
-      }, { default: () => '删除' })
+      }, '删除')
     ]
   }
 ]
@@ -277,5 +277,15 @@ onMounted(() => {
 
 :deep(.n-data-table) {
   flex: 1;
+}
+:deep(.n-data-table-th) {
+  background: rgba(20, 30, 38, 0.8) !important;
+  color: #9ca3af !important;
+  font-weight: 600 !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+}
+:deep(.n-data-table-td) {
+  color: #e5e7eb !important;
+  font-weight: 500 !important;
 }
 </style>

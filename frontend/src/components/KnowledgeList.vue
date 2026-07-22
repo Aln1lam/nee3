@@ -338,6 +338,50 @@ export default {
   margin: 0;
 }
 
+/* NEEPU_WIKI_FONT_STACK */
+.wiki-layout,
+.wiki-layout :deep(*):not(.sidebar-rail-sub):not(.sidebar-desc) {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif !important;
+}
+.wiki-layout .wiki-title {
+  font-weight: 700 !important;
+}
+.wiki-layout .wiki-item-title,
+.wiki-layout .wiki-hot-title {
+  font-weight: 500 !important;
+}
+.wiki-layout :deep(.sidebar-rail-sub),
+.wiki-layout :deep(.sidebar-desc.sidebar-rail-sub) {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace !important;
+  font-size: 11px !important;
+  letter-spacing: 1px !important;
+  color: #6b7280 !important;
+}
+.wiki-layout :deep(.sidebar-title),
+.wiki-layout :deep(.sidebar-rail-title) {
+  font-size: 16px !important;
+  font-weight: 600 !important;
+  color: #ffffff !important;
+}
+.wiki-layout :deep(.group-label) {
+  font-size: 12px !important;
+  font-weight: 500 !important;
+  color: #9ca3af !important;
+  margin-bottom: 12px !important;
+}
+.wiki-layout :deep(.sidebar-item) {
+  padding: 8px 12px !important;
+  font-size: 13px !important;
+  font-weight: 500 !important;
+  line-height: 1.5 !important;
+}
+.wiki-layout :deep(.sidebar-item .item-title) {
+  font-size: 13px !important;
+  font-weight: 500 !important;
+  line-height: 1.5 !important;
+}
+/* /NEEPU_WIKI_FONT_STACK */
+
 /* 侧栏 */
 .wiki-layout :deep(.sidebar-rail),
 .wiki-sidebar.sidebar-rail {
@@ -362,9 +406,7 @@ export default {
 }
 .wiki-layout :deep(.sidebar-item),
 .wiki-sidebar .sidebar-item {
-  min-height: 40px;
   height: auto;
-  padding: 10px 12px !important;
   align-items: center;
   gap: 10px;
 }
@@ -382,8 +424,6 @@ export default {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  line-height: 1.35;
-  font-size: 13px;
 }
 
 .wiki-main {
@@ -416,7 +456,7 @@ export default {
   font-weight: 600;
   letter-spacing: 0.06em;
   color: #5ED9A8;
-  font-family: var(--font-mono, monospace);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif !important;
 }
 .wiki-title {
   margin: 0 0 4px;
@@ -424,7 +464,7 @@ export default {
   font-weight: 700;
   line-height: 1.25;
   color: var(--text);
-  font-family: var(--font-ui);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif !important;
 }
 .wiki-desc {
   margin: 0;
@@ -469,7 +509,7 @@ export default {
   background: transparent;
   color: var(--text);
   font-size: 13px;
-  font-family: var(--font-ui);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif !important;
 }
 .wiki-search-input::placeholder { color: var(--muted); opacity: 0.85; }
 .wiki-search-input::-webkit-search-cancel-button { display: none; }
@@ -484,7 +524,7 @@ export default {
   color: #5ED9A8;
   font-size: 13px;
   font-weight: 600;
-  font-family: var(--font-ui);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif !important;
   cursor: pointer;
   white-space: nowrap;
   transition: background 0.15s, border-color 0.15s, transform 0.15s;
@@ -566,10 +606,10 @@ export default {
 .wiki-item-title {
   margin: 0 0 6px;
   font-size: 15px;
-  font-weight: 600;
+  font-weight: 500;
   line-height: 1.4;
   color: var(--text);
-  font-family: var(--font-ui);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif !important;
 }
 .wiki-item-summary {
   margin: 0 0 10px;
@@ -589,7 +629,7 @@ export default {
   gap: 8px;
 }
 .wiki-item-tags { display: flex; flex-wrap: wrap; gap: 6px; }
-.wiki-item-time { font-size: 11px; color: var(--muted); font-family: var(--font-mono); }
+.wiki-item-time { font-size: 11px; color: var(--muted); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif !important; }
 .wiki-item-arrow {
   color: #5ED9A8;
   flex-shrink: 0;
@@ -682,7 +722,7 @@ export default {
   font-size: 18px;
   font-weight: 700;
   color: #5ED9A8;
-  font-family: var(--font-mono, monospace);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif !important;
   letter-spacing: -0.02em;
 }
 .wiki-stat-divider {
@@ -712,7 +752,7 @@ export default {
   color: var(--text);
   cursor: pointer;
   text-align: left;
-  font-family: var(--font-ui);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif !important;
   transition: background 0.15s;
 }
 .wiki-hot-link:hover { background: rgba(94, 217, 168, 0.06); }
@@ -764,7 +804,7 @@ export default {
   color: #5ED9A8;
   font-size: 12px;
   font-weight: 500;
-  font-family: var(--font-ui);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif !important;
   cursor: pointer;
   opacity: 0.9;
   transition: opacity 0.15s, transform 0.15s;

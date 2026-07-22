@@ -1432,9 +1432,9 @@ export default {
 }
 
 .tree-body {
-  flex: 1;
+  flex: 1 1 auto;
   overflow-y: auto;
-  padding: 6px 0 12px;
+  padding: 8px 0 16px;
   min-height: 0;
 }
 
@@ -1567,7 +1567,7 @@ export default {
   min-height: 0;
   width: 100%;
   box-sizing: border-box;
-  padding: 20px 24px 28px;
+  padding: 24px;
   overflow-y: auto;
 }
 
@@ -1610,6 +1610,7 @@ export default {
   line-height: 1.7;
   font-size: var(--text-sm);
   color: var(--text);
+  margin: 0 0 24px;
 }
 
 .brief-desc :deep(pre) {
@@ -1656,7 +1657,7 @@ export default {
   align-items: flex-start;
   justify-content: space-between;
   gap: 16px 24px;
-  margin-bottom: 8px;
+  margin-bottom: 24px;
   width: 100%;
 }
 
@@ -1996,7 +1997,7 @@ export default {
 }
 
 .stage-content {
-  padding: 20px 24px 28px !important;
+  padding: 24px !important;
 }
 
 .tree-title-row {
@@ -2026,7 +2027,7 @@ export default {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  margin: 14px 0 12px;
+  margin: 0 0 24px;
 }
 
 .action-btn {
@@ -2187,7 +2188,7 @@ export default {
   margin-bottom: 0;
   width: 100%;
   max-width: none;
-  padding: 20px 20px 18px;
+  padding: 24px;
   border: 1px solid rgba(94, 217, 168, 0.32);
   border-radius: 12px;
   background: linear-gradient(180deg, rgba(94, 217, 168, 0.08), rgba(0, 0, 0, 0.22));
@@ -2258,7 +2259,7 @@ export default {
   align-items: center;
   flex-wrap: wrap;
   gap: 10px 14px;
-  margin: 10px 0 14px;
+  margin: 0 0 24px;
   padding: 0;
   background: transparent;
   border: none;

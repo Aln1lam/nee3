@@ -4,7 +4,6 @@
     <UserManagement v-else-if="view === 'users'" />
     <ContentManagement v-else-if="view === 'content'" />
     <AnnouncementManagement v-else-if="view === 'announcement'" />
-    <CarouselManagement v-else-if="view === 'carousel'" />
     <CtfManagement v-else-if="view === 'ctf'" />
     <SystemSettings v-else-if="view === 'settings'" />
     <LogAudit v-else-if="view === 'logs'" />
@@ -21,7 +20,6 @@ import SystemSettings from './SystemSettings.vue'
 import LogAudit from './LogAudit.vue'
 import CtfManagement from './CtfManagement.vue'
 import AnnouncementManagement from './AnnouncementManagement.vue'
-import CarouselManagement from './CarouselManagement.vue'
 
 export default {
   name: 'AdminContent',
@@ -33,7 +31,6 @@ export default {
     LogAudit,
     CtfManagement,
     AnnouncementManagement,
-    CarouselManagement,
   },
   setup() {
     const route = useRoute()

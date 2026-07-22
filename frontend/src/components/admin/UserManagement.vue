@@ -228,31 +228,46 @@ export default {
   display: flex;
   gap: 10px;
   margin-bottom: 20px;
+  flex-wrap: wrap;
+  align-items: center;
 }
 
 .state-msg {
   padding: 24px;
   text-align: center;
-  color: var(--muted, #888);
+  color: #9ca3af;
   margin-bottom: 16px;
+  font-weight: 500;
 }
-.state-msg.error { color: #c62828; }
+.state-msg.error { color: #ef4444; }
 
 .search-input {
-  flex: 1;
-  padding: 10px 12px;
-  border: 1px solid rgba(0,0,0,0.1);
-  border-radius: 6px;
-  font-size: 14px;
+  flex: 1 1 220px;
+  min-width: 200px;
+  max-width: 420px;
+  height: 36px;
+  padding: 8px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  background: rgba(20, 26, 33, 0.72);
+  color: #f3f4f6;
+  font-size: 13px;
+  font-weight: 500;
+  box-sizing: border-box;
 }
 
 .btn-primary, .btn-secondary {
-  padding: 10px 16px;
-  border: none;
-  border-radius: 6px;
+  flex: 0 0 auto;
+  width: auto;
+  padding: 8px 18px;
+  height: 36px;
+  border: 1px solid transparent;
+  border-radius: 8px;
   cursor: pointer;
-  font-weight: 500;
-  transition: all .2s ease;
+  font-weight: 600;
+  font-size: 13px;
+  white-space: nowrap;
+  transition: background 0.15s, border-color 0.15s;
 }
 .btn-primary:disabled, .btn-secondary:disabled, .btn-small:disabled {
   opacity: 0.55;
@@ -260,74 +275,118 @@ export default {
 }
 
 .btn-primary {
-  background: var(--card-accent);
-  color: white;
+  background: rgba(16, 185, 129, 0.18);
+  border-color: rgba(16, 185, 129, 0.4);
+  color: #10b981;
 }
-
+.btn-primary:hover:not(:disabled) {
+  background: rgba(16, 185, 129, 0.28);
+}
 .btn-secondary {
-  background: #f0f0f0;
-  color: #333;
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(255, 255, 255, 0.12);
+  color: #e5e7eb;
+}
+.btn-secondary:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.08);
 }
 
 .users-table {
   width: 100%;
   border-collapse: collapse;
-  background: var(--gradient-card-bg, var(--card-bg));
-  border-radius: 8px;
+  background: rgba(20, 26, 33, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
   overflow: hidden;
-  box-shadow: var(--card-shadow);
   margin-bottom: 20px;
 }
 
 .users-table thead {
-  background: rgba(0,196,140,0.1);
-  border-bottom: 2px solid rgba(0,196,140,0.2);
+  background: rgba(16, 185, 129, 0.06);
+  border-bottom: 1px solid rgba(16, 185, 129, 0.18);
 }
 
 .users-table th {
   padding: 12px;
   text-align: left;
   font-weight: 600;
-  color: #333;
+  color: #9ca3af;
   font-size: 13px;
 }
 
 .users-table td {
   padding: 12px;
-  border-bottom: 1px solid rgba(0,0,0,0.05);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
   font-size: 13px;
+  font-weight: 500;
+  color: #e5e7eb;
 }
 
 .email {
-  max-width: 150px;
+  max-width: 180px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  color: #e5e7eb;
+  font-weight: 500;
 }
 
 .badge {
-  display: inline-block;
-  padding: 4px 8px;
-  border-radius: 4px;
-  font-size: 12px;
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  padding: 0 8px;
+  border-radius: 999px;
+  font-size: 11px;
   font-weight: 600;
+  border: 1px solid transparent;
+}
+.badge.admin {
+  background: rgba(16, 185, 129, 0.12);
+  color: #10b981;
+  border-color: rgba(16, 185, 129, 0.3);
+}
+.badge.mod {
+  background: rgba(245, 158, 11, 0.12);
+  color: #fbbf24;
+  border-color: rgba(245, 158, 11, 0.3);
+}
+.badge.user {
+  background: rgba(148, 163, 184, 0.12);
+  color: #cbd5e1;
+  border-color: rgba(148, 163, 184, 0.28);
 }
 
-.badge.admin { background: #e3f2fd; color: #1976d2; }
-.badge.mod { background: #fff3e0; color: #ef6c00; }
-.badge.user { background: #f3e5f5; color: #7b1fa2; }
-
-.actions { display: flex; gap: 8px; }
+.actions { display: flex; gap: 6px; flex-wrap: wrap; }
 
 .btn-small {
-  padding: 6px 10px;
-  border: none;
-  border-radius: 4px;
+  padding: 4px 10px;
+  border: 1px solid transparent;
+  border-radius: 6px;
   cursor: pointer;
   font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
 }
-.btn-small.edit { background: #2196f3; color: white; }
-.btn-small.delete { background: #f44336; color: white; }
+.btn-small.edit {
+  background: rgba(16, 185, 129, 0.1);
+  color: #10b981;
+  border-color: rgba(16, 185, 129, 0.28);
+}
+.btn-small.edit:hover:not(:disabled) {
+  background: rgba(16, 185, 129, 0.2);
+  color: #34d399;
+}
+.btn-small.delete {
+  background: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
+  border-color: rgba(239, 68, 68, 0.28);
+}
+.btn-small.delete:hover:not(:disabled) {
+  background: rgba(239, 68, 68, 0.2);
+  color: #f87171;
+}
 
 .pagination {
   display: flex;
@@ -335,15 +394,17 @@ export default {
   align-items: center;
   gap: 10px;
   margin-top: 20px;
+  color: #e5e7eb;
+  font-weight: 500;
 }
-
 .pagination button {
   padding: 8px 12px;
-  border: 1px solid var(--card-accent);
-  border-radius: 4px;
-  background: var(--gradient-card-bg, var(--card-bg));
-  color: var(--card-accent);
+  border: 1px solid rgba(16, 185, 129, 0.35);
+  border-radius: 6px;
+  background: rgba(16, 185, 129, 0.08);
+  color: #10b981;
   cursor: pointer;
+  font-weight: 600;
 }
 .pagination button:disabled {
   opacity: 0.5;
@@ -353,46 +414,47 @@ export default {
 .modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0,0,0,0.5);
+  background: rgba(0, 0, 0, 0.55);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 1000;
 }
-
 .modal-content {
-  background: var(--gradient-card-bg, var(--card-bg));
+  background: rgba(20, 26, 33, 0.96);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   padding: 25px;
   border-radius: 10px;
   max-width: 500px;
   width: 90%;
-  box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+  color: #f3f4f6;
 }
-
 .form-group { margin-bottom: 15px; }
 .form-group label {
   display: block;
   margin-bottom: 5px;
   font-weight: 600;
-  color: #333;
+  color: #9ca3af;
   font-size: 13px;
 }
 .form-input {
   width: 100%;
   padding: 10px;
-  border: 1px solid rgba(0,0,0,0.1);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 6px;
+  background: rgba(0, 0, 0, 0.25);
+  color: #f3f4f6;
   box-sizing: border-box;
 }
-.form-input:disabled { background: #f5f5f5; }
+.form-input:disabled { background: rgba(255, 255, 255, 0.04); color: #9ca3af; }
 .form-actions { display: flex; gap: 10px; margin-top: 20px; }
 .btn-cancel {
-  padding: 10px 16px;
-  border: none;
-  border-radius: 6px;
-  background: #999;
-  color: white;
+  padding: 8px 18px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.04);
+  color: #e5e7eb;
   cursor: pointer;
-  flex: 1;
+  font-weight: 600;
 }
 </style>

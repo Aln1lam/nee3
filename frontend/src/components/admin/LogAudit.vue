@@ -56,7 +56,7 @@
           </label>
         </div>
         <!-- 预览功能已移除（不再需要） -->
-        <button class="btn-danger" @click="confirmDeleteByMonths">按月删除</button>
+        <button class="btn-danger btn-small" @click="confirmDeleteByMonths">按月删除</button>
       </div>
     </div>
 
@@ -108,7 +108,7 @@
             </span>
           </td>
           <td>
-            <button class="btn-small" @click="showDetails(log)">查看</button>
+            <button class="btn-small view" @click="showDetails(log)">查看</button>
             <button
               :disabled="deletingId === log.id"
               class="btn-small btn-danger"
@@ -611,26 +611,26 @@ h2 {
 }
 
 .logs-table thead {
-  background: rgba(0,196,140,0.1);
-  border-bottom: 2px solid rgba(0,196,140,0.2);
+  background: rgba(20, 30, 38, 0.8);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .logs-table th {
   padding: 10px;
   text-align: left;
   font-weight: 600;
-  color: #333;
-  font-size: 12px;
+  color: #9ca3af;
+  font-size: 13px;
 }
 
 .logs-table td {
   padding: 10px;
-  border-bottom: 1px solid rgba(0,0,0,0.05);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
 }
 
-/* 强制日志表格单元格文字为深色，避免在某些主题下看不见 */
 .logs-table td, .logs-table .description {
-  color: #333;
+  color: #e5e7eb;
+  font-weight: 500;
 }
 
 .action-badge {
@@ -759,14 +759,14 @@ h2 {
 }
 
 .btn-small {
-  padding: 4px 8px;
-  border: none;
-  border-radius: 3px;
-  background: #2196f3;
-  color: white;
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  background: rgba(16, 185, 129, 0.12);
+  color: #10b981;
   cursor: pointer;
-  font-size: 11px;
-  transition: all .2s ease;
 }
 
 .btn-small:hover {

@@ -29,13 +29,6 @@ export const ADMIN_MENU = [
     desc: '发布公告与上下线控制',
   },
   {
-    key: 'carousel',
-    label: '轮播图',
-    code: 'CRL',
-    cmd: 'banners',
-    desc: '首页轮播图配置与排序',
-  },
-  {
     key: 'ctf',
     label: '靶场管理',
     code: 'CTF',
@@ -65,7 +58,7 @@ export const ADMIN_TAB_ALIASES = {
   users: 'users',
   content: 'content',
   announcement: 'announcement',
-  carousel: 'carousel',
+  carousel: 'dashboard',
   ctf: 'ctf',
   settings: 'settings',
   logs: 'logs',
@@ -82,5 +75,5 @@ export const ADMIN_TAB_ALIASES = {
 }
 
 export const ADMIN_LEGACY_SECTIONS = [
-  'statistics', 'captcha', 'email', 'edit', 'cluster', 'sync', 'media', 'oauth', 'traffic', 'lifecycle', 'todos',
+  'statistics', 'captcha', 'email', 'edit', 'cluster', 'sync', 'media', 'oauth', 'traffic', 'lifecycle', 'todos', 'carousel',
 ]

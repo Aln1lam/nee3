@@ -184,122 +184,137 @@ export default {
 </script>
 
 <style scoped>
-h2 {
-  margin-top: 0;
-  color: #333;
-  border-bottom: 3px solid var(--card-accent);
-  padding-bottom: 12px;
-  margin-bottom: 20px;
-}
-
 .action-bar {
   display: flex;
   gap: 10px;
   margin-bottom: 20px;
   flex-wrap: wrap;
+  align-items: center;
 }
 
 .search-input, .filter-select {
-  padding: 10px 12px;
-  border: 1px solid rgba(0,0,0,0.1);
-  border-radius: 6px;
-  font-size: 14px;
-  background: var(--gradient-card-bg, var(--card-bg));
+  height: 36px;
+  padding: 8px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  background: rgba(20, 26, 33, 0.72);
+  color: #f3f4f6;
+  box-sizing: border-box;
 }
 
 .search-input {
-  flex: 1;
+  flex: 1 1 220px;
   min-width: 200px;
+  max-width: 420px;
+}
+
+.filter-select {
+  flex: 0 0 auto;
+  min-width: 140px;
+  width: auto;
 }
 
 .btn-primary, .btn-secondary {
-  padding: 10px 16px;
-  border: none;
-  border-radius: 6px;
+  flex: 0 0 auto !important;
+  width: auto !important;
+  padding: 8px 18px;
+  height: 36px;
+  border: 1px solid transparent;
+  border-radius: 8px;
   cursor: pointer;
-  font-weight: 500;
-  transition: all .2s ease;
+  font-weight: 600;
+  font-size: 13px;
+  white-space: nowrap;
+  transition: background 0.15s, border-color 0.15s;
 }
 
 .btn-primary {
-  background: var(--card-accent);
-  color: white;
+  background: rgba(16, 185, 129, 0.18);
+  border-color: rgba(16, 185, 129, 0.4);
+  color: #10b981;
 }
-
 .btn-primary:hover {
-  opacity: 0.9;
+  background: rgba(16, 185, 129, 0.28);
 }
-
 .btn-secondary {
-  background: #f0f0f0;
-  color: #333;
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(255, 255, 255, 0.12);
+  color: #e5e7eb;
 }
-
 .btn-secondary:hover {
-  background: #e0e0e0;
+  background: rgba(255, 255, 255, 0.08);
 }
 
 .articles-table {
   width: 100%;
   border-collapse: collapse;
-  background: var(--gradient-card-bg, var(--card-bg));
-  border-radius: 8px;
+  background: rgba(20, 26, 33, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
   overflow: hidden;
-  box-shadow: var(--card-shadow);
   margin-bottom: 20px;
 }
 
 .articles-table thead {
-  background: rgba(0,196,140,0.1);
-  border-bottom: 2px solid rgba(0,196,140,0.2);
+  background: rgba(16, 185, 129, 0.06);
+  border-bottom: 1px solid rgba(16, 185, 129, 0.18);
 }
 
 .articles-table th {
   padding: 12px;
   text-align: left;
   font-weight: 600;
-  color: #333;
+  color: #9ca3af;
   font-size: 13px;
 }
 
 .articles-table td {
   padding: 12px;
-  border-bottom: 1px solid rgba(0,0,0,0.05);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
   font-size: 13px;
+  font-weight: 500;
+  color: #e5e7eb;
 }
 
 .articles-table tbody tr:hover {
-  background: rgba(0,196,140,0.03);
+  background: rgba(16, 185, 129, 0.04);
 }
 
 .title {
-  max-width: 150px;
+  max-width: 220px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  color: #e5e7eb;
+  font-weight: 500;
 }
 
 .badge {
-  display: inline-block;
-  padding: 4px 8px;
-  border-radius: 4px;
-  font-size: 12px;
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  padding: 0 8px;
+  border-radius: 999px;
+  font-size: 11px;
   font-weight: 600;
+  border: 1px solid transparent;
 }
-
 .badge.success {
-  background: #e8f5e9;
-  color: #2e7d32;
+  background: rgba(16, 185, 129, 0.12);
+  color: #10b981;
+  border-color: rgba(16, 185, 129, 0.3);
 }
-
 .badge.warning {
-  background: #fff3e0;
-  color: #f57c00;
+  background: rgba(245, 158, 11, 0.12);
+  color: #fbbf24;
+  border-color: rgba(245, 158, 11, 0.3);
 }
-
 .badge.default {
-  background: #f5f5f5;
-  color: #666;
+  background: rgba(148, 163, 184, 0.12);
+  color: #cbd5e1;
+  border-color: rgba(148, 163, 184, 0.28);
 }
 
 .actions {
@@ -309,32 +324,34 @@ h2 {
 }
 
 .btn-small {
-  padding: 6px 10px;
-  border: none;
-  border-radius: 4px;
+  padding: 4px 10px;
+  border: 1px solid transparent;
+  border-radius: 6px;
   cursor: pointer;
   font-size: 12px;
-  transition: all .2s ease;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
 }
-
-.btn-small.view {
-  background: #2196f3;
-  color: white;
-}
-
+.btn-small.view,
 .btn-small.publish {
-  background: #4caf50;
-  color: white;
+  background: rgba(16, 185, 129, 0.1);
+  color: #10b981;
+  border-color: rgba(16, 185, 129, 0.28);
 }
-
+.btn-small.view:hover,
+.btn-small.publish:hover {
+  background: rgba(16, 185, 129, 0.2);
+  color: #34d399;
+}
 .btn-small.delete {
-  background: #f44336;
-  color: white;
+  background: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
+  border-color: rgba(239, 68, 68, 0.28);
 }
-
-.btn-small:hover {
-  opacity: 0.9;
-  transform: scale(1.05);
+.btn-small.delete:hover {
+  background: rgba(239, 68, 68, 0.2);
+  color: #f87171;
 }
 
 .pagination {
@@ -343,81 +360,20 @@ h2 {
   align-items: center;
   gap: 10px;
   margin-top: 20px;
+  color: #e5e7eb;
+  font-weight: 500;
 }
-
 .pagination button {
   padding: 8px 12px;
-  border: 1px solid var(--card-accent);
-  border-radius: 4px;
-  background: var(--gradient-card-bg, var(--card-bg));
-  color: var(--card-accent);
+  border: 1px solid rgba(16, 185, 129, 0.35);
+  border-radius: 6px;
+  background: rgba(16, 185, 129, 0.08);
+  color: #10b981;
   cursor: pointer;
-  transition: all .2s ease;
+  font-weight: 600;
 }
-
-.pagination button:hover:not(:disabled) {
-  background: var(--card-accent);
-  color: white;
-}
-
 .pagination button:disabled {
   opacity: 0.5;
   cursor: not-allowed;
-}
-
-.modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: rgba(0,0,0,0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-}
-
-.modal-content {
-  background: var(--gradient-card-bg, var(--card-bg));
-  padding: 25px;
-  border-radius: 10px;
-  max-width: 700px;
-  width: 90%;
-  max-height: 80vh;
-  overflow-y: auto;
-  box-shadow: 0 10px 40px rgba(0,0,0,0.2);
-}
-
-.modal-content h3 {
-  margin-top: 0;
-  margin-bottom: 10px;
-  color: #333;
-}
-
-.article-meta {
-  display: flex;
-  gap: 15px;
-  margin-bottom: 15px;
-  font-size: 12px;
-  color: #666;
-  padding-bottom: 10px;
-  border-bottom: 1px solid rgba(0,0,0,0.1);
-}
-
-.article-content {
-  color: #333;
-  line-height: 1.6;
-  margin-bottom: 20px;
-  white-space: pre-wrap;
-}
-
-.form-actions {
-  display: flex;
-  gap: 10px;
-}
-
-.btn-primary {
-  flex: 1;
 }
 </style>

@@ -17,6 +17,7 @@ const KnowledgeList = () => import('../components/KnowledgeList.vue')
 const Events = () => import('../components/Events.vue')
 const ArticleView = () => import('../components/ArticleView.vue')
 const Archive = () => import('../components/Archive.vue')
+const BulletinLayout = () => import('../components/BulletinLayout.vue')
 const Bulletin = () => import('../components/Bulletin.vue')
 const ProfileEdit = () => import('../components/ProfileEdit.vue')
 const MyProfile = () => import('../components/MyProfile.vue')
@@ -111,9 +112,15 @@ const routes = [
 
   { path: '/home', name: 'PlatformHome', component: Home, meta: { requiresAuth: true } },
   { path: '/archive', name: 'Archive', component: Archive },
-  { path: '/bulletin', name: 'Bulletin', component: Bulletin },
   { path: '/bulletin/create', name: 'BulletinCreate', component: BulletinCreate, meta: { requiresAuth: true, requiresAdmin: true } },
-  { path: '/bulletin/:id', name: 'BulletinDetail', component: BulletinDetail, props: true },
+  {
+    path: '/bulletin',
+    component: BulletinLayout,
+    children: [
+      { path: '', name: 'Bulletin', component: Bulletin },
+      { path: ':id', name: 'BulletinDetail', component: BulletinDetail, props: true },
+    ],
+  },
   { path: '/wiki/create', redirect: '/knowledge/new' },
   { path: '/users', name: 'UserList', component: UserList },
   { path: '/users/:id', name: 'UserProfile', component: UserPublicProfile, props: true },
@@ -216,6 +223,7 @@ const routes = [
         lifecycle: '/admin/ctf',
         traffic: '/admin/dashboard',
         todos: '/admin/dashboard',
+        carousel: '/admin/dashboard',
       }
       return legacyMap[section] || '/admin/settings'
     },

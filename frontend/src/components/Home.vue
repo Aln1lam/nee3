@@ -238,59 +238,6 @@ export default {
   const selectedRegion = ref('global')  // 'cn' or 'global'
   const eventsMap = ref({}) // key: 'YYYY-MM-DD' -> [{title,...}]
 
-  // 默认轮播图（后端无数据时使用）
-  const defaultSlides = [
-    { src: '/assets/index.svg', alt: 'banner', caption: 'Welcome to NEEPU CTF' },
-    { src: '/assets/logo.svg', alt: 'banner2', caption: '社区与赛事' }
-  ]
-  const heroImages = ref([...defaultSlides])
-  const currentIndex = ref(0)
-  let carouselTimer = null
-  const resolveUrl = (url) => {
-    if (!url) return ''
-    if (/^https?:\/\//i.test(url)) return url
-    const base = axios && axios.defaults && axios.defaults.baseURL ? axios.defaults.baseURL.replace(/\/$/, '') : ''
-    return (base ? base : '') + url
-  }
-
-  // 从后端加载轮播图
-  async function fetchCarousel() {
-    try {
-      const res = await axios.get('/api/articles/carousel')
-      if (res.data && res.data.length > 0) {
-        heroImages.value = res.data.map(s => ({
-          src: resolveUrl(s.image_url),
-          alt: s.title || 'banner',
-          caption: s.title || '',
-          description: s.description || '',
-          link: s.link_url
-        }))
-      }
-    } catch (e) {
-      console.log('使用默认轮播图')
-    }
-  }
-
-  function startCarousel() {
-    stopCarousel()
-    carouselTimer = setInterval(() => { currentIndex.value = (currentIndex.value + 1) % heroImages.value.length }, 4000)
-  }
-  function stopCarousel() { if (carouselTimer) { clearInterval(carouselTimer); carouselTimer = null } }
-  function prev() { currentIndex.value = (currentIndex.value - 1 + heroImages.value.length) % heroImages.value.length }
-  function next() { currentIndex.value = (currentIndex.value + 1) % heroImages.value.length }
-  function go(i) { currentIndex.value = i }
-
-  // 点击轮播图跳转
-  function onSlideClick(img) {
-    if (img.link) {
-      if (img.link.startsWith('http')) {
-        window.open(img.link, '_blank')
-      } else {
-        router.push(img.link)
-      }
-    }
-  }
-
   function goCategory(c) {
     // navigate to Knowledge and set category as query param
     router.push({ name: 'Knowledge', query: { cat: c } })
@@ -333,7 +280,6 @@ export default {
     })
     onUnmounted(() => {
       if (countdownTimer) { clearInterval(countdownTimer); countdownTimer = null }
-      stopCarousel()
       window.removeEventListener('neepu_user_refreshed', refreshUserData)
     })
     
@@ -917,10 +863,10 @@ export default {
       }
     }
 
-    return { heroImages, currentIndex, prev, next, go, recentGames, announcements, categories, goCategory,
+    return { recentGames, announcements, categories, goCategory,
       user, months, currentMonth, currentYear, monthDays, prevMonth, nextMonth,
       fcEvents, onEventClick, upcomingAgenda, onAgendaClick, announcementPlain,
-      fetchAnnouncements, getAvatarUrl, selectedRegion, externalEventsCN, externalEventsGlobal, onSlideClick,
+      fetchAnnouncements, getAvatarUrl, selectedRegion, externalEventsCN, externalEventsGlobal,
       collapsed, toggleSidebar, statusOnline, dashStats, currentHero, onHeroCta, sideTab, openSysTab, termLines, termOutput, termInput, termInputRef, termBodyRef, runTermCommand, focusTermInput }
   }
 }

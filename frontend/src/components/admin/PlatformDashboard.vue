@@ -1,50 +1,53 @@
 <template>
   <div class="dashboard">
-    <!-- 关键指标卡片 -->
     <div class="metrics-grid">
-      <MetricCard 
-        title="总用户数" 
-        :value="stats.users.total" 
-        icon="👥"
+      <MetricCard
+        title="总用户数"
+        :value="stats.users.total"
+        :icon="User"
         :subtext="`新增 ${stats.users.new_7d} 人 (7天)`"
       />
-      <MetricCard 
-        title="总文章数" 
-        :value="stats.articles.total" 
-        icon="📰"
+      <MetricCard
+        title="总文章数"
+        :value="stats.articles.total"
+        :icon="FileText"
         :subtext="`发布 ${stats.articles.published} 篇`"
       />
-      <MetricCard 
-        title="总团队数" 
-        :value="stats.teams.total" 
-        icon="👨‍👩‍👧‍👦"
+      <MetricCard
+        title="总团队数"
+        :value="stats.teams.total"
+        :icon="Users"
       />
-      <MetricCard 
-        title="存储空间" 
-        :value="`${stats.resources.storage_mb} MB`" 
-        icon="💾"
+      <MetricCard
+        title="存储空间"
+        :value="`${stats.resources.storage_mb} MB`"
+        :icon="Database"
         :subtext="`${stats.resources.total} 个文件`"
       />
-      <MetricCard 
-        title="活跃用户" 
-        :value="stats.users.active" 
-        icon="⚡"
+      <MetricCard
+        title="活跃用户"
+        :value="stats.users.active"
+        :icon="Activity"
       />
-      <MetricCard 
-        title="管理员数" 
-        :value="stats.users.admins" 
-        icon="🔧"
+      <MetricCard
+        title="管理员数"
+        :value="stats.users.admins"
+        :icon="ShieldCheck"
       />
     </div>
 
-    <!-- 图表区 -->
     <div class="charts-section">
       <div class="chart-container">
-        <h3>📈 用户增长趋势 (7天)</h3>
+        <h3 class="section-title">
+          <n-icon :size="18" :component="TrendingUp" class="section-icon" />
+          <span>用户增长趋势 (7天)</span>
+        </h3>
         <div class="chart">
           <div class="bar-chart">
             <div v-for="item in stats.trends.daily_new_users" :key="item.date" class="bar-item">
-              <div class="bar" :style="{ height: Math.min(180, item.count * 20 + 40) + 'px' }"></div>
+              <div class="bar-track">
+                <div class="bar" :style="{ height: barHeight(item.count) }"></div>
+              </div>
               <div class="label">{{ item.date }}</div>
               <div class="value">{{ item.count }}</div>
             </div>
@@ -53,7 +56,10 @@
       </div>
 
       <div class="chart-container">
-        <h3>📄 文章状态分布</h3>
+        <h3 class="section-title">
+          <n-icon :size="18" :component="FileText" class="section-icon" />
+          <span>文章状态分布</span>
+        </h3>
         <div class="chart">
           <div class="pie-chart">
             <div class="pie-item published">
@@ -69,9 +75,11 @@
       </div>
     </div>
 
-    <!-- 活跃用户排行 -->
     <div class="active-users">
-      <h3>👑 活跃用户 Top 10</h3>
+      <h3 class="section-title">
+        <n-icon :size="18" :component="Crown" class="section-icon" />
+        <span>活跃用户 Top 10</span>
+      </h3>
       <table class="users-table">
         <thead>
           <tr>
@@ -82,8 +90,8 @@
         </thead>
         <tbody>
           <tr v-for="(user, idx) in topUsers" :key="user.user_id">
-            <td><strong>{{ idx + 1 }}</strong></td>
-            <td>{{ user.nickname }}</td>
+            <td class="rank-cell"><strong>{{ idx + 1 }}</strong></td>
+            <td class="nick-cell">{{ user.nickname }}</td>
             <td><span class="badge">{{ user.submission_count }}</span></td>
           </tr>
         </tbody>
@@ -94,12 +102,14 @@
 
 <script>
 import { ref, onMounted } from 'vue'
+import { NIcon } from 'naive-ui'
+import { User, Users, Activity, ShieldCheck, FileText, Database, TrendingUp, Crown } from '@vicons/tabler'
 import MetricCard from './MetricCard.vue'
 import platformAdmin from '@/services/admin/platform'
 
 export default {
   name: 'PlatformDashboard',
-  components: { MetricCard },
+  components: { MetricCard, NIcon },
   setup() {
     const DEFAULT_STATS = {
       users: { total: 0, new_7d: 0, new_30d: 0, admins: 0, active: 0 },
@@ -110,7 +120,6 @@ export default {
     }
 
     const stats = ref({ ...DEFAULT_STATS })
-    
     const articlesDistribution = ref({ published: 0, draft: 0 })
     const topUsers = ref([])
 
@@ -121,7 +130,7 @@ export default {
           platformAdmin.getArticlesDistribution(),
           platformAdmin.getTopActiveUsers(),
         ])
-        
+
         const d = dashRes.data || {}
         stats.value = {
           users: { ...DEFAULT_STATS.users, ...(d.users || {}) },
@@ -139,102 +148,160 @@ export default {
       }
     }
 
-    onMounted(() => {
-      loadDashboard()
-    })
+    onMounted(loadDashboard)
+
+    function barHeight(count) {
+      const n = Number(count) || 0
+      const max = Math.max(
+        1,
+        ...(stats.value.trends.daily_new_users || []).map((x) => Number(x.count) || 0),
+      )
+      const px = Math.round(24 + (n / max) * 140)
+      return `${px}px`
+    }
 
     return {
       stats,
       articlesDistribution,
-      topUsers
+      topUsers,
+      User,
+      Users,
+      Activity,
+      ShieldCheck,
+      FileText,
+      Database,
+      TrendingUp,
+      Crown,
+      barHeight,
     }
-  }
+  },
 }
 </script>
 
 <style scoped>
 .dashboard {
-  animation: fadeIn .3s ease;
+  animation: fadeIn 0.3s ease;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
 }
 
-h2 {
-  margin-top: 0;
-  color: #333;
-  border-bottom: 3px solid var(--card-accent);
-  padding-bottom: 12px;
-  margin-bottom: 25px;
+.metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 14px;
 }
 
-h3 {
-  color: #333;
-  margin-bottom: 15px;
-  font-size: 16px;
+.charts-section {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 14px;
 }
 
-/* 指标卡片 */
+.section-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 14px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text, #e8eaed);
+}
+
+.section-icon {
+  color: #5ED9A8;
+  opacity: 0.9;
+}
+
 .chart-container {
-  background: var(--gradient-card-bg, var(--card-bg));
+  background: rgba(20, 26, 33, 0.55);
   border-radius: 10px;
-  box-shadow: var(--card-shadow);
-  border-left: 4px solid var(--card-accent);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  padding: 16px 18px;
+  overflow: visible;
 }
 
 .chart {
-  height: 250px;
+  min-height: 220px;
+  height: auto;
+  overflow: visible;
   display: flex;
-  align-items: flex-end;
+  align-items: stretch;
   justify-content: center;
 }
 
-/* 柱状图 */
 .bar-chart {
   display: flex;
-  align-items: flex-end;
+  align-items: stretch;
   justify-content: space-around;
   gap: 10px;
   width: 100%;
-  height: 100%;
+  min-height: 220px;
+  height: 240px;
+  overflow: visible;
+  box-sizing: border-box;
 }
 
 .bar-item {
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: flex-end;
   flex: 1;
+  min-width: 0;
+  height: 100%;
+  overflow: visible;
+}
+
+.bar-track {
+  flex: 1 1 auto;
+  width: 100%;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  min-height: 160px;
+  overflow: visible;
 }
 
 .bar {
-  width: 100%;
-  background: linear-gradient(135deg, var(--card-accent), rgba(0,196,140,0.6));
-  border-radius: 4px 4px 0 0;
-  min-height: 20px;
-  transition: all .2s ease;
+  width: 60%;
+  max-width: 28px;
+  min-height: 8px;
+  background: linear-gradient(180deg, #7ee7bc, #5ED9A8);
+  border-radius: 6px 6px 0 0;
+  box-shadow: 0 0 12px rgba(94, 217, 168, 0.25);
+  transition: opacity 0.15s, transform 0.15s;
 }
 
 .bar:hover {
-  opacity: 0.8;
-  transform: translateY(-3px);
+  opacity: 0.95;
+  transform: translateY(-2px);
 }
 
 .bar-item .label {
+  flex-shrink: 0;
   font-size: 12px;
-  color: #666;
+  font-weight: 500;
+  color: #9ca3af;
   margin-top: 8px;
+  white-space: nowrap;
 }
 
 .bar-item .value {
+  flex-shrink: 0;
   font-size: 13px;
-  font-weight: 600;
-  color: var(--card-accent);
+  font-weight: 700;
+  color: #5ED9A8;
   margin-top: 2px;
 }
 
-/* 饼图 */
 .pie-chart {
   display: flex;
   justify-content: space-around;
   align-items: center;
   gap: 30px;
+  width: 100%;
+  height: 100%;
 }
 
 .pie-item {
@@ -245,76 +312,116 @@ h3 {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  color: white;
   font-weight: 600;
+  border: 1px solid rgba(94, 217, 168, 0.25);
 }
 
 .pie-item.published {
-  background: linear-gradient(135deg, #4caf50, #66bb6a);
+  background: rgba(94, 217, 168, 0.16);
+  color: #5ED9A8;
 }
 
 .pie-item.draft {
-  background: linear-gradient(135deg, #ff9800, #ffb74d);
+  background: rgba(255, 255, 255, 0.05);
+  color: #9ca3af;
+  border-color: rgba(255, 255, 255, 0.1);
 }
 
 .pie-label {
   font-size: 13px;
-  opacity: 0.9;
+  opacity: 1;
+  color: inherit;
 }
 
 .pie-value {
   font-size: 28px;
   margin-top: 5px;
+  font-variant-numeric: tabular-nums;
 }
 
-/* 活跃用户表 */
 .active-users {
-  background: var(--gradient-card-bg, var(--card-bg));
+  background: rgba(20, 26, 33, 0.72);
   border-radius: 10px;
-  box-shadow: var(--card-shadow);
-  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 16px 18px;
+  overflow: visible;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+.active-users,
+.active-users * {
+  opacity: 1 !important;
+  filter: none !important;
+  text-shadow: none !important;
 }
 
 .users-table {
   width: 100%;
   border-collapse: collapse;
-  margin-top: 15px;
+  margin-top: 8px;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "PingFang SC", "Microsoft YaHei", sans-serif;
 }
 
 .users-table thead {
-  background: rgba(0,196,140,0.1);
-  border-bottom: 2px solid rgba(0,196,140,0.2);
+  background: rgba(94, 217, 168, 0.06);
+  border-bottom: 1px solid rgba(94, 217, 168, 0.18);
 }
 
 .users-table th {
   padding: 12px;
   text-align: left;
-  font-weight: 600;
-  color: #333;
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  color: #9ca3af !important;
+  letter-spacing: 0.02em;
+  text-transform: none !important;
+  opacity: 1 !important;
 }
 
 .users-table td {
   padding: 12px;
-  border-bottom: 1px solid rgba(0,0,0,0.05);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  font-size: 14px !important;
+  font-weight: 500 !important;
+  color: #f3f4f6 !important;
+  opacity: 1 !important;
+}
+
+.users-table td.nick-cell {
+  color: #f3f4f6 !important;
+  font-weight: 500 !important;
+}
+
+.users-table td.rank-cell,
+.users-table td.rank-cell strong {
+  color: #10b981 !important;
+  font-weight: 700 !important;
+  font-variant-numeric: tabular-nums;
 }
 
 .users-table tbody tr:hover {
-  background: rgba(0,196,140,0.03);
+  background: rgba(16, 185, 129, 0.06);
 }
 
 .badge {
-  display: inline-block;
-  background: var(--card-accent);
-  color: white;
-  padding: 4px 8px;
-  border-radius: 4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2rem;
+  background: rgba(16, 185, 129, 0.16);
+  color: #10b981 !important;
+  border: 1px solid rgba(16, 185, 129, 0.4);
+  padding: 3px 10px;
+  border-radius: 6px;
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 700 !important;
+  font-variant-numeric: tabular-nums;
+  opacity: 1 !important;
 }
 
 @keyframes fadeIn {
   from { opacity: 0; }
   to { opacity: 1; }
 }
-
 </style>
