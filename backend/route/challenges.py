@@ -31,6 +31,83 @@ logger = logging.getLogger(__name__)
 bp = Blueprint("challenges", __name__)
 
 
+def _unique_solver_count(challenge_id):
+    """唯一解出人数（按 user_id 去重）。"""
+    from sqlalchemy import func
+    return int(
+        db.session.query(func.count(func.distinct(CtfChallengeSubmission.user_id)))
+        .filter(
+            CtfChallengeSubmission.challenge_id == challenge_id,
+            CtfChallengeSubmission.is_correct.is_(True),
+        )
+        .scalar()
+        or 0
+    )
+
+
+def _unique_solver_counts(challenge_ids):
+    """批量统计多题唯一解出人数。"""
+    if not challenge_ids:
+        return {}
+    from sqlalchemy import func
+    rows = (
+        db.session.query(
+            CtfChallengeSubmission.challenge_id,
+            func.count(func.distinct(CtfChallengeSubmission.user_id)),
+        )
+        .filter(
+            CtfChallengeSubmission.challenge_id.in_(list(challenge_ids)),
+            CtfChallengeSubmission.is_correct.is_(True),
+        )
+        .group_by(CtfChallengeSubmission.challenge_id)
+        .all()
+    )
+    return {int(cid): int(cnt) for cid, cnt in rows}
+
+
+
+def _challenge_supports_container(challenge) -> bool:
+    """题目是否支持动态/静态容器环境。"""
+    if not challenge:
+        return False
+    if getattr(challenge, "docker_image", None):
+        return True
+    try:
+        ctype = int(getattr(challenge, "challenge_type", 0) or 0)
+    except (TypeError, ValueError):
+        ctype = 0
+    return ctype in (1, 3)  # StaticContainer / DynamicContainer
+
+
+def _attach_container_meta(data, challenge):
+    """对齐前端：supports_container / needs_container / has_container(能力标记)。"""
+    ok = _challenge_supports_container(challenge)
+    data["supports_container"] = ok
+    data["needs_container"] = ok
+    # 注意：container-status 里的 has_container 表示「是否正在运行」；
+    # 题目详情里用同名字段表示「是否支持容器」，并额外提供 supports_container。
+    data["has_container"] = ok
+    try:
+        data["challenge_type"] = int(getattr(challenge, "challenge_type", 0) or 0)
+    except (TypeError, ValueError):
+        data["challenge_type"] = 0
+    if getattr(challenge, "docker_image", None):
+        data["docker_image"] = challenge.docker_image
+    return data
+
+
+def _attach_solve_stats(data, challenge_id, solves=None):
+    """对齐前端字段：solves / solved_count / solves_count。"""
+    if solves is None:
+        solves = _unique_solver_count(challenge_id)
+    solves = int(solves or 0)
+    data["solves"] = solves
+    data["solved_count"] = solves
+    data["solves_count"] = solves
+    return data
+
+
+
 def _container_start_rate_key():
     try:
         return f"container_start:{get_jwt_identity()}"
@@ -85,10 +162,18 @@ def get_game_challenges(game_id):
             game_id=game_id, is_enabled=True
         ).all()
 
+        counts = _unique_solver_counts([c.id for c in challenges])
+        payload = []
+        for c in challenges:
+            item = c.to_public_dict()
+            _attach_solve_stats(item, c.id, counts.get(c.id, 0))
+            _attach_container_meta(item, c)
+            payload.append(item)
+
         return jsonify({
             "code": 200,
             "msg": "获取成功",
-            "data": [c.to_public_dict() for c in challenges]
+            "data": payload
         }), 200
     except Exception as e:
         return jsonify({"code": 500, "msg": str(e)}), 500
@@ -144,6 +229,8 @@ def get_challenge_detail(challenge_id):
         # 检查是否已解决
         solved = any(s.is_correct for s in submissions)
         data['is_solved'] = solved
+        _attach_solve_stats(data, challenge_id)
+        _attach_container_meta(data, challenge)
 
         return jsonify({
             "code": 200,
@@ -500,6 +587,12 @@ def submit_flag(challenge_id):
             response_data['submission'] = sanitize_submission_dict(
                 submission.to_dict(), include_answer=False,
             )
+            # 提交事务后回传最新唯一解出人数，供前端即时刷新 solves
+            solves_now = _unique_solver_count(challenge_id)
+            response_data['solves'] = solves_now
+            response_data['solved_count'] = solves_now
+            response_data['solves_count'] = solves_now
+            response_data['unique_solvers'] = solves_now
 
             return jsonify({
                 "code": 200,
@@ -763,6 +856,41 @@ def get_container_status(challenge_id):
                     }
                 }), 200
         
+        # 与 Docker 实际状态对账：Exited/Dead/Missing 时勿再显示「运行中」
+        if instance.container_id:
+            try:
+                docker_client = docker.from_env()
+                container = docker_client.containers.get(instance.container_id)
+                container.reload()
+                if container.status != "running":
+                    logger.warning(
+                        "Instance %s docker status=%s, marking stopped",
+                        instance.id,
+                        container.status,
+                    )
+                    instance.is_running = False
+                    db.session.commit()
+                    return jsonify({
+                        "code": 200,
+                        "data": {
+                            "status": "no_container",
+                            "has_container": False,
+                            "message": f"容器已停止（Docker: {container.status}），请重新启动",
+                        },
+                    }), 200
+            except Exception as e:
+                logger.warning("Instance %s docker check failed: %s", instance.id, e)
+                instance.is_running = False
+                db.session.commit()
+                return jsonify({
+                    "code": 200,
+                    "data": {
+                        "status": "no_container",
+                        "has_container": False,
+                        "message": "容器已不存在，请重新启动",
+                    },
+                }), 200
+
         # 容器正在运行
         normalized_url = _normalize_connection_url(instance, challenge=challenge)
         if normalized_url != (instance.connection_url or ""):
@@ -823,7 +951,7 @@ def start_container(challenge_id):
         if not team:
             return jsonify({"code": 500, "msg": "自动创建单人队失败"}), 500
 
-        # 检查是否已有运行中的实例：同队共享一个靶机
+        # 检查是否已有运行中的实例：同队共享一个靶机（须与 Docker 实际状态对账）
         existing_instance = CtfGameInstance.query.filter_by(
             challenge_id=challenge_id,
             team_id=team.id,
@@ -831,20 +959,38 @@ def start_container(challenge_id):
         ).first()
 
         if existing_instance:
-            normalized_url = _normalize_connection_url(existing_instance, challenge=challenge)
-            if normalized_url != (existing_instance.connection_url or ""):
-                existing_instance.connection_url = normalized_url
-                db.session.commit()
-            return jsonify({
-                "code": 200,
-                "msg": "容器已启动",
-                "data": {
-                    "instance_id": existing_instance.id,
-                    "connection_url": normalized_url,
-                    "port": existing_instance.port,
-                    "expires_at": existing_instance.expires_at.isoformat() if existing_instance.expires_at else None
-                }
-            }), 200
+            alive = False
+            if existing_instance.container_id:
+                try:
+                    docker_client = docker.from_env()
+                    container = docker_client.containers.get(existing_instance.container_id)
+                    container.reload()
+                    alive = container.status == "running"
+                except Exception:
+                    alive = False
+            if alive:
+                normalized_url = _normalize_connection_url(existing_instance, challenge=challenge)
+                if normalized_url != (existing_instance.connection_url or ""):
+                    existing_instance.connection_url = normalized_url
+                    db.session.commit()
+                return jsonify({
+                    "code": 200,
+                    "msg": "容器已启动",
+                    "data": {
+                        "instance_id": existing_instance.id,
+                        "connection_url": normalized_url,
+                        "port": existing_instance.port,
+                        "expires_at": existing_instance.expires_at.isoformat() if existing_instance.expires_at else None
+                    }
+                }), 200
+            # DB 仍标运行但 Docker 已挂：清掉后继续创建
+            existing_instance.is_running = False
+            db.session.commit()
+            logger.warning(
+                "Cleared ghost instance %s for challenge %s before restart",
+                existing_instance.id,
+                challenge_id,
+            )
 
         from backend.services.instance_quota import check_can_start_new_instance
         ok_quota, quota_msg, _ = check_can_start_new_instance(user, team, challenge_id=challenge_id)
@@ -865,8 +1011,7 @@ def start_container(challenge_id):
             if not ok:
                 return jsonify({"code": 500, "msg": msg or "入队失败"}), 500
             if not job_id:
-                # 同步完成
-                from backend.server.db_models import CtfGameInstance
+                # 同步完成（勿在函数内再 import CtfGameInstance，会遮蔽顶层导入导致 UnboundLocalError）
                 inst = CtfGameInstance.query.get(meta.get("instance_id")) if meta.get("instance_id") else None
                 if not inst:
                     return jsonify({"code": 500, "msg": "启动成功但实例丢失"}), 500
@@ -1202,14 +1347,20 @@ def get_challenge_stats(challenge_id):
                     "solved_at": first_solve.solved_at.isoformat() if first_solve.solved_at else None
                 }
 
+        user_solved = any(s.user_id == user_id for s in correct_submissions)
+
         return jsonify({
             "code": 200,
             "msg": "获取成功",
             "data": {
                 "unique_solvers": unique_solvers,
+                "solves": unique_solvers,
+                "solved_count": unique_solvers,
+                "solves_count": unique_solvers,
                 "total_submissions": total_submissions,
                 "solve_rate": solve_rate,
-                "first_solver": first_solver
+                "first_solver": first_solver,
+                "user_solved": user_solved,
             }
         }), 200
     except Exception as e:

@@ -96,8 +96,8 @@ def create_challenge(game_id):
                     data = {}
         
         # 验证必要字段（注意：前端发送的是original_points）
-        # 支持两种字段名：original_points（前端发送）或points（备用）
-        points_value = data.get("original_points") or data.get("points")
+        # 兼容 original_points / points / score
+        points_value = data.get("original_points") or data.get("points") or data.get("score")
         required_fields = ["title", "category", "flag"]
         for field in required_fields:
             if field not in data or not str(data[field]).strip():
@@ -213,9 +213,9 @@ def update_challenge(game_id, challenge_id):
         if "flag_template" in data:
             challenge.flag_template = data["flag_template"].strip() or None
         
-        # 支持 original_points 和 points 两种字段名
-        if "original_points" in data or "points" in data:
-            points_val = data.get("original_points") or data.get("points")
+        # 兼容 original_points / points / score
+        if "original_points" in data or "points" in data or "score" in data:
+            points_val = data.get("original_points") or data.get("points") or data.get("score")
             if points_val:
                 challenge.original_points = int(points_val)
         

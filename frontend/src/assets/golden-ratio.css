@@ -70,8 +70,10 @@
   box-sizing: border-box;
 }
 
-.training-main .game-quick-list .quick-card {
-  aspect-ratio: var(--phi);
+.training-main .game-quick-list .quick-card,
+.training-main .training-grid .quick-card {
+  aspect-ratio: auto;
+  min-height: 140px;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
@@ -1224,9 +1226,13 @@
 }
 
 .challenge-workspace-matrix .matrix-page-head {
-  padding: var(--fib-21) var(--fib-21) var(--fib-13);
+  padding: 8px 16px;
   flex-shrink: 0;
   border-bottom: 1px solid var(--border);
+  margin: 0;
+  min-height: 36px;
+  display: flex;
+  align-items: center;
 }
 
 .challenge-workspace-matrix .challenge-workspace-page {

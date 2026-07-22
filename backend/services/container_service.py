@@ -362,7 +362,12 @@ class ContainerService:
                 fixed += 1
                 continue
             try:
-                self.client.containers.get(inst.container_id)
+                c = self.client.containers.get(inst.container_id)
+                c.reload()
+                # 容器还在但已退出：同样视为幽灵运行态
+                if getattr(c, "status", None) != "running":
+                    inst.is_running = False
+                    fixed += 1
             except Exception as e:
                 if self._is_missing_container_error(e):
                     inst.is_running = False

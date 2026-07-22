@@ -627,6 +627,11 @@ def update_ui_config():
         SystemConfig.set(key, stored)
 
     log_activity('update', 'platform_ui_config', meta={'keys': list(payload.keys())})
+    try:
+        from backend.server.cache_invalidation import invalidate_platform_info_cache
+        invalidate_platform_info_cache()
+    except Exception:
+        pass
     from backend.services.platform_config_service import load_platform_ui_config
     return jsonify({'success': True, 'config': load_platform_ui_config()})
 

@@ -113,7 +113,7 @@ export default {
     const isImmersiveRoute = computed(() => {
       const p = route.path
       if (/^\/games\/\d+\/challenges/.test(p)) return true
-      if (/^\/training\/\d+/.test(p)) return true
+      if (/^\/training\/(challenge\/)?\d+/.test(p)) return true
       return false
     })
     const isFullHeightRoute = computed(() => (

@@ -797,18 +797,27 @@ def get_user_scoreboard(game_id):
         game_id=game_id,
         team_id=team.id
     ).first()
-    
-    if not scoreboard:
-        return error_response("Team not in this game yet", 404)
 
-    team_rank = ScoringService.get_team_rank(game_id, team.id)
-    
-    # 获取团队参赛记录
+    # 获取团队参赛记录（未参赛也不应 404，前端会当「暂无成绩」）
     participation = CtfParticipation.query.filter_by(
         game_id=game_id,
         team_id=team.id
     ).first()
-    
+
+    if not scoreboard:
+        return success_response({
+            'team_id': team.id,
+            'team_name': team.name,
+            'total_points': 0,
+            'solved_challenges': 0,
+            'rank': None,
+            'last_submission_time': None,
+            'status': participation.status if participation else 'not_joined',
+            'joined': bool(participation),
+        })
+
+    team_rank = ScoringService.get_team_rank(game_id, team.id)
+
     return success_response({
         'team_id': team.id,
         'team_name': team.name,
@@ -817,6 +826,7 @@ def get_user_scoreboard(game_id):
         'rank': team_rank,
         'last_submission_time': scoreboard.last_submission_time.isoformat() if scoreboard.last_submission_time else None,
         'status': participation.status if participation else 'unknown',
+        'joined': bool(participation),
     })
 
 

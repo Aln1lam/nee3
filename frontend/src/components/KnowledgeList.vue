@@ -29,27 +29,12 @@
         </div>
       </div>
 
-      <div class="sidebar-links sidebar-rail-footer">
-        <button type="button" class="sidebar-link" @click="clearCategory">
-          <span class="link-code">CLR</span>
-          <span>清除筛选</span>
-        </button>
-        <router-link to="/home" class="sidebar-link">
-          <span class="link-code">HOM</span>
-          <span>返回首页</span>
-        </router-link>
-        <router-link to="/training" class="sidebar-link">
-          <span class="link-code">TRN</span>
-          <span>训练靶场</span>
-        </router-link>
-      </div>
       <div class="sidebar-rail-footer sidebar-footer sidebar-footer-copy-wrap">
         <div class="sidebar-footer-copy">
           © 2022-2026
           <a href="https://www.neepu.edu.cn/" target="_blank" rel="noopener">东北电力大学</a>
         </div>
       </div>
-
     </aside>
 
     <button
@@ -62,78 +47,177 @@
     </button>
 
     <main class="wiki-main sidebar-main">
-      <header class="matrix-page-head">
-        <p class="matrix-page-prompt">知识库 · WIKI</p>
-        <h2 class="matrix-page-title">Wiki 文档</h2>
-        <p class="matrix-page-desc">
-          <span v-if="selectedTag">当前标签：{{ selectedTag }}（{{ articles.length }} 篇）</span>
-          <span v-else>WriteUp · 教程 · 知识沉淀（{{ articles.length }} 篇）</span>
-        </p>
+      <header class="wiki-head">
+        <div class="wiki-head-text">
+          <p class="wiki-kicker">知识库 · WIKI</p>
+          <h2 class="wiki-title">Wiki 文档</h2>
+          <p class="wiki-desc">
+            <span v-if="selectedTag">当前标签：{{ selectedTag }}（{{ articles.length }} 篇）</span>
+            <span v-else>WriteUp · 教程 · 知识沉淀</span>
+          </p>
+        </div>
+
+        <!-- Top Control Rail：紧凑搜索 + 投稿 -->
+        <div class="wiki-control-rail">
+          <div class="wiki-search">
+            <svg class="wiki-search-icon" viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
+              <circle cx="6.5" cy="6.5" r="4.5" fill="none" stroke="currentColor" stroke-width="1.4"/>
+              <path d="M10 10l3.5 3.5" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+            </svg>
+            <input
+              v-model="q"
+              class="wiki-search-input"
+              type="search"
+              placeholder="搜索标题或内容"
+              @keyup.enter="fetch"
+            />
+          </div>
+          <button type="button" class="wiki-submit-btn" @click="$router.push('/knowledge/new')">
+            + 投稿 WriteUp
+          </button>
+        </div>
       </header>
 
-      <div class="wiki-toolbar matrix-panel">
-        <n-input
-          v-model:value="q"
-          placeholder="搜索标题或内容"
-          size="small"
-          @keyup.enter="fetch"
-        />
-        <div class="wiki-search-actions">
-          <n-button size="small" type="primary" @click="fetch">搜索</n-button>
-          <n-button size="small" secondary @click="$router.push('/knowledge/new')">上传</n-button>
-        </div>
-      </div>
-
-      <div class="wiki-list-panel matrix-panel">
-        <template v-if="articles.length">
-          <article
-            v-for="a in articles"
-            :key="a.id"
-            class="wiki-item"
-            @click="goArticle(a.id)"
-          >
-            <div class="wiki-item-head">
-              <span class="link-code">DOC</span>
-              <div class="wiki-item-body">
-                <h3 class="wiki-item-title">{{ a.title }}</h3>
-                <p v-if="a.summary" class="wiki-item-summary">{{ a.summary }}</p>
-                <div class="wiki-item-foot">
-                  <div class="wiki-item-tags">
-                    <n-tag v-for="t in renderTags(a)" :key="a.id + '-tag-' + t" size="small" round>{{ t }}</n-tag>
+      <div class="wiki-stage">
+        <section class="wiki-feed-col">
+          <div class="wiki-list-panel">
+            <template v-if="articles.length">
+              <article
+                v-for="a in articles"
+                :key="a.id"
+                class="wiki-item"
+                @click="goArticle(a.id)"
+              >
+                <div class="wiki-item-head">
+                  <span class="link-code chip-cut wiki-doc-chip">DOC</span>
+                  <div class="wiki-item-body">
+                    <h3 class="wiki-item-title">{{ a.title }}</h3>
+                    <p v-if="a.summary" class="wiki-item-summary">{{ a.summary }}</p>
+                    <div class="wiki-item-foot">
+                      <div class="wiki-item-tags">
+                        <n-tag
+                          v-for="t in renderTags(a)"
+                          :key="a.id + '-tag-' + t"
+                          size="small"
+                          round
+                        >{{ t }}</n-tag>
+                      </div>
+                      <time class="wiki-item-time">{{ formatWikiTime(a.created_at) }}</time>
+                    </div>
                   </div>
-                  <time class="wiki-item-time">{{ formatWikiTime(a.created_at) }}</time>
+                  <span class="wiki-item-arrow">→</span>
                 </div>
-              </div>
-              <span class="wiki-item-arrow">→</span>
+              </article>
+            </template>
+            <div v-else class="wiki-empty">暂无相关文章</div>
+          </div>
+        </section>
+
+        <aside class="wiki-aside-col">
+          <!-- 知识库概览 & 热门阅读（替代重复热门标签） -->
+          <section class="wiki-aside-card wiki-aside-card--soft">
+            <div class="wiki-aside-head">
+              <span class="link-code chip-cut">OVR</span>
+              <span>知识库概览</span>
             </div>
-          </article>
-        </template>
-        <div v-else class="wiki-empty">暂无相关文章</div>
+            <div class="wiki-stats">
+              <div class="wiki-stat">
+                <span class="wiki-stat-label">已沉淀文章</span>
+                <span class="wiki-stat-value">{{ articleCountLabel }}</span>
+              </div>
+              <div class="wiki-stat-divider" aria-hidden="true" />
+              <div class="wiki-stat">
+                <span class="wiki-stat-label">总阅读量</span>
+                <span class="wiki-stat-value">{{ readsLabel }}</span>
+              </div>
+            </div>
+            <div class="wiki-aside-subhead">
+              <span class="link-code chip-cut">HOT</span>
+              <span>热门阅读</span>
+            </div>
+            <ul class="wiki-hot-list">
+              <li v-for="h in hotArticles" :key="'hot-' + h.id">
+                <button type="button" class="wiki-hot-link" @click="goArticle(h.id)">
+                  <span class="wiki-hot-title">{{ h.title }}</span>
+                  <span class="wiki-hot-arrow">→</span>
+                </button>
+              </li>
+              <li v-if="!hotArticles.length" class="wiki-hot-empty">暂无热门条目</li>
+            </ul>
+          </section>
+
+          <!-- WriteUp 投稿指引：细线框 + 文字链 -->
+          <section class="wiki-aside-card wiki-aside-card--guide">
+            <div class="wiki-aside-head wiki-aside-head--muted">
+              <span class="link-code chip-cut">WRT</span>
+              <span>WriteUp 投稿指引</span>
+            </div>
+            <p class="wiki-guide-text">
+              使用 Markdown 撰写：题目背景 → 思路拆解 → Payload / 关键命令 → 复盘总结。
+              附件请控制在合理体积，并打上准确分类标签，便于侧栏检索。
+            </p>
+            <ul class="wiki-guide-mini">
+              <li>标题简洁，摘要 1–2 句</li>
+              <li>代码块标明语言</li>
+              <li>敏感 Flag 打码后再公开</li>
+            </ul>
+            <button type="button" class="wiki-guide-link" @click="$router.push('/knowledge/new')">
+              了解 WriteUp 撰写规范 →
+            </button>
+          </section>
+        </aside>
       </div>
     </main>
   </div>
 </template>
 
 <script>
-import { ref, onMounted, onUnmounted, inject, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted, inject, watch } from 'vue'
 import axiosGlobal from 'axios'
 import { TAGS } from '../services/tags'
 import { useRoute, useRouter } from 'vue-router'
-import { NInput, NButton, NTag } from 'naive-ui'
+import { NTag } from 'naive-ui'
 import { useCollapsibleSidebar } from '../composables/useCollapsibleSidebar'
 import { formatWikiTags, formatWikiTime } from '../utils/wikiDisplay'
 
+function heatScore(a) {
+  const id = Number(a?.id) || 0
+  const len = String(a?.content || a?.summary || '').length
+  return id * 41 + 180 + Math.min(len, 800)
+}
+
+function formatReads(n) {
+  if (n >= 1000) {
+    const k = n / 1000
+    return (Math.round(k * 10) / 10).toString().replace(/\.0$/, '') + 'k'
+  }
+  return String(n)
+}
+
 export default {
-  components: { NInput, NButton, NTag },
+  components: { NTag },
   setup() {
     const axios = inject('axios') || axiosGlobal
     const route = useRoute()
     const router = useRouter()
     const articles = ref([])
+    const catalog = ref([])
+    const catalogTotal = ref(0)
     const q = ref('')
     const selectedTag = ref('')
     const categories = TAGS
     const { collapsed, toggleSidebar } = useCollapsibleSidebar('neepu_wiki_sidebar_collapsed')
+
+    const articleCountLabel = computed(() => `${catalogTotal.value} 篇`)
+    const readsLabel = computed(() => {
+      const n = catalog.value.reduce((s, a) => s + heatScore(a), 0)
+      return formatReads(n || catalogTotal.value * 200)
+    })
+    const hotArticles = computed(() => {
+      return [...catalog.value]
+        .sort((a, b) => heatScore(b) - heatScore(a))
+        .slice(0, 3)
+    })
 
     function tagCode(tag) {
       const t = (tag || '').toLowerCase()
@@ -152,6 +236,10 @@ export default {
 
     function selectTag(c) {
       q.value = ''
+      if (selectedTag.value === c) {
+        clearCategory()
+        return
+      }
       selectedTag.value = c
       try { router.push({ path: '/wiki', query: { tag: c } }) } catch { /* ignore */ }
       fetch()
@@ -162,6 +250,18 @@ export default {
       selectedTag.value = ''
       router.push('/wiki').catch(() => null)
       fetch()
+    }
+
+    async function fetchCatalog() {
+      try {
+        const r = await axios.get('/api/articles/', { params: { per_page: 50 } })
+        const items = r.data.data?.items || r.data.items || []
+        catalog.value = items
+        catalogTotal.value = r.data.data?.total ?? items.length
+      } catch {
+        catalog.value = []
+        catalogTotal.value = 0
+      }
     }
 
     async function fetch() {
@@ -186,6 +286,7 @@ export default {
 
     function onArticleSaved() {
       fetch()
+      fetchCatalog()
     }
 
     function goArticle(id) {
@@ -200,6 +301,7 @@ export default {
       if (route.query?.tag) selectedTag.value = route.query.tag
       if (route.query?.q) q.value = route.query.q
       fetch()
+      fetchCatalog()
       window.addEventListener('neepu_article_saved', onArticleSaved)
     })
 
@@ -221,6 +323,7 @@ export default {
     return {
       articles, q, fetch, categories, selectTag, clearCategory, tagCode,
       selectedTag, goArticle, renderTags, formatWikiTime, collapsed, toggleSidebar,
+      articleCountLabel, readsLabel, hotArticles,
     }
   },
 }
@@ -229,27 +332,58 @@ export default {
 <style scoped>
 .wiki-layout {
   width: 100%;
-  height: calc(100vh - var(--nav-height, 72px)); overflow: hidden;
+  height: calc(100vh - var(--nav-height, 72px));
+  max-height: calc(100vh - var(--nav-height, 72px));
+  overflow: hidden !important;
   margin: 0;
 }
 
-.wiki-toolbar {
+/* 侧栏 */
+.wiki-layout :deep(.sidebar-rail),
+.wiki-sidebar.sidebar-rail {
+  overflow: hidden;
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
+}
+.wiki-layout :deep(.sidebar-rail-nav),
+.wiki-sidebar .sidebar-rail-nav {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.wiki-layout :deep(.sidebar-rail-nav)::-webkit-scrollbar,
+.wiki-sidebar .sidebar-rail-nav::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}
+.wiki-layout :deep(.sidebar-item),
+.wiki-sidebar .sidebar-item {
+  min-height: 40px;
+  height: auto;
+  padding: 10px 12px !important;
   align-items: center;
-  gap: var(--fib-13, 13px);
-  padding: var(--fib-13, 13px) var(--fib-21, 21px);
-  margin-bottom: var(--fib-21, 21px);
+  gap: 10px;
 }
-
-.wiki-toolbar .n-input {
+.wiki-layout :deep(.sidebar-item .item-code),
+.wiki-sidebar .item-code {
+  flex-shrink: 0;
+  min-width: 36px;
+  height: 20px;
+  line-height: 20px;
+}
+.wiki-layout :deep(.sidebar-item .item-title),
+.wiki-sidebar .item-title {
   flex: 1;
-  min-width: 200px;
-}
-
-.wiki-search-actions {
-  display: flex;
-  gap: 8px;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  line-height: 1.35;
+  font-size: 13px;
 }
 
 .wiki-main {
@@ -258,115 +392,402 @@ export default {
   min-height: 0;
   width: 100%;
   box-sizing: border-box;
-  overflow: auto;
+  overflow: hidden !important;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 16px 20px 16px;
+  scrollbar-width: none;
+}
+.wiki-main::-webkit-scrollbar { display: none; width: 0; height: 0; }
+
+/* 头部：文案 + 紧凑 Control Rail */
+.wiki-head {
+  flex-shrink: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px 20px;
+}
+.wiki-kicker {
+  margin: 0 0 4px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: #5ED9A8;
+  font-family: var(--font-mono, monospace);
+}
+.wiki-title {
+  margin: 0 0 4px;
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1.25;
+  color: var(--text);
+  font-family: var(--font-ui);
+}
+.wiki-desc {
+  margin: 0;
+  font-size: 13px;
+  color: var(--muted);
+  line-height: 1.4;
 }
 
-/* 单列纵向 Feed — 对齐 Home BUL 公告栏 */
+.wiki-control-rail {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+.wiki-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: min(280px, 42vw);
+  height: 36px;
+  padding: 0 12px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.03);
+  transition: border-color 0.15s, background 0.15s;
+}
+.wiki-search:focus-within {
+  border-color: rgba(94, 217, 168, 0.4);
+  background: rgba(94, 217, 168, 0.04);
+}
+.wiki-search-icon {
+  flex-shrink: 0;
+  color: var(--muted);
+  opacity: 0.85;
+}
+.wiki-search-input {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: var(--text);
+  font-size: 13px;
+  font-family: var(--font-ui);
+}
+.wiki-search-input::placeholder { color: var(--muted); opacity: 0.85; }
+.wiki-search-input::-webkit-search-cancel-button { display: none; }
+
+.wiki-submit-btn {
+  flex-shrink: 0;
+  height: 36px;
+  padding: 0 14px;
+  border: 1px solid rgba(94, 217, 168, 0.35);
+  border-radius: 8px;
+  background: rgba(94, 217, 168, 0.12);
+  color: #5ED9A8;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: var(--font-ui);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s, border-color 0.15s, transform 0.15s;
+}
+.wiki-submit-btn:hover {
+  background: rgba(94, 217, 168, 0.2);
+  border-color: rgba(94, 217, 168, 0.55);
+  transform: translateY(-1px);
+}
+
+.wiki-stage {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+  width: 100%;
+  min-width: 0;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+  align-items: stretch;
+}
+@media (min-width: 900px) {
+  .wiki-stage {
+    grid-template-columns: 1.3fr 1fr !important;
+  }
+}
+
+.wiki-feed-col {
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
 .wiki-list-panel {
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  padding: 0;
+  gap: 10px;
+  width: 100%;
+  padding: 0 4px 8px 0;
   border: none;
   background: transparent;
-  box-shadow: none;
-  max-width: 720px;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.wiki-list-panel::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
 }
 
 .wiki-item {
-  padding: 12px 16px;
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  border-radius: var(--card-radius);
+  width: 100%;
+  padding: 14px 16px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 10px;
   background: rgba(255, 255, 255, 0.02);
   cursor: pointer;
-  transition: border-color 0.15s, background 0.15s;
-  min-height: 0;
-  height: auto;
+  transition: border-color 0.18s ease, background 0.18s ease, transform 0.18s ease;
   box-sizing: border-box;
-  box-shadow: none;
-  transform: none;
+  flex-shrink: 0;
 }
-
 .wiki-item:hover {
   background: rgba(255, 255, 255, 0.035);
-  border-color: rgba(var(--primary-rgb), 0.22);
-  transform: none;
+  border-color: rgba(94, 217, 168, 0.3);
+  transform: translateY(-2px);
 }
-
 .wiki-item-head {
   display: flex;
   align-items: flex-start;
   gap: 12px;
-  height: 100%;
 }
-
-.wiki-item-body {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-}
-
+.wiki-item-body { flex: 1; min-width: 0; }
 .wiki-item-title {
   margin: 0 0 6px;
-  font-size: 13px;
+  font-size: 15px;
   font-weight: 600;
-  line-height: 1.35;
+  line-height: 1.4;
   color: var(--text);
   font-family: var(--font-ui);
 }
-.wiki-main {
-  overflow: auto;
-  min-height: 0;
-}
-
 .wiki-item-summary {
-  margin: 0 0 12px;
-  font-size: var(--text-sm);
+  margin: 0 0 10px;
+  font-size: 13px;
   color: var(--muted);
-  line-height: var(--text-sm--line-height);
+  line-height: 1.55;
   display: -webkit-box;
-  -webkit-line-clamp: 3;
+  -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
-  flex: 1;
 }
-
 .wiki-item-foot {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  margin-top: auto;
 }
-
-.wiki-item-tags {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-
-.wiki-item-time {
-  font-size: var(--text-xs);
-  color: var(--muted);
-}
-
+.wiki-item-tags { display: flex; flex-wrap: wrap; gap: 6px; }
+.wiki-item-time { font-size: 11px; color: var(--muted); font-family: var(--font-mono); }
 .wiki-item-arrow {
-  color: var(--primary);
-  font-size: var(--text-lg);
+  color: #5ED9A8;
   flex-shrink: 0;
   margin-top: 2px;
+  opacity: 0.55;
+  transition: opacity 0.15s, transform 0.15s;
 }
-
+.wiki-item:hover .wiki-item-arrow {
+  opacity: 1;
+  transform: translateX(2px);
+}
 .wiki-empty {
-  grid-column: 1 / -1;
-  padding: 48px 18px;
+  padding: 40px 18px;
   text-align: center;
   color: var(--muted);
-  font-size: var(--text-sm);
-  border: 1px dashed var(--border);
-  border-radius: var(--card-radius);
-  background: var(--r2s-card, var(--card-bg));
+  border: 1px dashed rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+}
+
+.wiki-aside-col {
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.wiki-aside-col::-webkit-scrollbar { display: none; width: 0; height: 0; }
+
+.wiki-aside-card {
+  padding: 16px;
+  border-radius: 10px;
+  flex-shrink: 0;
+}
+.wiki-aside-card--soft {
+  border: 1px solid rgba(94, 217, 168, 0.14);
+  background: rgba(255, 255, 255, 0.02);
+}
+.wiki-aside-card--guide {
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: transparent;
+}
+.wiki-aside-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 14px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+}
+.wiki-aside-head--muted { color: var(--muted); font-weight: 550; }
+.wiki-aside-subhead {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 14px 0 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.wiki-stats {
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+  margin-bottom: 14px;
+  padding: 10px 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+.wiki-stat {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+.wiki-stat-label {
+  font-size: 11px;
+  color: var(--muted);
+  letter-spacing: 0.02em;
+}
+.wiki-stat-value {
+  font-size: 18px;
+  font-weight: 700;
+  color: #5ED9A8;
+  font-family: var(--font-mono, monospace);
+  letter-spacing: -0.02em;
+}
+.wiki-stat-divider {
+  width: 1px;
+  margin: 2px 14px;
+  background: rgba(255, 255, 255, 0.08);
+  flex-shrink: 0;
+}
+
+.wiki-hot-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.wiki-hot-link {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 4px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+  text-align: left;
+  font-family: var(--font-ui);
+  transition: background 0.15s;
+}
+.wiki-hot-link:hover { background: rgba(94, 217, 168, 0.06); }
+.wiki-hot-title {
+  flex: 1;
+  min-width: 0;
+  font-size: 13px;
+  line-height: 1.4;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.wiki-hot-arrow {
+  flex-shrink: 0;
+  color: #5ED9A8;
+  opacity: 0.5;
+  transition: opacity 0.15s, transform 0.15s;
+}
+.wiki-hot-link:hover .wiki-hot-arrow {
+  opacity: 1;
+  transform: translateX(2px);
+}
+.wiki-hot-empty {
+  font-size: 12px;
+  color: var(--muted);
+  padding: 8px 4px;
+}
+
+.wiki-guide-text {
+  margin: 0 0 10px;
+  font-size: 12px;
+  line-height: 1.65;
+  color: var(--muted);
+}
+.wiki-guide-mini {
+  margin: 0 0 14px;
+  padding-left: 16px;
+  font-size: 11px;
+  line-height: 1.7;
+  color: var(--muted);
+  opacity: 0.9;
+}
+.wiki-guide-link {
+  display: inline-flex;
+  align-items: center;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: #5ED9A8;
+  font-size: 12px;
+  font-weight: 500;
+  font-family: var(--font-ui);
+  cursor: pointer;
+  opacity: 0.9;
+  transition: opacity 0.15s, transform 0.15s;
+}
+.wiki-guide-link:hover {
+  opacity: 1;
+  transform: translateX(2px);
+}
+
+/* Chip / Tag — 薄荷绿晶片，禁粉 */
+.wiki-layout :deep(.link-code),
+.wiki-layout :deep(.item-code),
+.wiki-layout .link-code,
+.wiki-layout .item-code,
+.wiki-layout .chip-cut,
+.wiki-doc-chip {
+  background: rgba(94, 217, 168, 0.1) !important;
+  color: #5ED9A8 !important;
+  border: 1px solid rgba(94, 217, 168, 0.25) !important;
+}
+.wiki-layout :deep(.n-tag) {
+  background: rgba(94, 217, 168, 0.08) !important;
+  color: #5ED9A8 !important;
+  border: 1px solid rgba(94, 217, 168, 0.22) !important;
 }
 </style>

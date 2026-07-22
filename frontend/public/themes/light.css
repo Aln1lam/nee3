@@ -1,10 +1,10 @@
 :root {
   /* NEEPU 二次元 / 轻游戏 · light — docs/ui-style-guide.md */
   --color-primary: #2DB58A;
-  --color-accent: #EC4899;
+  --color-accent: #2DB58A;
   --color-depth: #60A5FA;
   --color-neon: #5ED9A8;
-  --accent-red: #EC4899;
+  --accent-red: #E11D48;
   --primary: var(--color-primary);
   --accent: var(--color-accent);
   --muted: #64748B;
@@ -54,7 +54,7 @@
 
   --gradient-page-base: #EEF2F5;
   --gradient-page-glow: radial-gradient(ellipse at 20% 0%, rgba(45, 181, 138, 0.14), transparent 55%),
-    radial-gradient(ellipse at 90% 10%, rgba(236, 72, 153, 0.08), transparent 45%);
+    radial-gradient(ellipse at 90% 10%, rgba(45, 181, 138, 0.08), transparent 45%);
   --noise-opacity: 0;
 
   --main-surface-bg: #EEF2F5;
@@ -75,9 +75,9 @@
   --gradient-btn-glow-soft: none;
 
   --gradient-border: rgba(45, 181, 138, 0.35);
-  --gradient-tag-fill: rgba(236, 72, 153, 0.12);
-  --gradient-tag-text: #DB2777;
-  --gradient-tag-border: rgba(236, 72, 153, 0.24);
+  --gradient-tag-fill: rgba(45, 181, 138, 0.1);
+  --gradient-tag-text: #2DB58A;
+  --gradient-tag-border: rgba(45, 181, 138, 0.25);
 
   --gradient-nav-bg: rgba(238, 242, 245, 0.88);
   --gradient-nav-active: rgba(45, 181, 138, 0.14);

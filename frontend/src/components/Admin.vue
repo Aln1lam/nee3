@@ -437,8 +437,19 @@ export default {
 
     async function createChallenge() {
       try {
-        const payload = { title: newChallenge.value.title, flag: newChallenge.value.flag, score: newChallenge.value.score, game_id: newChallenge.value.game_id }
-        await axios.post('/api/admin/challenges', payload)
+        const gameId = newChallenge.value.game_id
+        if (!gameId) {
+          errorMsg.value = '创建题目需要选择比赛'
+          return
+        }
+        const payload = {
+          title: newChallenge.value.title,
+          flag: newChallenge.value.flag,
+          original_points: newChallenge.value.score,
+          score: newChallenge.value.score,
+        }
+        // 主路径：/api/admin/challenges/games/{gameId}/challenges（扁平 POST 已不存在）
+        await axios.post(`/api/admin/challenges/games/${gameId}/challenges`, payload)
         newChallenge.value = { title: '', flag: '', score: 100, game_id: null }
         await load()
       } catch (e) { console.error(e); errorMsg.value = '创建题目失败' }
@@ -446,21 +457,40 @@ export default {
 
     async function saveChallenge(c) {
       try {
-        await axios.put('/api/admin/challenges/' + c.id, { score: c.score, title: c.title, flag: c.flag })
+        const gameId = c.game_id
+        if (!gameId) {
+          errorMsg.value = '保存题目缺少 game_id'
+          return
+        }
+        await axios.put(`/api/admin/challenges/games/${gameId}/challenges/${c.id}`, {
+          original_points: c.score,
+          score: c.score,
+          title: c.title,
+          flag: c.flag,
+        })
         await load()
       } catch (e) { console.error(e); errorMsg.value = '保存题目失败' }
     }
 
     async function deleteChallenge(c) {
       try {
-        await axios.delete('/api/admin/challenges/' + c.id)
+        const gameId = c.game_id
+        if (!gameId) {
+          errorMsg.value = '删除题目缺少 game_id'
+          return
+        }
+        await axios.delete(`/api/admin/challenges/games/${gameId}/challenges/${c.id}`)
         await load()
       } catch (e) { console.error(e); errorMsg.value = '删除题目失败' }
     }
 
     async function saveGame(g) {
       try {
-        await axios.put('/api/admin/games/' + g.id, { start_time: g.start_time ? g.start_time.toISOString() : null, end_time: g.end_time ? g.end_time.toISOString() : null })
+        // /api/admin/games 已 410；赛事写操作走 competitions 主路径
+        await axios.put(`/api/competitions/admin/${g.id}/update`, {
+          start_time: g.start_time ? g.start_time.toISOString() : null,
+          end_time: g.end_time ? g.end_time.toISOString() : null,
+        })
         await load()
       } catch (e) { console.error(e); errorMsg.value = '保存比赛失败' }
     }

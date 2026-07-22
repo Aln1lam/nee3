@@ -37,7 +37,7 @@
 | 角色 | Token | 浅色 | 深色 | 用途 |
 |------|-------|------|------|------|
 | Primary | `var(--primary)` | `#2DB58A` | `#5ED9A8` | 主按钮、链接、选中、侧栏强调 |
-| Accent | `var(--accent)` | `#EC4899` | `#F472B6` | 分类 Chip、徽章 |
+| Accent / Chip | `var(--primary)` / 薄荷绿 | `#2DB58A` | `#5ED9A8` | **Chip 强制薄荷绿，禁止粉/紫** |
 | Docker 激活 | `#2496ED`（特例） | 同左 | 同左 | **仅**容器运行指示灯蓝光呼吸 |
 | Surface | `var(--card-bg)` | `#FFFFFF` | `#232838` / `#131722` | 卡片、面板 |
 | Canvas | `var(--page-bg)` | `#EEF2F5` | `#0B0E14` / `#1A1D2E` | 页面底 |

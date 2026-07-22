@@ -76,6 +76,17 @@
         ></textarea>
         <p class="help-text">显示在首页的重要公告</p>
       </div>
+
+      <div class="form-group">
+        <label>训练场欢迎公告 (Markdown/Text)</label>
+        <textarea
+          v-model="settings.platform_training_welcome"
+          class="form-textarea"
+          placeholder="欢迎来到 NEEPU 练习场！支持 Markdown…"
+          rows="8"
+        ></textarea>
+        <p class="help-text">显示在练习场顶部欢迎面板，支持 Markdown；保存后立即对选手生效</p>
+      </div>
     </div>
 
     <div class="settings-card">
@@ -207,13 +218,12 @@
 </template>
 
 <script>
-import { ref, inject, onMounted } from 'vue'
+import { ref, onMounted } from 'vue'
+import platformAdmin from '@/services/admin/platform'
 
 export default {
   name: 'SystemSettings',
   setup() {
-    const axios = inject('axios')
-    
     const settings = ref({
       // 平台基本信息
       site_name: 'NEEPU CTF',
@@ -225,6 +235,7 @@ export default {
       maintenance_mode: false,
       maintenance_message: '系统正在维护中，敬请期待...',
       announcement: '欢迎来到 NEEPU CTF 平台！',
+      platform_training_welcome: '',
       
       // 功能开关
       allow_registration: true,
@@ -281,18 +292,24 @@ export default {
 
     async function loadSettings() {
       try {
-        const token = localStorage.getItem('neepu_token')
-        // 获取 env 绑定的值
-        const envRes = await axios.get('/api/admin/platform/env', { headers: { Authorization: `Bearer ${token}` } })
+        const envRes = await platformAdmin.getEnv()
         const envVars = (envRes && envRes.data && envRes.data.vars) || {}
-        // 获取运行时配置（DB 存储）
-        const cfgRes = await axios.get('/api/admin/platform/config', { headers: { Authorization: `Bearer ${token}` } })
+        const cfgRes = await platformAdmin.getConfig()
         const cfg = cfgRes && cfgRes.data ? cfgRes.data : {}
+
+        let uiWelcome = ''
+        try {
+          const uiRes = await platformAdmin.getUiConfig()
+          uiWelcome = uiRes?.data?.current?.training_welcome || ''
+        } catch (uiErr) {
+          console.warn('加载 UI 配置失败', uiErr)
+        }
 
         settings.value = {
           ...settings.value,
           ...parseConfig(cfg),
-          ...mapEnvToSettings(envVars)
+          ...mapEnvToSettings(envVars),
+          platform_training_welcome: uiWelcome || settings.value.platform_training_welcome || '',
         }
         showStatus('success', '设置已加载')
       } catch (e) {
@@ -305,7 +322,6 @@ export default {
       if (saving.value) return
       saving.value = true
       try {
-        const token = localStorage.getItem('neepu_token')
         // 1) 写入 .env（管理员可编辑的键）
         const updates = {
           'NEEPU_SITE_NAME': settings.value.site_name,
@@ -324,11 +340,21 @@ export default {
           'NEEPU_ALLOW_GAMES': settings.value.allow_games ? 'true' : 'false',
           'NEEPU_REQUIRE_EMAIL_VERIFICATION': settings.value.require_email_verification ? 'true' : 'false'
         }
-        await axios.post('/api/admin/platform/env', { updates }, { headers: { Authorization: `Bearer ${token}` } })
+        await platformAdmin.updateEnv(updates)
 
         // 2) 仍然更新数据库中的运行时配置（保持 SystemConfig 同步）
-        await axios.patch('/api/admin/platform/config', settings.value, { headers: { Authorization: `Bearer ${token}` } })
-        showStatus('success', '设置保存成功（已写入 .env 并同步运行时配置）')
+        await platformAdmin.updateConfig(settings.value)
+        await platformAdmin.updateUiConfig({
+          platform_training_welcome: settings.value.platform_training_welcome || '',
+        })
+        try {
+          const { clearPlatformCache } = await import('@/services/platform')
+          clearPlatformCache()
+          window.dispatchEvent(new CustomEvent('neepu_platform_updated', {
+            detail: { training_welcome: settings.value.platform_training_welcome || '' },
+          }))
+        } catch { /* ignore */ }
+        showStatus('success', '设置保存成功（已写入 .env / 运行时配置 / 训练场公告）')
       } catch (e) {
         console.error('保存设置失败:', e)
         const detail = e.response?.data?.error || e.response?.data?.msg || e.message
@@ -340,15 +366,11 @@ export default {
 
     async function testEmail() {
       try {
-        const token = localStorage.getItem('neepu_token')
         const email = prompt('请输入测试邮件接收地址：')
         if (!email) return
         
         showStatus('info', '正在发送测试邮件...')
-        await axios.post('/api/admin/platform/test-email',
-          { email },
-          { headers: { Authorization: `Bearer ${token}` } }
-        )
+        await platformAdmin.testEmail(email)
         showStatus('success', '测试邮件已发送，请检查收件箱')
       } catch (e) {
         console.error('发送测试邮件失败:', e)

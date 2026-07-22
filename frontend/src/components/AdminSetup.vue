@@ -110,13 +110,12 @@
 </template>
 
 <script>
-import { ref, inject } from 'vue'
+import { ref } from 'vue'
+import setupAdmin from '@/services/admin/setup'
 
 export default {
   name: 'AdminSetup',
   setup() {
-    const axios = inject('axios')
-    
     const checking = ref(false)
     const setting = ref(false)
     const searching = ref(false)
@@ -132,15 +131,7 @@ export default {
     async function checkCurrentUser() {
       checking.value = true
       try {
-        const token = localStorage.getItem('neepu_token')
-        if (!token) {
-          message.value = { type: 'error', text: '❌ 未登录' }
-          return
-        }
-
-        const res = await axios.get('/api/admin/check-current-user', {
-          headers: { Authorization: `Bearer ${token}` }
-        })
+        const res = await setupAdmin.checkCurrentUser()
         currentUser.value = res.data
         
         if (res.data.is_admin) {
@@ -149,7 +140,12 @@ export default {
           message.value = { type: 'error', text: `⚠️ ${res.data.nickname} 还不是管理员` }
         }
       } catch (e) {
-        message.value = { type: 'error', text: `❌ 检查失败: ${e.message}` }
+        const status = e?.response?.status
+        if (status === 401 || status === 403) {
+          message.value = { type: 'error', text: '❌ 未登录或会话已过期' }
+        } else {
+          message.value = { type: 'error', text: `❌ 检查失败: ${e.response?.data?.error || e.message}` }
+        }
       } finally {
         checking.value = false
       }
@@ -158,7 +154,7 @@ export default {
     async function setFirstUserAdmin() {
       setting.value = true
       try {
-        const res = await axios.post('/api/admin/set-admin-first-user')
+        const res = await setupAdmin.setFirstUserAdmin()
         message.value = { type: 'success', text: `✅ ${res.data.message}` }
         setTimeout(() => {
           window.location.reload()
@@ -181,10 +177,7 @@ export default {
       searchResult.value = null
 
       try {
-        const token = localStorage.getItem('neepu_token')
-        const res = await axios.get(`/api/admin/search-user/${searchNickname.value}`, {
-          headers: { Authorization: `Bearer ${token}` }
-        })
+        const res = await setupAdmin.searchUser(searchNickname.value)
         searchResult.value = res.data
       } catch (e) {
         searchError.value = `找不到用户 "${searchNickname.value}"`
@@ -196,11 +189,7 @@ export default {
     async function setUserAdmin(userId) {
       settingUser.value = true
       try {
-        const token = localStorage.getItem('neepu_token')
-        const res = await axios.patch(`/api/admin/users/${userId}`, 
-          { is_admin: true },
-          { headers: { Authorization: `Bearer ${token}` } }
-        )
+        await setupAdmin.setUserAdmin(userId, true)
         message.value = { type: 'success', text: `✅ 用户已设置为管理员！` }
         if (searchResult.value) {
           searchResult.value.is_admin = true
@@ -209,7 +198,7 @@ export default {
           window.location.reload()
         }, 1500)
       } catch (e) {
-        message.value = { type: 'error', text: `❌ 设置失败: ${e.message}` }
+        message.value = { type: 'error', text: `❌ 设置失败: ${e.response?.data?.error || e.message}` }
       } finally {
         settingUser.value = false
       }

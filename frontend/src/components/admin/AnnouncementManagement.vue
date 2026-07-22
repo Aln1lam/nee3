@@ -73,9 +73,9 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, onMounted, h } from 'vue'
 import { NDataTable, NButton, NModal, NForm, NFormItem, NInput, NSwitch, useMessage } from 'naive-ui'
-import axios from 'axios'
+import platformAdmin from '@/services/admin/platform'
 
 const message = useMessage()
 const loading = ref(false)
@@ -178,10 +178,7 @@ const columns = [
 const fetchAnnouncements = async () => {
   loading.value = true
   try {
-    const token = localStorage.getItem('neepu_token')
-    const res = await axios.get('/api/admin/platform/announcements', {
-      headers: { Authorization: `Bearer ${token}` }
-    })
+    const res = await platformAdmin.getAnnouncements()
     announcements.value = res.data
   } catch (err) {
     message.error('加载公告失败: ' + (err.response?.data?.error || err.message))
@@ -194,10 +191,7 @@ const handleCreateAnnouncement = async () => {
   try {
     await formRef.value?.validate()
     submitting.value = true
-    const token = localStorage.getItem('neepu_token')
-    await axios.post('/api/admin/platform/announcements', newAnnouncement.value, {
-      headers: { Authorization: `Bearer ${token}` }
-    })
+    await platformAdmin.createAnnouncement(newAnnouncement.value)
     message.success('公告创建成功')
     showCreateModal.value = false
     newAnnouncement.value = { title: '', content: '' }
@@ -225,11 +219,9 @@ const handleUpdateAnnouncement = async () => {
   try {
     await editFormRef.value?.validate()
     submitting.value = true
-    const token = localStorage.getItem('neepu_token')
-    await axios.patch(
-      `/api/admin/platform/announcements/${editingAnnouncement.value.id}`,
+    await platformAdmin.updateAnnouncement(
+      editingAnnouncement.value.id,
       editingAnnouncement.value,
-      { headers: { Authorization: `Bearer ${token}` } }
     )
     message.success('公告更新成功')
     showEditModal.value = false
@@ -246,18 +238,13 @@ const handleUpdateAnnouncement = async () => {
 const deleteAnnouncement = async (id) => {
   if (!confirm('确定要删除这条公告吗？')) return
   try {
-    const token = localStorage.getItem('neepu_token')
-    await axios.delete(`/api/admin/platform/announcements/${id}`, {
-      headers: { Authorization: `Bearer ${token}` }
-    })
+    await platformAdmin.deleteAnnouncement(id)
     message.success('公告已删除')
     fetchAnnouncements()
   } catch (err) {
     message.error('删除失败: ' + (err.response?.data?.error || err.message))
   }
 }
-
-import { h } from 'vue'
 
 onMounted(() => {
   fetchAnnouncements()

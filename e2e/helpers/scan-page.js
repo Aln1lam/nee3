@@ -5,7 +5,7 @@ import { expect } from '@playwright/test'
 import { attachPageMonitor, checkBrokenLinks } from './page-monitor.js'
 import { recordPageScan } from './scan-report.js'
 
-const BASE_URL = process.env.E2E_BASE_URL || 'http://localhost:3000'
+const BASE_URL = process.env.E2E_BASE_URL || 'http://localhost:5173'
 
 /**
  * @param {import('@playwright/test').Page} page

@@ -874,35 +874,31 @@ export default {
 
     async loadAdminTeams() {
       try {
-        const token = localStorage.getItem('neepu_token');
-        const res = await fetch('/api/teams/admin', { headers: { 'Authorization': `Bearer ${token}` } });
+        // JWT 仅在 HttpOnly Cookie；必须 credentials:include（ctfAdmin/authFetch）
+        const res = await ctfAdmin.listTeams()
         let data = null
         try {
           data = await res.json()
         } catch (e) {
-          // 非 JSON 返回（可能是 HTML 错误页），读取文本以便诊断
           const txt = await res.text()
-          console.error('loadAdminTeams: non-JSON response', res.status, txt.slice(0,200))
+          console.error('loadAdminTeams: non-JSON response', res.status, txt.slice(0, 200))
           throw new Error(`Unexpected response (${res.status}): see console for details`)
         }
-        this.adminTeams = data.teams || [];
-        this.page = 1;
+        this.adminTeams = data.teams || data.data?.teams || []
+        this.page = 1
       } catch (e) { console.error('加载管理员队伍失败', e); this.adminTeams = []; }
     },
 
     async deleteAdminTeam(teamId) {
       if (!confirm('确定要删除该队伍并解散？')) return;
       try {
-        const token = localStorage.getItem('neepu_token');
-        const res = await fetch(`/api/teams/admin/${teamId}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } });
+        const res = await ctfAdmin.deleteTeam(teamId)
         if (res.ok) { this.message.success('已删除'); await this.loadAdminTeams(); }
         else {
-          // 尝试解析 JSON，若失败则回退为纯文本显示
           try {
             const d = await res.json();
             this.message.error(apiErrorFromPayload(d, '删除失败'));
           } catch (e) {
-            const txt = await res.text();
             this.message.error('删除失败: HTTP ' + res.status);
           }
         }
@@ -912,14 +908,12 @@ export default {
     async deleteAllAdminTeams() {
       if (!confirm('确定要删除所有队伍并解散？此操作不可逆')) return;
       try {
-        const token = localStorage.getItem('neepu_token');
-        const res = await fetch('/api/teams/admin', { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } });
+        const res = await ctfAdmin.deleteAllTeams()
         try {
           const d = await res.json();
-          if (res.ok) { this.message.success('已删除 ' + (d.deleted || 0) + ' 个队伍'); await this.loadAdminTeams(); }
+          if (res.ok) { this.message.success('已删除 ' + (d.deleted || d.data?.deleted || 0) + ' 个队伍'); await this.loadAdminTeams(); }
           else { this.message.error(apiErrorFromPayload(d, '删除失败')); }
         } catch (e) {
-          const txt = await res.text();
           this.message.error('删除失败: HTTP ' + res.status);
         }
       } catch (e) { this.message.error(e.message || '删除失败'); }
@@ -1350,9 +1344,8 @@ export default {
       this.editingChallenge = challenge;
       this.challengeForm = this.getEmptyChallengeForms();
       try {
-        const token = localStorage.getItem('neepu_token');
         const gid = challenge.game_id || this.selectedGameId;
-        const res = await fetch(`/api/admin/challenges/games/${gid}/challenges/${challenge.id}`, { headers: { 'Authorization': `Bearer ${token}` } });
+        const res = await ctfAdmin.getChallenge(gid, challenge.id);
         if (res.ok) {
           const d = await res.json();
           const c = d.data || {};

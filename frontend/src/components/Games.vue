@@ -154,6 +154,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { NGrid, NGridItem, NCard, NButton, NTag, NDivider, NInput, NInputGroup } from 'naive-ui'
 import ChallengeCard from './ChallengeCard.vue'
 import ChallengeModal from './Challenge.vue'
+import { isLoggedIn, hasSession } from '@/services/auth'
 
 export default {
   components: { NGrid, NGridItem, NCard, NButton, NTag, NDivider, NInput, NInputGroup, ChallengeCard, ChallengeModal },
@@ -268,25 +269,17 @@ export default {
 
     async function loadGames() {
       try {
-        try {
-          const t = localStorage.getItem('neepu_token')
-          if (t && !axios.defaults.headers.common['Authorization']) {
-            axios.defaults.headers.common['Authorization'] = 'Bearer ' + t
-          }
-        } catch (e) {}
         const { data } = await axios.get('/api/competitions/?per_page=100')
         const payload = data?.data || data
         games.value = payload?.items || payload || []
-        console.log('Loaded games:', games.value)
+        const loggedIn = isLoggedIn() || !!(await hasSession())
         await Promise.all(games.value.map(async (g) => {
           try {
-            const t = localStorage.getItem('neepu_token')
-            if (!t) { g.joined = false; return }
+            if (!loggedIn) { g.joined = false; return }
             const r = await axios.get(`/api/competitions/${g.id}/joined`)
             g.joined = !!(r.data?.joined ?? r.data?.data?.joined)
           } catch(e) { console.error('Games: joined check failed for', g.id, e); g.joined = false }
         }))
-        console.log('Games after joined check:', games.value)
       } catch(e) { console.error(e) }
     }
 
@@ -316,9 +309,8 @@ export default {
     }
 
     async function joinGame(g) {
-      const token = localStorage.getItem('neepu_token')
-      if (!token) return alert('请先登录 / ACCESS DENIED')
-      if (!axios.defaults.headers.common['Authorization']) axios.defaults.headers.common['Authorization'] = 'Bearer ' + token
+      const loggedIn = isLoggedIn() || !!(await hasSession())
+      if (!loggedIn) return alert('请先登录 / ACCESS DENIED')
 
       g._joining = true
       try {
@@ -359,9 +351,9 @@ export default {
     onUnmounted(() => window.removeEventListener('neepu_user_refreshed', onUserRefreshed))
 
     async function waitAndLoad() {
-      const hasToken = () => !!localStorage.getItem('neepu_token')
-      if (hasToken()) await loadGames()
-      else {
+      if (isLoggedIn() || (await hasSession())) {
+        await loadGames()
+      } else {
         await new Promise((resolve) => {
           let settled = false
           function done() { if (!settled) { settled = true; cleanup(); resolve() } }

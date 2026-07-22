@@ -1,6 +1,7 @@
 <template>
   <MatrixShell
     class="challenge-workspace-matrix"
+    sidebar-width="280px"
     :show-sidebar="true"
     :bleed="false"
     :collapsible="!embedded"
@@ -13,35 +14,23 @@
     <template #sidebar>
       <aside class="tree-panel tree-panel--matrix">
       <div class="tree-panel-head">
-        <router-link v-if="backLink" :to="backLink.to" class="tree-back">{{ backLink.label }}</router-link>
         <div class="tree-title-row">
-          <h2 class="tree-panel-title">{{ gameTitle || '题目' }}</h2>
-          <button type="button" class="tree-refresh" aria-label="刷新题目" :disabled="challengesLoading" @click="loadChallenges">↻</button>
+          <h2 class="tree-panel-title">{{ displayGameTitle }}</h2>
+          <span v-if="mode === 'training'" class="status-chip status-chip--open">永久开放</span>
+          <n-tag v-else-if="gameStatus" size="small" :type="gameStatusType" round>{{ gameStatus }}</n-tag>
         </div>
-        <n-tag v-if="mode === 'training'" size="small" type="success" round>永久开放</n-tag>
-        <n-tag v-else-if="gameStatus" size="small" :type="gameStatusType">{{ gameStatus }}</n-tag>
-      </div>
-
-      <div class="tree-search">
-        <n-input
-          v-model:value="searchQuery"
-          placeholder="搜索名称或者标签"
-          clearable
-          size="small"
-        />
       </div>
 
       <div class="tree-body">
         <UiLoadingTips v-if="challengesLoading && !challenges.length" />
         <div v-else-if="!challengeTree.length" class="tree-empty">
-          <template v-if="challengesLoadError">加载失败，请点击刷新重试</template>
+          <template v-if="challengesLoadError">加载失败，请重新进入页面重试</template>
           <template v-else>{{ mode === 'competition' ? '暂无任务' : '暂无题目' }}</template>
         </div>
         <div v-for="group in challengeTree" :key="group.category" class="tree-group">
           <button type="button" class="tree-cat" @click="toggleCategory(group.category)">
             <span class="tree-cat-icon">{{ isCategoryExpanded(group.category) ? '▼' : '▶' }}</span>
             <span class="tree-cat-name">{{ group.category }}</span>
-            <span class="tree-cat-count">{{ group.items.length }}</span>
           </button>
           <ul v-show="isCategoryExpanded(group.category)" class="tree-items">
             <li
@@ -82,32 +71,41 @@
     </aside>
     </template>
 
-    <template #sidebar-footer>
-      <router-link v-if="mode === 'training'" to="/training" class="sidebar-link">
-        <span class="link-code">BAK</span>
-        <span>练习场列表</span>
-      </router-link>
-      <router-link v-else :to="`/games/${gameId}`" class="sidebar-link">
-        <span class="link-code">GME</span>
-        <span>赛事详情</span>
-      </router-link>
-      <router-link to="/games" class="sidebar-link">
-        <span class="link-code">CTF</span>
-        <span>赛事列表</span>
-      </router-link>
-      <router-link v-if="mode !== 'training'" :to="`/games/${gameId}/scoreboard`" class="sidebar-link">
-        <span class="link-code">SB</span>
-        <span>排行榜</span>
-      </router-link>
-      <router-link
-        :to="selectedChallenge
-          ? { path: '/submissions', query: { challenge: String(selectedChallenge.id), game: String(gameId) } }
-          : '/submissions'"
-        class="sidebar-link"
-      >
-        <span class="link-code">SUB</span>
-        <span>我的提交</span>
-      </router-link>
+    <!-- embedded（训练内嵌）时 footer 由外层 Training 统一提供，禁止双套堆叠 -->
+    <template v-if="!embedded" #sidebar-footer>
+      <template v-if="mode === 'training'">
+        <router-link to="/training" class="sidebar-link">
+          <span class="link-code">BAK</span>
+          <span>训练中心</span>
+        </router-link>
+        <div class="sidebar-footer-copy" style="margin-top: 10px;">
+          © 2022-2026
+          <a href="https://www.neepu.edu.cn/" target="_blank" rel="noopener">东北电力大学</a>
+        </div>
+      </template>
+      <template v-else>
+        <router-link :to="`/games/${gameId}`" class="sidebar-link">
+          <span class="link-code">GME</span>
+          <span>赛事详情</span>
+        </router-link>
+        <router-link to="/games" class="sidebar-link">
+          <span class="link-code">CTF</span>
+          <span>赛事列表</span>
+        </router-link>
+        <router-link :to="`/games/${gameId}/scoreboard`" class="sidebar-link">
+          <span class="link-code">SB</span>
+          <span>排行榜</span>
+        </router-link>
+        <router-link
+          :to="selectedChallenge
+            ? { path: '/submissions', query: { challenge: String(selectedChallenge.id), game: String(gameId) } }
+            : '/submissions'"
+          class="sidebar-link"
+        >
+          <span class="link-code">SUB</span>
+          <span>我的提交</span>
+        </router-link>
+      </template>
     </template>
 
     <div
@@ -123,214 +121,138 @@
       </div>
 
       <template v-if="selectedChallenge">
-        <div class="stage-tabbar">
-          <span class="stage-home" aria-hidden="true">⌂</span>
-          <div class="stage-tab active">
-            <span class="stage-tab-code">&lt;/&gt;</span>
-            <span class="stage-tab-label">{{ selectedChallenge.title }}</span>
-            <button type="button" class="stage-tab-close" aria-label="关闭题目" @click="closeChallenge">×</button>
-          </div>
-        </div>
-
         <div class="stage-content">
           <div class="stage-brief">
             <div class="brief-main">
-              <div class="brief-title-row">
-                <h3>{{ selectedChallenge.title }}</h3>
-                <span v-if="hasContainer" class="brief-env-hint">题目可开启在线环境</span>
+              <div class="brief-header">
+                <div class="brief-title-row">
+                  <h3>{{ selectedChallenge.title }}</h3>
+                  <span class="brief-solves">{{ solveCount }} solves</span>
+                  <span
+                    class="cat-chip"
+                    :style="categoryChipStyle(selectedChallenge.category)"
+                  >{{ selectedChallenge.category }}</span>
+                </div>
+                <div class="points-board" aria-label="题目分值">
+                  <span class="points-board__num">{{ challengePoints }}</span>
+                  <span class="points-board__unit">PTS</span>
+                </div>
               </div>
               <div v-if="selectedChallenge.tags?.length" class="tag-row">
                 <n-tag v-for="t in selectedChallenge.tags" :key="t" size="small">{{ t }}</n-tag>
               </div>
               <Article :content="descriptionContent" class="brief-desc" />
-              <div v-if="attachmentUrl" class="attachment-row" :class="{ 'attachment-row--primary': !hasContainer }">
-                <span>{{ hasContainer ? '附件' : '题目附件' }}</span>
-                <a :href="attachmentUrl" target="_blank" rel="noopener" class="attachment-dl">下载附件</a>
+
+              <!-- 附件题：仅下载附件（challenge_type 0/2） -->
+              <div v-if="showAttachmentBar" class="challenge-actions-bar">
+                <a
+                  v-if="attachmentUrl"
+                  class="action-btn action-btn--mint action-btn--lg"
+                  :href="attachmentUrl"
+                  target="_blank"
+                  rel="noopener"
+                >
+                  <span class="link-code chip-cut">DL</span>
+                  <span>下载附件</span>
+                </a>
+                <button
+                  v-else
+                  type="button"
+                  class="action-btn action-btn--ghost action-btn--lg"
+                  disabled
+                >
+                  <span class="link-code chip-cut">DL</span>
+                  <span>暂无附件</span>
+                </button>
               </div>
-              <div v-else-if="!hasContainer" class="attachment-row attachment-row--empty">
-                <span class="muted">本题无附件可下载</span>
-              </div>
-              <div v-if="hasContainer" class="container-panel">
-                <div class="container-panel-head">
-                  <span class="container-panel-title">在线环境</span>
-                  <span v-if="instance" class="container-status running">运行中</span>
-                  <span v-else class="container-status idle">未启动</span>
-                </div>
-                <template v-if="instance">
-                  <div v-if="!instance.connection_url" class="container-warn">
-                    暂无公网连接地址，请勿直连内网端口；点击「重新启动」或联系管理员。
-                  </div>
-                  <div v-else class="conn-box">
-                    <span v-if="instance.port" class="tcp-badge">tcp</span>
-                    <code class="conn-url" @click="selectConnText">{{ instance.connection_url }}</code>
-                    <n-button text size="tiny" @click="copyConn">复制</n-button>
-                  </div>
-                  <div v-if="remainingLabel" class="container-ttl">剩余 {{ remainingLabel }}</div>
-                  <div v-if="remainingSeconds > 0 && remainingSeconds < 900" class="container-warn">
-                    即将到期，请及时延时或保存进度。
-                  </div>
-                  <div class="container-actions">
-                    <n-button size="small" :loading="extending" :disabled="containerBusy" @click="extendContainer">延时 1 小时</n-button>
-                    <n-button size="small" type="error" secondary :loading="destroying" :disabled="containerBusy" @click="destroyContainer">销毁</n-button>
-                    <n-button size="small" secondary :loading="containerLoading" :disabled="containerBusy" @click="startContainer">重新启动</n-button>
+
+              <!-- 容器题：行内轻量化环境条 -->
+              <div v-if="isContainerChallenge" class="inline-env-bar">
+                <template v-if="!instance">
+                  <span class="inline-env-hint">▶ 题目可开启在线环境</span>
+                  <button
+                    type="button"
+                    class="inline-env-start"
+                    :disabled="containerBusy"
+                    @click="startContainer"
+                  >▶ {{ containerLoading ? '启动中…' : '启动！' }}</button>
+                </template>
+                <template v-else>
+                  <span class="inline-env-hint is-live">
+                    <i class="inline-env-dot" aria-hidden="true"></i>
+                    环境运行中
+                    <code
+                      v-if="endpointDisplay"
+                      class="inline-env-endpoint"
+                      :title="instance.connection_url"
+                      @click="openEnvironment"
+                    >{{ endpointDisplay }}</code>
+                  </span>
+                  <div class="inline-env-actions">
+                    <button
+                      type="button"
+                      class="inline-env-link"
+                      :disabled="!instance.connection_url"
+                      @click="openEnvironment"
+                    >打开</button>
+                    <button
+                      type="button"
+                      class="inline-env-link"
+                      :disabled="!instance.connection_url"
+                      @click="copyConn"
+                    >复制</button>
+                    <button
+                      type="button"
+                      class="inline-env-link"
+                      :disabled="containerBusy"
+                      @click="extendContainer"
+                    >{{ extending ? '延时中' : '延时' }}</button>
+                    <button
+                      type="button"
+                      class="inline-env-link is-danger"
+                      :disabled="containerBusy"
+                      @click="destroyContainer"
+                    >{{ destroying ? '销毁中' : '销毁' }}</button>
+                    <span v-if="remainingLabel" class="inline-env-ttl">{{ remainingLabel }}</span>
                   </div>
                 </template>
-                <div v-else class="container-actions">
-                  <n-button type="primary" size="small" :loading="containerLoading" :disabled="containerBusy" @click="startContainer">开启容器</n-button>
-                </div>
-                <div v-if="queueStatus" class="queue-status">{{ queueStatus }}</div>
+                <p v-if="queueStatus" class="inline-env-queue">{{ queueStatus }}</p>
               </div>
-            </div>
-            <div class="brief-aside">
-              <div class="brief-stat">
-                <span class="brief-stat-num">{{ solveCount }}</span>
-                <span class="brief-stat-label">solves</span>
-              </div>
-              <span
-                class="cat-chip cat-chip--lg"
-                :style="categoryChipStyle(selectedChallenge.category)"
-              >{{ selectedChallenge.category }}</span>
-              <span v-if="mode !== 'training'" class="brief-points">{{ selectedChallenge.current_score || selectedChallenge.points || 0 }} pts</span>
-            </div>
-          </div>
 
-          <div class="stage-tools">
-            <n-tabs type="line" animated v-model:value="activeTab" class="workspace-tabs" @update:value="onTabChange">
-              <n-tab-pane name="terminal" tab="终端">
-                <div class="terminal-panel">
-                  <div v-if="instance?.connection_url" class="conn-box">
-                    <span v-if="instance.port" class="tcp-badge">tcp</span>
-                    <code class="conn-url" @click="selectConnText">{{ instance.connection_url }}</code>
-                    <n-button text size="tiny" @click="copyConn">复制</n-button>
-                  </div>
-                  <div v-else-if="instance" class="container-warn">
-                    容器已启动但缺少 connection_url，请重新启动或看左侧「在线环境」。
-                  </div>
-                  <div v-if="instance?.id || instance?.instance_id" class="logs-box">
-                    <div class="logs-head">
-                      <span>容器日志</span>
-                      <n-button text size="tiny" :loading="logsLoading" @click="loadInstanceLogs">刷新</n-button>
-                    </div>
-                    <pre class="logs-pre">{{ instanceLogs || '点击刷新拉取最近日志（非交互 Shell）' }}</pre>
-                  </div>
-                  <Terminal
+              <!-- 标准 Flag 提交面板（禁止终端交 Flag） -->
+              <div class="flag-submit-panel flag-submit-panel--dock">
+                <div class="flag-submit-head">
+                  <span class="link-code chip-cut">FLG</span>
+                  <span>提交 Flag</span>
+                  <span v-if="challengeSolved" class="flag-solved-badge">已解出</span>
+                </div>
+                <div class="flag-submit-row">
+                  <input
                     v-model="flagInput"
-                    :loading="submitting"
-                    :disabled="challengeSolved"
-                    :result="flagResult"
-                    @submit="submitFlag"
+                    class="flag-submit-input"
+                    type="text"
+                    placeholder="请输入 flag{...}"
+                    :disabled="challengeSolved || submitting"
+                    @keydown.enter.prevent="submitFlag"
                   />
+                  <button
+                    type="button"
+                    class="flag-submit-btn"
+                    :disabled="challengeSolved || submitting || !flagInput.trim()"
+                    @click="submitFlag"
+                  >{{ challengeSolved ? '已解锁' : (submitting ? '提交中…' : '提交 Flag') }}</button>
                 </div>
-              </n-tab-pane>
-
-              <n-tab-pane name="hints" tab="提示">
-                <UiLoadingTips v-if="hintsLoading" spin-size="small" />
-                <div v-else-if="hintItems.length === 0" class="muted">
-                  {{ mode === 'training' ? '本题无提示，训练场提示自动解锁' : '本题无提示，如需提示请联系管理员' }}
-                </div>
-                <ul v-else class="hint-list">
-                  <li v-for="(h, i) in hintItems" :key="h.id || i" class="hint-item">
-                    <template v-if="h.unlocked">
-                      <div class="hint-head">
-                        <strong v-if="hintItems.length > 1">提示 {{ i + 1 }}</strong>
-                        <span v-if="h.penalty > 0 && mode !== 'training'" class="penalty-tag">-{{ h.penalty }} pts</span>
-                      </div>
-                      <p class="hint-text">{{ h.text }}</p>
-                    </template>
-                    <template v-else>
-                      <n-button size="small" :loading="h.unlocking" @click="unlockHint(h)">
-                        解锁提示 {{ i + 1 }}{{ h.penalty > 0 ? ` (-${h.penalty} pts)` : '' }}
-                      </n-button>
-                    </template>
-                  </li>
-                </ul>
-              </n-tab-pane>
-
-              <n-tab-pane name="hammer" tab="🔨 锤子" :disabled="mode === 'training'">
-                <HammerPanel
-                  v-if="mode !== 'training' && selectedChallenge"
-                  :challenge-id="selectedChallenge.id"
-                  :game-id="gameId"
-                />
-              </n-tab-pane>
-
-              <n-tab-pane v-if="adminActive" name="manage" tab="管理">
-                <div class="admin-panel admin-panel--manage">
-                  <p class="admin-manage-hint">管理视图含统计与配置信息，直播/录屏时请切回选手视图。</p>
-                  <section v-if="stats" class="manage-section">
-                    <h4 class="manage-section-title">统计</h4>
-                    <div class="stat-row"><span>解出人数</span><strong>{{ stats.unique_solvers || 0 }}</strong></div>
-                    <div class="stat-row"><span>总提交数</span><strong>{{ stats.total_submissions || 0 }}</strong></div>
-                    <div class="stat-row"><span>通过率</span><strong>{{ stats.solve_rate || '0%' }}</strong></div>
-                    <div v-if="stats.first_solver" class="stat-row">
-                      <span>首解</span>
-                      <strong>{{ stats.first_solver.username }} · {{ formatStatTime(stats.first_solver.solved_at) }}</strong>
-                    </div>
-                  </section>
-                  <section v-else class="manage-section muted">正在加载统计…</section>
-                  <section class="manage-section">
-                    <h4 class="manage-section-title">题目设置</h4>
-                    <div class="stat-row"><span>上架状态</span><strong>{{ selectedChallenge.is_enabled === false ? '已下架' : '已上架' }}</strong></div>
-                    <div class="stat-row"><span>分类</span><strong>{{ selectedChallenge.category || '无' }}</strong></div>
-                    <div class="stat-row"><span>类型</span><strong>{{ challengeTypeLabel }}</strong></div>
-                    <div class="stat-row"><span>分值</span><strong>{{ selectedChallenge.current_score || selectedChallenge.points || 0 }}</strong></div>
-                    <div v-if="selectedChallenge.flag_template" class="stat-row">
-                      <span>Flag 模板</span><strong class="mono">{{ selectedChallenge.flag_template }}</strong>
-                    </div>
-                    <div class="manage-actions">
-                      <UiButton
-                        size="small"
-                        :variant="selectedChallenge.is_enabled === false ? 'primary' : 'secondary'"
-                        :loading="!!selectedChallenge._toggling"
-                        @click="toggleChallengeEnabled(selectedChallenge)"
-                      >{{ selectedChallenge.is_enabled === false ? '上架题目' : '下架题目' }}</UiButton>
-                      <n-button size="small" type="primary" @click="goAdminChallenge">前往靶场管理</n-button>
-                    </div>
-                  </section>
-                  <section class="manage-section">
-                    <h4 class="manage-section-title">附件</h4>
-                    <p v-if="attachmentUrl">附件 ID: {{ selectedChallenge.attachment_id }}</p>
-                    <p v-else class="muted">本题暂无附件</p>
-                    <a v-if="attachmentUrl" :href="attachmentUrl" target="_blank" rel="noopener" class="admin-link">下载附件</a>
-                  </section>
-                  <section v-if="hasContainer" class="manage-section">
-                    <h4 class="manage-section-title">实例</h4>
-                    <div v-if="instance" class="conn-box">
-                      <span v-if="instance.port" class="tcp-badge">tcp</span>
-                      {{ instance.connection_url || '无' }}
-                    </div>
-                    <p v-else class="muted">当前无运行中的实例</p>
-                  </section>
-                </div>
-              </n-tab-pane>
-
-              <n-tab-pane v-if="mode !== 'training'" name="blood" tab="血榜">
-                <ul v-if="currentBloodRecords.length" class="blood-list">
-                  <li v-for="rec in currentBloodRecords" :key="rec.blood_level" class="blood-list-item">
-                    <span class="blood-tag" :class="`blood-tag--${rec.blood_level}`">{{ bloodLevelName(rec.blood_level) }}</span>
-                    <span>{{ rec.user_name || '—' }}</span>
-                    <span v-if="rec.team_name" class="muted">· {{ rec.team_name }}</span>
-                    <span class="muted blood-time">{{ formatStatTime(rec.solved_at) }}</span>
-                  </li>
-                </ul>
-                <div v-else class="muted">暂无首解记录</div>
-              </n-tab-pane>
-
-              <n-tab-pane name="writeup" tab="题解" v-if="mode === 'training' || gameArchived || adminActive">
-                <div v-if="!selectedChallenge.writeup" class="muted">
-                  {{ mode === 'training' ? '暂无题解' : '题解将在归档后开放' }}
-                </div>
-                <Article v-else :content="writeupContent" :show-toc="true" />
-              </n-tab-pane>
-            </n-tabs>
+                <p v-if="flagResult" class="flag-submit-result" :class="flagResult.ok ? 'is-ok' : 'is-err'">
+                  {{ flagResult.msg }}
+                </p>
+              </div>
+            </div>
           </div>
+
         </div>
       </template>
 
-      <div v-else class="stage-empty">
-        <span class="stage-empty-icon" aria-hidden="true">🎯</span>
-        <p>从左侧选择题目开始{{ mode === 'training' ? '练习' : '挑战' }}</p>
-      </div>
+      <div v-else class="stage-empty stage-empty--canvas" aria-hidden="true"></div>
     </section>
     </div>
   </MatrixShell>
@@ -339,9 +261,9 @@
 <script>
 import { ref, computed, watch, inject, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { NTag, NInput, NButton, NTabs, NTabPane, useMessage } from 'naive-ui'
+import { NTag, NButton, useMessage } from 'naive-ui'
 import { UiLoadingTips, UiPopover, UiButton } from '@/components/ui'
-import { Article, Terminal, HammerPanel, MatrixShell } from '@/components/shared'
+import { Article, MatrixShell } from '@/components/shared'
 import { ctfAdmin } from '@/services/admin'
 import { parseJsonResponse } from '@/utils/http'
 import { unwrapList } from '../utils/unwrap'
@@ -370,7 +292,7 @@ function categoryChipStyle(cat) {
 
 export default {
   name: 'ChallengeWorkspace',
-  components: { NTag, NInput, NButton, NTabs, NTabPane, UiLoadingTips, UiPopover, UiButton, Terminal, HammerPanel, Article, MatrixShell },
+  components: { NTag, NButton, UiLoadingTips, UiPopover, UiButton, Article, MatrixShell },
   props: {
     gameId: { type: [Number, String], required: true },
     mode: { type: String, default: 'competition' },
@@ -378,7 +300,6 @@ export default {
     gameStatus: { type: String, default: '' },
     gameArchived: { type: Boolean, default: false },
     hideGameHeader: { type: Boolean, default: false },
-    backLink: { type: Object, default: null },
     embedded: { type: Boolean, default: false },
   },
   emits: ['challenge-change', 'hammer-unread'],
@@ -387,6 +308,31 @@ export default {
     const route = useRoute()
     const router = useRouter()
     const message = useMessage()
+    const resolvedGameTitle = ref(props.gameTitle || '')
+    const displayGameTitle = computed(() => resolvedGameTitle.value || props.gameTitle || (props.mode === 'training' ? '练习场' : '赛事题目'))
+
+    async function ensureTrainingAccess() {
+      if (props.mode !== 'training' || !props.gameId) return
+      try {
+        await axios.post(`/api/competitions/${props.gameId}/training-join`)
+      } catch (e) {
+        const status = e?.response?.status
+        if (status === 401) {
+          message.warning('请先登录后再进入练习场')
+          router.push({ name: 'Auth', query: { redirect: route.fullPath } })
+        }
+      }
+    }
+
+    async function loadGameMeta() {
+      if (!props.gameId) return
+      try {
+        const { data } = await axios.get(`/api/competitions/${props.gameId}`)
+        const meta = data?.data || data
+        if (meta?.title) resolvedGameTitle.value = meta.title
+      } catch { /* ignore */ }
+    }
+
 
     let requestAbort = null
     function beginRequestScope() {
@@ -414,6 +360,8 @@ export default {
     const challengeSolved = ref(false)
     const flagResult = ref(null)
     const hintItems = ref([])
+    const auxHintsOpen = ref(false)
+    const auxWriteupOpen = ref(false)
     const hintsLoading = ref(false)
     const stats = ref(null)
     const instance = ref(null)
@@ -447,14 +395,13 @@ export default {
     })
 
     const challengeTypeLabel = computed(() => {
-      const t = selectedChallenge.value?.challenge_type
       const map = {
         0: '静态附件',
         1: '静态容器',
         2: '动态附件',
         3: '动态容器',
       }
-      return map[t] ?? '静态题'
+      return map[challengeTypeNum.value] ?? '静态题'
     })
 
     const filteredChallenges = computed(() => {
@@ -480,9 +427,28 @@ export default {
       return [...map.entries()].map(([category, items]) => ({ category, items }))
     })
 
-    const solveCount = computed(() =>
-      selectedChallenge.value?.solved_count || stats.value?.unique_solvers || 0,
-    )
+    function readSolves(obj) {
+      if (!obj || typeof obj !== 'object') return null
+      const n = obj.solves ?? obj.solved_count ?? obj.solves_count ?? obj.unique_solvers
+      if (n === undefined || n === null || n === '') return null
+      const v = Number(n)
+      return Number.isFinite(v) ? v : null
+    }
+
+    const challengePoints = computed(() => {
+      const ch = selectedChallenge.value || {}
+      const n = ch.current_score ?? ch.original_points ?? ch.points ?? ch.score ?? 0
+      const num = Number(n)
+      return Number.isFinite(num) ? num : 0
+    })
+
+    const solveCount = computed(() => {
+      const fromChallenge = readSolves(selectedChallenge.value)
+      if (fromChallenge != null) return fromChallenge
+      const fromStats = readSolves(stats.value)
+      if (fromStats != null) return fromStats
+      return 0
+    })
 
     const currentBloodRecords = computed(() => {
       const id = selectedChallenge.value?.id
@@ -495,10 +461,70 @@ export default {
 
     const writeupContent = computed(() => selectedChallenge.value?.writeup || '')
 
-    const hasContainer = computed(() =>
-      !!(selectedChallenge.value?.docker_image ||
-        selectedChallenge.value?.challenge_type === 1 ||
-        selectedChallenge.value?.challenge_type === 3),
+    /** 管理端题目类型：0 静态附件 / 1 静态容器 / 2 动态附件 / 3 动态容器 */
+    const challengeTypeNum = computed(() => {
+      const t = selectedChallenge.value?.challenge_type
+      const n = Number(t)
+      return Number.isFinite(n) ? n : 0
+    })
+
+    const isContainerChallenge = computed(() => {
+      const ch = selectedChallenge.value
+      if (!ch) return false
+      const ctype = challengeTypeNum.value
+      // 严格按管理端类型：1=静态容器 3=动态容器
+      if (ctype === 1 || ctype === 3) return true
+      // 兼容：明确声明支持容器且带镜像
+      if ((ch.supports_container === true || ch.needs_container === true) && ch.docker_image) return true
+      if (ch.docker_image && ctype !== 0 && ctype !== 2) return true
+      return false
+    })
+
+    const isAttachmentChallenge = computed(() => {
+      const ctype = challengeTypeNum.value
+      return ctype === 0 || ctype === 2
+    })
+
+    /** 附件条：附件类题目，或容器题额外挂了附件时也显示下载 */
+    const showAttachmentBar = computed(() => {
+      if (attachmentUrl.value) return true
+      return isAttachmentChallenge.value
+    })
+
+    // 兼容旧引用
+    const supportsContainer = isContainerChallenge
+    const hasContainer = isContainerChallenge
+
+    const isTcpConn = computed(() => {
+      const url = String(instance.value?.connection_url || '')
+      if (!url) return false
+      if (/^https?:\/\//i.test(url)) return false
+      return /\bnc\b/i.test(url) || /:\d+$/.test(url) || Boolean(instance.value?.port)
+    })
+
+    /** 启动后主展示：优先 host:port */
+    const endpointDisplay = computed(() => {
+      const url = String(instance.value?.connection_url || '').trim()
+      if (!url) return ''
+      try {
+        if (/^https?:\/\//i.test(url)) {
+          const u = new URL(url)
+          return u.port ? `${u.hostname}:${u.port}` : u.host
+        }
+      } catch { /* ignore */ }
+      const nc = url.match(/^(?:nc\s+)?([\w.-]+)\s+(\d+)$/i)
+      if (nc) return `${nc[1]}:${nc[2]}`
+      const hp = url.match(/^([\w.-]+):(\d+)(?:\/.*)?$/)
+      if (hp) return `${hp[1]}:${hp[2]}`
+      if (instance.value?.port) {
+        const host = url.replace(/^https?:\/\//i, '').split(/[/:\s]/)[0]
+        return host ? `${host}:${instance.value.port}` : String(instance.value.port)
+      }
+      return url
+    })
+
+    const instanceId = computed(() =>
+      instance.value?.instance_id ?? instance.value?.id ?? null,
     )
 
     const attachmentUrl = computed(() => {
@@ -678,12 +704,40 @@ export default {
           const res = await axios.get(`/api/challenges/${ch.id}/stats`, bgConfig(signal))
           const d = res.data?.data || res.data
           if (d?.user_solved) solvedIds.value.add(ch.id)
+          const n = readSolves(d)
+          if (n != null) {
+            ch.solves = n
+            ch.solved_count = n
+            ch.solves_count = n
+          }
         } catch { /* ignore */ }
         try {
           const detail = await axios.get(`/api/challenges/${ch.id}`, bgConfig(signal))
-          if (detail.data?.data?.is_solved) solvedIds.value.add(ch.id)
+          const d = detail.data?.data
+          if (d?.is_solved) solvedIds.value.add(ch.id)
+          const n = readSolves(d)
+          if (n != null) {
+            ch.solves = n
+            ch.solved_count = n
+            ch.solves_count = n
+          }
         } catch { /* ignore */ }
       }))
+      // 若当前正打开某题，同步刷新其 solves 显示
+      if (selectedChallenge.value) {
+        const cur = challenges.value.find(c => c.id === selectedChallenge.value.id)
+        if (cur) {
+          const n = readSolves(cur)
+          if (n != null) {
+            selectedChallenge.value = {
+              ...selectedChallenge.value,
+              solves: n,
+              solved_count: n,
+              solves_count: n,
+            }
+          }
+        }
+      }
       await refreshBloodBoard()
     }
 
@@ -717,6 +771,11 @@ export default {
       if (activeTab.value === 'blood') refreshBloodBoard()
     }, POLL_INTERVALS.blood)
 
+    // 与 Docker 对账：容器中途退出时，前端不会一直假显示「运行中」
+    const containerPoll = createVisibilityPoll(() => {
+      if (hasContainer.value && selectedChallenge.value) loadContainerInstance()
+    }, POLL_INTERVALS.container)
+
     async function selectChallenge(ch) {
       selectedChallenge.value = ch
       challengeOpenedAt.value[ch.id] = Date.now()
@@ -738,11 +797,10 @@ export default {
 
       try {
         const detailPromise = axios.get(`/api/challenges/${ch.id}`)
-        const statsPromise = adminActive.value
-          ? axios.get(`/api/challenges/${ch.id}/stats`).catch(() => null)
-          : Promise.resolve(null)
+        const statsPromise = axios.get(`/api/challenges/${ch.id}/stats`).catch(() => null)
         const [detailRes, statsRes] = await Promise.all([detailPromise, statsPromise])
         const detail = detailRes.data?.data || detailRes.data
+        const statsData = statsRes?.data?.data || null
         if (detail) {
           selectedChallenge.value = sanitizeChallengeDetail(ch, detail)
           if (detail.is_solved) {
@@ -750,11 +808,23 @@ export default {
             solvedIds.value.add(ch.id)
           }
         }
-        stats.value = adminActive.value
-          ? (statsRes?.data?.data || null)
-          : null
+        stats.value = statsData
+        // 用 stats 回填 solves，保证列表字段缺失时也能显示
+        if (statsData && selectedChallenge.value) {
+          const n = readSolves(statsData)
+          if (n != null) {
+            selectedChallenge.value = {
+              ...selectedChallenge.value,
+              solves: n,
+              solved_count: n,
+              solves_count: n,
+            }
+          }
+        }
 
         if (hasContainer.value) await loadContainerInstance()
+        auxHintsOpen.value = false
+        auxWriteupOpen.value = false
         await loadHints()
       } catch {
         message.error('加载题目详情失败')
@@ -866,6 +936,19 @@ export default {
       }
     }
 
+    function openEnvironment() {
+      const url = instance.value?.connection_url
+      if (url) {
+        window.open(url, '_blank', 'noopener')
+        return
+      }
+      if (!instance.value) {
+        startContainer()
+        return
+      }
+      message.warning('暂无公网连接地址，请尝试重新启动靶机')
+    }
+
     async function startContainer() {
       if (!selectedChallenge.value || containerBusy.value) return
       containerLoading.value = true
@@ -938,7 +1021,7 @@ export default {
     }
 
     async function extendContainer() {
-      const id = instance.value?.instance_id
+      const id = instanceId.value
       if (!id || containerBusy.value) return
       extending.value = true
       try {
@@ -961,7 +1044,7 @@ export default {
     }
 
     async function destroyContainer() {
-      const id = instance.value?.instance_id
+      const id = instanceId.value
       if (!id || containerBusy.value) return
       destroying.value = true
       try {
@@ -997,9 +1080,15 @@ export default {
         message.warning('暂无连接地址可复制')
         return
       }
-      const done = () => message.success('已复制连接地址')
+      // Pwn: 若是 host:port，顺带生成 nc 命令
+      let text = url
+      const m = url.match(/^(?:nc\s+)?([\w.-]+)\s+(\d+)$/i) || url.match(/^([\w.-]+):(\d+)$/)
+      if (m && !/^https?:/i.test(url)) {
+        text = `nc ${m[1]} ${m[2]}`
+      }
+      const done = () => message.success(isTcpConn.value ? '已复制 nc 命令' : '已复制连接地址')
       if (navigator.clipboard?.writeText) {
-        navigator.clipboard.writeText(url).then(done).catch(() => {
+        navigator.clipboard.writeText(text).then(done).catch(() => {
           // fallback: 选中文本提示手动 Ctrl+C
           message.info('自动复制失败，请手动选中地址后 Ctrl+C')
         })
@@ -1007,7 +1096,7 @@ export default {
       }
       try {
         const ta = document.createElement('textarea')
-        ta.value = url
+        ta.value = text
         ta.setAttribute('readonly', '')
         ta.style.position = 'fixed'
         ta.style.left = '-9999px'
@@ -1044,6 +1133,47 @@ export default {
           message.success('Flag 正确！' + bloodMsg)
           challengeSolved.value = true
           solvedIds.value.add(selectedChallenge.value.id)
+          // 即时刷新 solves：优先用提交响应，再回拉 /stats
+          const solvesFromSubmit = readSolves(payload)
+          const applySolves = (n) => {
+            if (n == null) return
+            selectedChallenge.value = {
+              ...selectedChallenge.value,
+              solves: n,
+              solved_count: n,
+              solves_count: n,
+            }
+            const listItem = challenges.value.find(c => c.id === selectedChallenge.value.id)
+            if (listItem) {
+              listItem.solves = n
+              listItem.solved_count = n
+              listItem.solves_count = n
+            }
+            if (stats.value) {
+              stats.value = {
+                ...stats.value,
+                unique_solvers: n,
+                solves: n,
+                solved_count: n,
+                solves_count: n,
+              }
+            } else {
+              stats.value = { unique_solvers: n, solves: n, solved_count: n, solves_count: n }
+            }
+          }
+          if (solvesFromSubmit != null) {
+            applySolves(solvesFromSubmit)
+          } else {
+            applySolves((readSolves(selectedChallenge.value) || 0) + 1)
+          }
+          axios.get(`/api/challenges/${selectedChallenge.value.id}/stats`)
+            .then((r) => {
+              const d = r.data?.data
+              const n = readSolves(d)
+              if (n != null) applySolves(n)
+              if (d) stats.value = { ...(stats.value || {}), ...d }
+            })
+            .catch(() => {})
           if (bloodLevel != null && bloodLevel <= 2) {
             const cid = selectedChallenge.value.id
             const list = bloodMap.value[cid] ? [...bloodMap.value[cid]] : []
@@ -1115,10 +1245,13 @@ export default {
       collapsedCategories.value = next
     }, { immediate: true })
 
-    watch(() => props.gameId, () => {
+    watch(() => props.gameId, async () => {
       selectedChallenge.value = null
       beginRequestScope()
-      loadChallenges().then(syncFromRoute)
+      await ensureTrainingAccess()
+      await loadGameMeta()
+      await loadChallenges()
+      syncFromRoute()
     })
 
     watch(() => route.query.challenge, syncFromRoute)
@@ -1136,9 +1269,12 @@ export default {
       refreshAdminState()
       applyAdminQueryFromRoute()
       window.addEventListener('neepu_user_refreshed', refreshAdminState)
+      await ensureTrainingAccess()
+      await loadGameMeta()
       await loadChallenges()
       syncFromRoute()
       bloodPoll.start()
+      containerPoll.start()
     })
 
     onUnmounted(() => {
@@ -1146,6 +1282,7 @@ export default {
       requestAbort = null
       clearRemainingTimer()
       bloodPoll.stop()
+      containerPoll.stop()
       window.removeEventListener('neepu_user_refreshed', refreshAdminState)
     })
 
@@ -1156,33 +1293,27 @@ export default {
     const shellCmd = computed(() => '')
     const shellPagePrompt = computed(() => {
       if (props.embedded) return ''
+      const name = displayGameTitle.value || (props.mode === 'training' ? '练习场' : '赛事')
       return props.mode === 'training'
-        ? '练习场 · TRAINING'
-        : '赛事题目 · CHALLENGES'
+        ? `练习场 · TRAINING / ${name}`
+        : `赛事 · CHALLENGES / ${name}`
     })
-    const shellPageTitle = computed(() => {
-      if (props.embedded) return ''
-      return props.gameTitle || (props.mode === 'training' ? '练习场' : '赛事题目')
-    })
-    const shellPageDesc = computed(() => {
-      if (props.embedded) return ''
-      if (props.mode === 'training') return '永久开放 · 无时间限制 · 不计入正式积分'
-      return props.gameStatus || '选择左侧题目开始挑战'
-    })
+    const shellPageTitle = computed(() => '')
+    const shellPageDesc = computed(() => '')
 
     return {
-      shellPath, shellCmd, shellPagePrompt, shellPageTitle, shellPageDesc,
+      shellPath, shellCmd, shellPagePrompt, shellPageTitle, shellPageDesc, displayGameTitle,
       challenges, challengesLoading, challengesLoadError, selectedChallenge, searchQuery,
       challengeTree, filteredChallenges, activeTab,
-      flagInput, submitting, challengeSolved, flagResult, hintItems, hintsLoading, stats, instance,
+      flagInput, submitting, challengeSolved, flagResult, hintItems, hintsLoading, auxHintsOpen, auxWriteupOpen, stats, instance,
       containerLoading, queueStatus, instanceLogs, logsLoading,
       extending, destroying, containerBusy, remainingLabel,
       gameStatusType, descriptionContent, writeupContent,
-      hasContainer, attachmentUrl, isAdmin, showAdminTools, adminActive,
-      challengeTypeLabel, toggleAdminTools, solveCount,
+      hasContainer, supportsContainer, isContainerChallenge, isAttachmentChallenge, showAttachmentBar, isTcpConn, endpointDisplay, instanceId, attachmentUrl, isAdmin, showAdminTools, adminActive,
+      challengeTypeLabel, toggleAdminTools, challengePoints, solveCount,
       isCategoryExpanded, toggleCategory, closeChallenge,
       isSolved, bloodRecords, bloodLevelName, bloodLevelShort, currentBloodRecords,
-      selectChallenge, submitFlag, startContainer, extendContainer, destroyContainer, loadChallenges,
+      selectChallenge, submitFlag, startContainer, extendContainer, destroyContainer, openEnvironment, loadChallenges,
       loadInstanceLogs, copyConn, selectConnText, onTabChange, loadHints, unlockHint, toggleChallengeEnabled,
       goAdminChallenge, formatStatTime, categoryStyle, categoryChipStyle,
     }
@@ -1211,11 +1342,28 @@ export default {
 
 /* ── 左栏：题目树 ── */
 .tree-panel {
+  --tree-font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif;
   display: flex;
   flex-direction: column;
   flex: 1;
   min-height: 0;
   background: transparent;
+  font-family: var(--tree-font);
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+}
+
+.tree-panel,
+.tree-panel .tree-cat,
+.tree-panel .tree-cat-name,
+.tree-panel .tree-item,
+.tree-panel .tree-item-title,
+.tree-panel .tree-panel-title,
+.tree-panel .tree-empty,
+.tree-panel .status-chip {
+  font-family: var(--tree-font) !important;
 }
 
 .tree-panel--matrix {
@@ -1223,25 +1371,53 @@ export default {
 }
 
 .tree-panel-head {
-  padding: var(--panel-padding-lg, 24px) var(--panel-padding, 16px) var(--panel-padding, 16px);
+  padding: 14px 16px 12px;
   border-bottom: 1px solid var(--border);
 }
 
-.tree-back {
-  display: inline-block;
-  margin-bottom: 8px;
-  font-size: var(--text-xs);
-  color: var(--primary);
-  text-decoration: none;
-}
-
-.tree-back:hover { text-decoration: underline; }
-
 .tree-title-row {
   display: flex;
+  flex-direction: row;
   align-items: center;
-  justify-content: space-between;
-  gap: 8px;
+  justify-content: flex-start;
+  flex-wrap: nowrap;
+  gap: 10px;
+  min-height: 28px;
+  width: 100%;
+}
+
+.tree-title-row .tree-panel-title {
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: calc(100% - 96px);
+  width: auto;
+  display: block;
+}
+
+.tree-title-row .status-chip,
+.tree-title-row .n-tag {
+  flex: 0 0 auto;
+}
+
+.status-chip {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  height: 20px;
+  padding: 0 8px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  line-height: 1;
+  white-space: nowrap;
+  border: 1px solid transparent;
+}
+
+.status-chip--open {
+  color: #5ED9A8;
+  border-color: rgba(94, 217, 168, 0.35);
+  background: rgba(94, 217, 168, 0.1);
 }
 
 .tree-panel-title {
@@ -1253,30 +1429,6 @@ export default {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.tree-refresh {
-  flex-shrink: 0;
-  width: 28px;
-  height: 28px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  background: var(--card-bg);
-  color: var(--muted);
-  cursor: pointer;
-  font-size: var(--text-sm);
-  line-height: 1;
-  transition: color 0.15s, border-color 0.15s;
-}
-
-.tree-refresh:hover:not(:disabled) {
-  color: var(--primary);
-  border-color: rgba(var(--primary-rgb), 0.4);
-}
-
-.tree-search {
-  padding: var(--panel-padding, 16px) var(--panel-padding, 16px);
-  border-bottom: 1px solid var(--border);
 }
 
 .tree-body {
@@ -1327,12 +1479,6 @@ export default {
   white-space: nowrap;
 }
 
-.tree-cat-count {
-  font-size: var(--text-xs);
-  font-weight: 500;
-  color: var(--muted);
-}
-
 .tree-items {
   list-style: none;
   margin: 0;
@@ -1343,8 +1489,10 @@ export default {
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 7px 14px 7px 32px;
-  font-size: var(--text-sm);
+  padding: 8px 14px 8px 32px;
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 1.4;
   color: var(--text);
   cursor: pointer;
   transition: background 0.12s;
@@ -1364,6 +1512,7 @@ export default {
 .tree-item-title {
   flex: 1;
   min-width: 0;
+  max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1394,8 +1543,11 @@ export default {
 .workspace-stage {
   display: flex;
   flex-direction: column;
+  flex: 1 1 auto;
   min-width: 0;
   min-height: 0;
+  height: 100%;
+  width: 100%;
   background: var(--gradient-card-bg, var(--card-bg));
 }
 
@@ -1407,86 +1559,32 @@ export default {
   padding: 8px 16px 0;
 }
 
-.stage-tabbar {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  padding: 10px 16px 0;
-  border-bottom: 1px solid var(--border);
-  flex-shrink: 0;
-}
-
-.stage-home {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 32px;
-  font-size: var(--text-base);
-  color: var(--muted);
-}
-
-.stage-tab {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  max-width: calc(var(--layout-space, 0.25rem) * 64);
-  padding: 6px 10px;
-  border: 1px solid var(--border);
-  border-bottom: none;
-  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
-  background: var(--hover);
-  font-size: var(--text-sm);
-}
-
-.stage-tab.active {
-  background: var(--card-bg);
-  border-color: var(--border);
-  color: var(--text);
-  font-weight: 600;
-}
-
-.stage-tab-code {
-  font-size: var(--text-xs);
-  color: var(--primary);
-  font-family: 'JetBrains Mono', 'Fira Code', ui-monospace, monospace;
-}
-
-.stage-tab-label {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.stage-tab-close {
-  flex-shrink: 0;
-  background: transparent;
-  border: none;
-  color: var(--muted);
-  cursor: pointer;
-  font-size: var(--text-base);
-  line-height: 1;
-  padding: 0 2px;
-}
-
-.stage-tab-close:hover { color: var(--text); }
-
 .stage-content {
   flex: 1;
   display: flex;
   flex-direction: column;
+  align-items: stretch;
   min-height: 0;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 20px 24px 28px;
+  overflow-y: auto;
 }
 
 .stage-brief {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: calc(var(--layout-space, 0.25rem) * 5);
-  padding: var(--panel-padding, 16px) var(--panel-padding-lg, 24px);
-  border-bottom: 1px solid var(--border);
-  max-height: var(--workspace-brief-max-height, min(40vh, 320px));
-  overflow-y: auto;
-  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  gap: 0;
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  padding: 0;
+  border-bottom: none;
+  max-height: none;
+  overflow: visible;
+  min-height: 0;
+  box-sizing: border-box;
 }
 
 .brief-title-row {
@@ -1553,11 +1651,64 @@ export default {
   font-weight: 600;
 }
 
-.brief-points {
-  font-family: 'JetBrains Mono', 'Fira Code', ui-monospace, monospace;
-  font-size: var(--text-xs);
+.brief-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px 24px;
+  margin-bottom: 8px;
+  width: 100%;
+}
+
+.brief-header .brief-title-row {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin-bottom: 0;
+}
+
+.points-board {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  line-height: 1;
+  user-select: none;
+}
+
+.points-board__num {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto;
+  font-size: clamp(26px, 2.8vw, 32px);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.5px;
+  color: #9af0c0;
+  text-shadow: none;
+}
+
+.points-board__unit {
+  font-family: SF Pro Display, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-size: 10px;
   font-weight: 600;
-  color: var(--primary);
+  letter-spacing: 0.12em;
+  color: rgba(160, 176, 192, 0.72);
+  transform: translateY(-1px);
+}
+
+@media (max-width: 720px) {
+  .brief-header {
+    flex-wrap: wrap;
+  }
+  .points-board {
+    margin-left: auto;
+  }
+  .points-board__num {
+    font-size: 24px;
+  }
 }
 
 .cat-chip {
@@ -1580,44 +1731,15 @@ export default {
   padding: 4px 12px;
 }
 
-.stage-tools {
-  flex: 1;
+
+.stage-empty--canvas {
+  flex: 1 1 auto;
+  width: 100%;
+  height: 100%;
   min-height: 0;
-  display: flex;
-  flex-direction: column;
-  padding: 0 var(--panel-padding, 16px) var(--panel-padding, 16px);
+  box-sizing: border-box;
+  background: transparent;
 }
-
-.workspace-tabs {
-  flex: 1;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-}
-
-.workspace-tabs :deep(.n-tabs-nav) {
-  flex-shrink: 0;
-}
-
-.workspace-tabs :deep(.n-tabs-pane-wrapper),
-.workspace-tabs :deep(.n-tab-pane) {
-  flex: 1;
-  min-height: 0;
-  overflow-y: auto;
-}
-
-.stage-empty {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  color: var(--muted);
-  font-size: var(--text-sm);
-}
-
-.stage-empty-icon { font-size: 40px; opacity: 0.85; }
 
 .tag-row { display: flex; gap: 6px; margin-bottom: 8px; flex-wrap: wrap; }
 
@@ -1700,43 +1822,8 @@ export default {
   color: var(--primary, #D97706);
 }
 
-.logs-box {
-  margin: 10px 0;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  overflow: hidden;
-}
 
-.logs-head {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 6px 10px;
-  font-size: 12px;
-  color: var(--muted);
-  border-bottom: 1px solid var(--border);
-}
 
-.logs-pre {
-  margin: 0;
-  max-height: 180px;
-  overflow: auto;
-  padding: 8px 10px;
-  font-size: 11px;
-  line-height: 1.45;
-  font-family: var(--font-hacker, ui-monospace, monospace);
-  background: var(--code-bg, rgba(0,0,0,0.04));
-  white-space: pre-wrap;
-  word-break: break-all;
-}
-
-.terminal-panel {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  min-height: var(--workspace-tools-min-height, 320px);
-  flex: 1;
-}
 
 .conn-box {
   padding: 10px 12px;
@@ -1870,6 +1957,437 @@ export default {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .tree-item, .tree-refresh, .stage-tab-close { transition: none; }
+  .tree-item { transition: none; }
 }
+
+/* 顶栏压缩为单行面包屑 */
+.challenge-workspace-matrix :deep(.matrix-page-head) {
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  margin: 0 !important;
+  padding: 8px 16px !important;
+  min-height: 36px !important;
+  border-bottom: 1px solid var(--border) !important;
+}
+.challenge-workspace-matrix :deep(.matrix-page-prompt) {
+  margin: 0 !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.04em !important;
+  color: var(--muted) !important;
+  line-height: 1.2 !important;
+}
+.challenge-workspace-matrix :deep(.matrix-page-title),
+.challenge-workspace-matrix :deep(.matrix-page-desc) {
+  display: none !important;
+}
+
+.stage-brief {
+  display: flex !important;
+  flex-direction: column !important;
+  flex: 1 1 auto !important;
+  grid-template-columns: none !important;
+  max-width: none !important;
+  width: 100% !important;
+  margin: 0 !important;
+  max-height: none !important;
+  border-bottom: none !important;
+}
+
+.stage-content {
+  padding: 20px 24px 28px !important;
+}
+
+.tree-title-row {
+  flex-direction: row !important;
+  flex-wrap: nowrap !important;
+  align-items: center !important;
+  gap: 10px !important;
+}
+
+.brief-title-row {
+  align-items: center !important;
+  gap: 10px !important;
+}
+
+.brief-solves {
+  font-family: var(--font-mono, "JetBrains Mono", monospace);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.challenge-actions-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 14px 0 12px;
+}
+
+.action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 34px;
+  padding: 0 12px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  font-size: 12px;
+  font-weight: 600;
+  font-family: var(--font-ui);
+  cursor: pointer;
+  text-decoration: none;
+  transition: background 0.15s, border-color 0.15s, transform 0.15s, color 0.15s;
+  color: inherit;
+  background: transparent;
+}
+.action-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.action-btn:not(:disabled):hover {
+  transform: translateY(-1px);
+}
+.action-btn--mint {
+  color: #5ED9A8;
+  border-color: rgba(94, 217, 168, 0.35);
+  background: rgba(94, 217, 168, 0.1);
+}
+.action-btn--mint:not(:disabled):hover {
+  border-color: rgba(94, 217, 168, 0.55);
+  background: rgba(94, 217, 168, 0.18);
+}
+.action-btn--docker {
+  color: #2496ED;
+  border-color: rgba(36, 150, 237, 0.4);
+  background: rgba(36, 150, 237, 0.12);
+}
+.action-btn--docker:not(:disabled):hover {
+  border-color: rgba(36, 150, 237, 0.6);
+  background: rgba(36, 150, 237, 0.2);
+}
+.action-btn--danger {
+  color: #FB7185;
+  border-color: rgba(251, 113, 133, 0.35);
+  background: rgba(251, 113, 133, 0.08);
+}
+.action-btn--danger:not(:disabled):hover {
+  border-color: rgba(251, 113, 133, 0.55);
+  background: rgba(251, 113, 133, 0.14);
+}
+.action-btn--ghost {
+  color: var(--muted);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.env-runtime {
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  border: 1px solid rgba(36, 150, 237, 0.22);
+  border-radius: 8px;
+  background: rgba(36, 150, 237, 0.06);
+}
+
+.flag-submit-panel {
+  margin: 4px 0 8px;
+  padding: 20px;
+  border: 1px solid rgba(94, 217, 168, 0.32);
+  border-radius: 12px;
+  background: rgba(94, 217, 168, 0.05);
+}
+.flag-submit-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+}
+.flag-solved-badge {
+  margin-left: auto;
+  font-size: 11px;
+  color: #5ED9A8;
+  font-family: var(--font-mono, monospace);
+}
+.flag-submit-row {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+.flag-submit-input {
+  flex: 1;
+  min-width: 0;
+  height: 52px;
+  padding: 14px 16px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(0, 0, 0, 0.28);
+  color: var(--text);
+  font-size: 15px;
+  font-family: var(--font-mono, "JetBrains Mono", monospace);
+  outline: none;
+}
+.flag-submit-input:focus {
+  border-color: rgba(94, 217, 168, 0.45);
+}
+.flag-submit-input:disabled {
+  opacity: 0.55;
+}
+.flag-submit-btn {
+  flex-shrink: 0;
+  height: 52px;
+  min-width: 140px;
+  padding: 0 22px;
+  border-radius: 10px;
+  border: 1px solid rgba(94, 217, 168, 0.55);
+  background: rgba(94, 217, 168, 0.28);
+  color: #5ED9A8;
+  font-size: 15px;
+  font-weight: 800;
+  font-family: var(--font-ui);
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, transform 0.15s;
+}
+.flag-submit-btn:hover:not(:disabled) {
+  background: rgba(94, 217, 168, 0.28);
+  border-color: rgba(94, 217, 168, 0.65);
+}
+.flag-submit-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.flag-submit-result {
+  margin: 8px 0 0;
+  font-size: 12px;
+  font-family: var(--font-mono, monospace);
+}
+.flag-submit-result.is-ok { color: #5ED9A8; }
+.flag-submit-result.is-err { color: #FB7185; }
+
+
+/* cockpit: Flag docked bottom, enlarged */
+.brief-main {
+  width: 100%;
+  max-width: none;
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.flag-submit-panel,
+.flag-submit-panel--dock {
+  margin-top: auto;
+  margin-bottom: 0;
+  width: 100%;
+  max-width: none;
+  padding: 20px 20px 18px;
+  border: 1px solid rgba(94, 217, 168, 0.32);
+  border-radius: 12px;
+  background: linear-gradient(180deg, rgba(94, 217, 168, 0.08), rgba(0, 0, 0, 0.22));
+  box-sizing: border-box;
+}
+
+.flag-submit-panel--dock .flag-submit-head {
+  margin-bottom: 14px;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.flag-submit-panel--dock .flag-submit-row {
+  gap: 12px;
+  align-items: stretch;
+}
+
+.flag-submit-panel--dock .flag-submit-input {
+  height: 52px;
+  padding: 14px 16px;
+  font-size: 15px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(0, 0, 0, 0.35);
+}
+
+.flag-submit-panel--dock .flag-submit-input:focus {
+  border-color: rgba(94, 217, 168, 0.55);
+  box-shadow: 0 0 0 3px rgba(94, 217, 168, 0.12);
+}
+
+.flag-submit-panel--dock .flag-submit-btn {
+  height: 52px;
+  min-width: 140px;
+  padding: 0 22px;
+  border-radius: 10px;
+  border: 1px solid rgba(94, 217, 168, 0.55);
+  background: rgba(94, 217, 168, 0.28);
+  color: #5ED9A8;
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  box-shadow: 0 4px 16px rgba(94, 217, 168, 0.15);
+  transition: background 0.15s, border-color 0.15s, transform 0.15s, box-shadow 0.15s;
+}
+
+.flag-submit-panel--dock .flag-submit-btn:hover:not(:disabled) {
+  background: rgba(94, 217, 168, 0.42);
+  border-color: rgba(94, 217, 168, 0.75);
+  color: #E8FFF5;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(94, 217, 168, 0.22);
+}
+
+.flag-submit-panel--dock .flag-submit-btn:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.flag-submit-panel--dock .flag-submit-result {
+  margin-top: 12px;
+  font-size: 13px;
+}
+
+
+/* Inline Env Bar — 行内轻量化靶机条 */
+.inline-env-bar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px 14px;
+  margin: 10px 0 14px;
+  padding: 0;
+  background: transparent;
+  border: none;
+  min-height: 32px;
+}
+
+.inline-env-hint {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--muted);
+  letter-spacing: 0.01em;
+}
+
+.inline-env-hint.is-live {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  color: rgba(232, 255, 245, 0.78);
+}
+
+.inline-env-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #5ED9A8;
+  box-shadow: 0 0 8px rgba(94, 217, 168, 0.55);
+  flex-shrink: 0;
+}
+
+.inline-env-endpoint {
+  font-family: var(--font-mono, "JetBrains Mono", monospace);
+  font-size: 13px;
+  font-weight: 600;
+  color: #5ED9A8;
+  cursor: pointer;
+  padding: 1px 6px;
+  border-radius: 4px;
+  border: 1px solid rgba(94, 217, 168, 0.2);
+  background: rgba(94, 217, 168, 0.06);
+}
+
+.inline-env-endpoint:hover {
+  border-color: rgba(94, 217, 168, 0.45);
+  background: rgba(94, 217, 168, 0.12);
+}
+
+.inline-env-start {
+  flex-shrink: 0;
+  height: 30px;
+  padding: 0 12px;
+  border-radius: 6px;
+  border: 1px solid rgba(94, 217, 168, 0.4);
+  background: rgba(94, 217, 168, 0.08);
+  color: #5ED9A8;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: var(--font-ui, inherit);
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, transform 0.15s;
+}
+
+.inline-env-start:hover:not(:disabled) {
+  background: rgba(94, 217, 168, 0.16);
+  border-color: rgba(94, 217, 168, 0.6);
+  transform: translateY(-1px);
+}
+
+.inline-env-start:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.inline-env-actions {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px 2px;
+  margin-left: auto;
+}
+
+.inline-env-link {
+  height: 28px;
+  padding: 0 10px;
+  border: none;
+  background: transparent;
+  color: #5ED9A8;
+  font-size: 12px;
+  font-weight: 600;
+  font-family: var(--font-ui, inherit);
+  cursor: pointer;
+  border-radius: 4px;
+  transition: background 0.12s, color 0.12s;
+}
+
+.inline-env-link:hover:not(:disabled) {
+  background: rgba(94, 217, 168, 0.1);
+}
+
+.inline-env-link:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.inline-env-link.is-danger {
+  color: #FB7185;
+}
+
+.inline-env-link.is-danger:hover:not(:disabled) {
+  background: rgba(251, 113, 133, 0.1);
+}
+
+.inline-env-ttl {
+  margin-left: 6px;
+  font-family: var(--font-mono, monospace);
+  font-size: 11px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.inline-env-queue {
+  flex-basis: 100%;
+  margin: 0;
+  font-size: 12px;
+  color: rgba(94, 217, 168, 0.7);
+}
+
+
+
 </style>

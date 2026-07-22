@@ -337,17 +337,21 @@ export default {
       window.removeEventListener('neepu_user_refreshed', refreshUserData)
     })
     
-    async function refreshUserData() {
+    function refreshUserData() {
+      // 事件回调只读内存态，避免 force /me → 再广播造成风暴
+      user.value = getUser()
+    }
+
+    async function loadUserOnce() {
       try {
-        const u = await fetchSession({ force: true })
-        user.value = u || getUser()
-      } catch (e) {
+        user.value = (await fetchSession()) || getUser()
+      } catch {
         user.value = getUser()
       }
     }
 
     const user = ref(getUser())
-    refreshUserData()
+    loadUserOnce()
 
     const dashStats = computed(() => {
       const u = user.value || {}
@@ -990,8 +994,8 @@ html .home-page .home-surface {
   background: linear-gradient(
     90deg,
     rgb(var(--primary-rgb)) 0%,
-    rgba(94, 217, 168, 0.85) 42%,
-    rgba(244, 114, 182, 0.75) 100%
+    rgba(94, 217, 168, 0.85) 55%,
+    rgba(94, 217, 168, 0.35) 100%
   );
   opacity: 0.9;
 }

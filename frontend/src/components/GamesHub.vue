@@ -39,67 +39,85 @@
       </div>
       </aside>
 
-      <main class="r2s-games__cover sidebar-main">
+      <main class="r2s-games__cover sidebar-main games-main">
         <div v-if="detailLoading && !selectedDetail" class="poster-loading">
           <UiLoadingTips />
         </div>
-        <button
+        <section
           v-else-if="selectedDetail"
-          type="button"
-          class="r2s-games__cover-card"
+          class="games-hero-banner"
+          :class="{ 'is-live': statusVariant === 'success' }"
           @click="openGameDetail(selectedDetail)"
         >
-          <div class="r2s-games__cover-visual" :class="coverTheme">
-            <img
-              v-if="posterUrl && !posterBroken"
-              :src="posterUrl"
-              :alt="selectedDetail.title"
-              @error="posterBroken = true"
-            />
-            <div v-else class="r2s-games__cover-fallback">{{ getGameEmoji(selectedDetail) }}</div>
-          </div>
-          <span class="r2s-games__status-pill">
-            <span class="dot" :class="`dot-${statusVariant === 'success' ? 'live' : statusVariant === 'warning' ? 'soon' : 'ended'}`" />
-            {{ statusLabel }}
-          </span>
-          <div class="r2s-games__info">
-            <svg class="r2s-games__info-icon" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-              <path d="M4 3.5A1.5 1.5 0 015.5 2h5.086a1.5 1.5 0 011.06.44l3.914 3.914a1.5 1.5 0 01.44 1.06V16.5A1.5 1.5 0 0114.5 18h-9A1.5 1.5 0 014 16.5v-13z" />
-            </svg>
-            <div>
-              <p class="r2s-games__info-title">{{ selectedDetail.title }}</p>
-              <p class="r2s-games__info-sub">{{ gameSubtitle }}</p>
-              <p class="r2s-games__info-time">{{ timeRange }}</p>
+          <div class="games-hero-copy">
+            <div class="games-hero-eyebrow">
+              <span class="link-code chip-cut">EVT</span>
+              <span class="games-hero-tag">FEATURED</span>
+              <span class="games-hero-status chip-cut" :class="'is-' + (statusVariant === 'success' ? 'live' : statusVariant === 'warning' ? 'soon' : 'ended')">
+                [{{ statusVariant === 'success' ? 'LIVE' : statusVariant === 'warning' ? 'SOON' : 'END' }}] {{ statusLabel }}
+              </span>
             </div>
+            <h2 class="games-hero-title">{{ selectedDetail.title }}</h2>
+            <p class="games-hero-sub">{{ gameSubtitle }}</p>
+            <p class="games-hero-time">{{ timeRange }}</p>
+            <button type="button" class="games-hero-cta chip-cut" @click.stop="openGameDetail(selectedDetail)">
+              立即参赛 <kbd>↵</kbd>
+            </button>
           </div>
-        </button>
+          <div class="games-hero-deco" aria-hidden="true"></div>
+        </section>
         <div v-else class="poster-empty">
           <h2>选择左侧赛事查看详情</h2>
         </div>
+
+        <div class="games-bottom golden-dual-column">
+          <section class="games-panel">
+            <div class="games-panel-head">
+              <span class="link-code chip-cut">LST</span>
+              <span>赛事列表</span>
+            </div>
+            <ul class="games-feed">
+              <li
+                v-for="g in featuredGames"
+                :key="'feed-' + g.id"
+                class="games-feed-item"
+                :class="{ active: selected?.id === g.id }"
+                @click="selectGame(g)"
+              >
+                <span class="link-code chip-cut">CTF</span>
+                <span class="games-feed-title">{{ g.title }}</span>
+                <UiTag :variant="getGameStatusVariant(g)" size="small">{{ getGameStatusLabel(g) }}</UiTag>
+              </li>
+            </ul>
+          </section>
+          <section class="games-panel">
+            <div class="games-panel-head">
+              <span class="link-code chip-cut">RNK</span>
+              <span>其他 / 托管</span>
+            </div>
+            <ul v-if="otherGamesAll.length" class="games-feed">
+              <li
+                v-for="g in otherGamesPage"
+                :key="'oth-' + g.id"
+                class="games-feed-item"
+                @click="selectGame(g)"
+              >
+                <span class="games-feed-title">{{ g.title }}</span>
+                <UiTag :variant="getGameStatusVariant(g)" size="small">{{ getGameStatusLabel(g) }}</UiTag>
+              </li>
+            </ul>
+            <p v-else class="games-panel-empty">暂无托管赛事</p>
+            <n-pagination
+              v-if="otherTotalPages > 1"
+              v-model:page="otherPage"
+              :page-count="otherTotalPages"
+              size="small"
+              class="other-pagination"
+            />
+          </section>
+        </div>
       </main>
     </div>
-
-    <section v-if="otherGamesAll.length" class="r2s-games__others">
-      <h3>其他赛事</h3>
-      <div class="r2s-games__others-grid">
-        <div
-          v-for="g in otherGamesPage"
-          :key="g.id"
-          class="r2s-games__other-card"
-          @click="selectGame(g)"
-        >
-          <div class="title">{{ g.title }}</div>
-          <UiTag :variant="getGameStatusVariant(g)" size="small">{{ getGameStatusLabel(g) }}</UiTag>
-        </div>
-      </div>
-      <n-pagination
-        v-if="otherTotalPages > 1"
-        v-model:page="otherPage"
-        :page-count="otherTotalPages"
-        size="small"
-        class="other-pagination"
-      />
-    </section>
   </div>
 </template>
 
@@ -283,6 +301,28 @@ export default {
 </script>
 
 <style scoped>
+.games-hub.r2s-games {
+  height: calc(100vh - var(--nav-height, 72px));
+  max-height: calc(100vh - var(--nav-height, 72px));
+  overflow: hidden;
+  width: 100%;
+  display: block;
+  padding: 0;
+  box-sizing: border-box;
+}
+.r2s-games__stage {
+  display: grid;
+  grid-template-columns: 248px minmax(0, 1fr);
+  gap: 0;
+  height: 100%;
+  min-height: 0;
+  align-items: stretch;
+}
+.r2s-games__list-pane {
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
 .empty-side {
   padding: 24px 14px;
   color: var(--muted);
@@ -294,10 +334,21 @@ export default {
   margin-top: 12px;
   justify-content: center;
 }
+.games-main {
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  overflow: auto;
+  padding: 16px 20px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  box-sizing: border-box;
+}
 .poster-loading,
 .poster-empty {
   width: 100%;
-  min-height: 240px;
+  min-height: 120px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -305,18 +356,15 @@ export default {
 }
 .poster-empty h2 {
   margin: 0;
-  font-size: 20px;
+  font-size: 18px;
   font-weight: 700;
   color: var(--text);
 }
-
 .r2s-games__list-btn {
   display: flex;
   align-items: center;
   gap: 8px;
-}
-.r2s-games__list-btn .link-code {
-  flex-shrink: 0;
+  width: 100% !important;
 }
 .r2s-games__list-title {
   flex: 1;
@@ -327,21 +375,26 @@ export default {
   text-align: left;
 }
 
-/* Home 锚点：清爽柔光 Hero 比赛 Banner */
-.r2s-games__cover-card {
+/* Home 同款 Hero Banner — 废除白灰浮动盒 */
+.games-hero-banner {
   position: relative;
   overflow: hidden;
   width: 100%;
-  max-width: 920px;
-  margin: 0 auto;
-  border-radius: var(--card-radius) !important;
-  border: 1px solid rgba(var(--primary-rgb), 0.2) !important;
-  background: linear-gradient(135deg, rgba(35, 40, 56, 0.7) 0%, rgba(20, 24, 35, 0.9) 100%) !important;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3) !important;
-  text-align: left;
+  min-height: 148px;
+  max-height: 180px;
+  padding: 16px 20px;
+  border-radius: var(--card-radius);
+  border: 1px solid rgba(var(--primary-rgb), 0.22);
+  background: linear-gradient(135deg, rgba(35, 40, 56, 0.75) 0%, rgba(20, 24, 35, 0.92) 100%);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
   cursor: pointer;
+  display: grid;
+  grid-template-columns: 1.618fr 1fr;
+  align-items: center;
+  box-sizing: border-box;
+  flex-shrink: 0;
 }
-.r2s-games__cover-card::before {
+.games-hero-banner::before {
   content: '';
   position: absolute;
   top: -50px;
@@ -350,24 +403,150 @@ export default {
   height: 260px;
   background: radial-gradient(circle, rgba(var(--primary-rgb), 0.12) 0%, transparent 70%);
   pointer-events: none;
-  z-index: 0;
 }
-.r2s-games__cover-visual {
-  position: relative;
-  z-index: 1;
-  min-height: 180px;
-  background: transparent !important;
+.games-hero-banner.is-live {
+  border-color: rgba(var(--primary-rgb), 0.35);
 }
-.r2s-games__info {
-  position: relative;
-  z-index: 1;
+.games-hero-copy { position: relative; z-index: 1; min-width: 0; }
+.games-hero-eyebrow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
 }
-.r2s-games__status-pill {
-  border-radius: var(--radius-pill) !important;
+.games-hero-tag {
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  color: rgba(226, 232, 240, 0.55);
+  font-family: var(--font-mono);
 }
-.games-hub.r2s-games {
-  height: calc(100vh - var(--nav-height, 72px));
-  max-height: calc(100vh - var(--nav-height, 72px));
+.games-hero-status {
+  display: inline-flex;
+  padding: 2px 7px;
+  font-size: 10px;
+  font-weight: 700;
+  font-family: var(--font-mono);
+  color: var(--primary);
+  background: rgba(var(--primary-rgb), 0.12);
+  border: 1px solid rgba(var(--primary-rgb), 0.35);
+}
+.games-hero-status.is-soon {
+  color: #f0c674;
+  background: rgba(240, 198, 116, 0.12);
+  border-color: rgba(240, 198, 116, 0.35);
+}
+.games-hero-status.is-ended {
+  color: var(--muted);
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+.games-hero-title {
+  margin: 0 0 6px;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text);
+  font-family: var(--font-ui);
+}
+.games-hero-sub,
+.games-hero-time {
+  margin: 0 0 4px;
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.45;
+}
+.games-hero-time { font-family: var(--font-mono); }
+.games-hero-cta {
+  margin-top: 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border: 1px solid rgba(var(--primary-rgb), 0.5);
+  background: rgba(var(--primary-rgb), 0.16);
+  color: var(--primary);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: var(--font-ui);
+}
+.games-hero-cta:hover { background: rgba(var(--primary-rgb), 0.26); }
+.games-hero-cta kbd { font-size: 10px; font-family: var(--font-mono); opacity: 0.85; }
+.games-hero-deco { pointer-events: none; }
+
+.games-bottom {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+@media (min-width: 900px) {
+  .games-bottom {
+    grid-template-columns: 1.3fr 1fr !important;
+  }
+}
+.games-panel {
+  min-width: 0;
+  min-height: 0;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: var(--card-radius);
+  background: rgba(255, 255, 255, 0.02);
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
   overflow: hidden;
+}
+.games-panel-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  flex-shrink: 0;
+}
+.games-feed {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  overflow: auto;
+  min-height: 0;
+}
+.games-feed-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  color: var(--text);
+}
+.games-feed-item:hover,
+.games-feed-item.active {
+  background: rgba(var(--primary-rgb), 0.08);
+  border-color: rgba(var(--primary-rgb), 0.22);
+}
+.games-feed-title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+}
+.games-panel-empty {
+  margin: 12px 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+@media (max-width: 899px) {
+  .r2s-games__stage { grid-template-columns: 1fr; }
+  .games-hero-banner { grid-template-columns: 1fr; max-height: none; }
 }
 </style>

@@ -216,3 +216,35 @@ html, body {
 .docker-status-icon.is-active {
   filter: drop-shadow(0 0 6px rgba(36, 150, 237, 0.6)) !important;
 }
+
+/* ========== Chip / Tag — 全站薄荷绿强制统一（禁粉/紫） ========== */
+.link-code,
+.item-code,
+.game-code,
+.panel-code,
+.nav-code,
+.anime-chip-cut,
+.chip-pink,
+.chip-cut,
+.level-badge,
+.user-role-chip,
+.bulletin-tag,
+.item-tag,
+.quick-code,
+[class*="chip-"]:not(.hero-cta):not(.side-tab):not(.region-chip):not(.games-hero-cta):not(.games-hero-status) {
+  background: rgba(94, 217, 168, 0.1) !important;
+  color: #5ED9A8 !important;
+  border: 1px solid rgba(94, 217, 168, 0.25) !important;
+}
+.link-code:hover,
+.item-code:hover,
+.chip-pink:hover,
+.chip-cut:hover,
+.level-badge:hover,
+.user-role-chip:hover,
+.bulletin-tag:hover,
+.item-tag:hover {
+  background: rgba(94, 217, 168, 0.2) !important;
+  border-color: rgba(94, 217, 168, 0.5) !important;
+  color: #5ED9A8 !important;
+}

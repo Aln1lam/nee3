@@ -93,15 +93,14 @@
 </template>
 
 <script>
-import { ref, inject, onMounted } from 'vue'
+import { ref, onMounted } from 'vue'
 import MetricCard from './MetricCard.vue'
+import platformAdmin from '@/services/admin/platform'
 
 export default {
   name: 'PlatformDashboard',
   components: { MetricCard },
   setup() {
-    const axios = inject('axios')
-    
     const DEFAULT_STATS = {
       users: { total: 0, new_7d: 0, new_30d: 0, admins: 0, active: 0 },
       articles: { total: 0, published: 0, draft: 0 },
@@ -117,13 +116,10 @@ export default {
 
     async function loadDashboard() {
       try {
-        const token = localStorage.getItem('neepu_token')
-        const headers = { Authorization: `Bearer ${token}` }
-        
         const [dashRes, distRes, topRes] = await Promise.all([
-          axios.get('/api/admin/platform/dashboard', { headers }),
-          axios.get('/api/admin/platform/stats/articles-distribution', { headers }),
-          axios.get('/api/admin/platform/stats/top-active-users', { headers })
+          platformAdmin.getDashboard(),
+          platformAdmin.getArticlesDistribution(),
+          platformAdmin.getTopActiveUsers(),
         ])
         
         const d = dashRes.data || {}

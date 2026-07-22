@@ -23,7 +23,7 @@ import {
   expandGameRoutes,
 } from './topology/routes.js'
 
-const BASE_URL = process.env.E2E_BASE_URL || 'http://localhost:3000'
+const BASE_URL = process.env.E2E_BASE_URL || 'http://localhost:5173'
 
 const BOUNDARY_CASES = [
   { name: '空字符串', value: '' },

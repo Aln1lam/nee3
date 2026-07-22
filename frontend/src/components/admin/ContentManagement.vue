@@ -69,13 +69,12 @@
 </template>
 
 <script>
-import { ref, inject, onMounted } from 'vue'
+import { ref, onMounted } from 'vue'
+import platformAdmin from '@/services/admin/platform'
 
 export default {
   name: 'ContentManagement',
   setup() {
-    const axios = inject('axios')
-    
     const articles = ref([])
     const searchText = ref('')
     const filterStatus = ref('')
@@ -83,14 +82,10 @@ export default {
 
     async function loadArticles() {
       try {
-        const token = localStorage.getItem('neepu_token')
-        const res = await axios.get('/api/admin/platform/articles', {
-          params: {
-            page: currentPage.value,
-            search: searchText.value,
-            status: filterStatus.value
-          },
-          headers: { Authorization: `Bearer ${token}` }
+        const res = await platformAdmin.listArticles({
+          page: currentPage.value,
+          search: searchText.value,
+          status: filterStatus.value,
         })
         articles.value = res.data.items || res.data
       } catch (e) {
@@ -125,11 +120,7 @@ export default {
       if (!confirm('确定发布此文章吗？')) return
       
       try {
-        const token = localStorage.getItem('neepu_token')
-        await axios.patch(`/api/admin/platform/articles/${articleId}`,
-          { status: 'published' },
-          { headers: { Authorization: `Bearer ${token}` } }
-        )
+        await platformAdmin.updateArticle(articleId, { status: 'published' })
         alert('发布成功')
         loadArticles()
       } catch (e) {
@@ -142,10 +133,7 @@ export default {
       if (!confirm('确定删除此文章吗？删除后不可恢复。')) return
       
       try {
-        const token = localStorage.getItem('neepu_token')
-        await axios.delete(`/api/admin/platform/articles/${articleId}`,
-          { headers: { Authorization: `Bearer ${token}` } }
-        )
+        await platformAdmin.deleteArticle(articleId)
         alert('删除成功')
         loadArticles()
       } catch (e) {

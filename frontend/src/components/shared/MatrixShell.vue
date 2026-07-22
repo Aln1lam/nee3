@@ -5,7 +5,7 @@
       'sidebar-collapsed': collapsible && collapsed,
       'matrix-shell--no-sidebar': !showSidebar,
     }"
-    style="--sidebar-width: 248px"
+    :style="{ '--sidebar-width': sidebarWidth }"
   >
     <aside v-if="showSidebar" class="matrix-sidebar sidebar-rail">
       <slot name="sidebar">
@@ -80,6 +80,7 @@ export default {
     contentClass: { type: String, default: '' },
     collapsible: { type: Boolean, default: true },
     storageKey: { type: String, default: 'neepu_matrix_sidebar_collapsed' },
+    sidebarWidth: { type: String, default: '248px' },
   },
   setup(props) {
     const route = useRoute()

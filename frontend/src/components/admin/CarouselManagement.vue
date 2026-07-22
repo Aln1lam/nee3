@@ -46,7 +46,7 @@
         <n-form-item label="上传图片" required>
           <n-upload
             :action="uploadUrl"
-            :headers="uploadHeaders"
+            with-credentials
             :max="1"
             accept="image/*"
             @finish="handleUploadFinish"
@@ -79,10 +79,11 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted } from 'vue'
 import { NButton, NCard, NModal, NForm, NFormItem, NInput, NInputNumber, NSwitch, NTag, NSpace, NIcon, NUpload, NEmpty, useMessage } from 'naive-ui'
 import { Add, LinkOutline } from '@vicons/ionicons5'
 import axios from 'axios'
+import platformAdmin from '@/services/admin/platform'
 
 const message = useMessage()
 const slides = ref([])
@@ -99,9 +100,7 @@ const formData = ref({
   is_active: true
 })
 
-const token = computed(() => localStorage.getItem('neepu_token'))
-const uploadUrl = '/api/uploads/upload-image/'
-const uploadHeaders = computed(() => ({ Authorization: `Bearer ${token.value}` }))
+const uploadUrl = platformAdmin.uploadImageUrl
 
 const getFullUrl = (url) => {
   if (!url) return ''
@@ -112,9 +111,7 @@ const getFullUrl = (url) => {
 
 const fetchSlides = async () => {
   try {
-    const res = await axios.get('/api/admin/platform/carousel', {
-      headers: { Authorization: `Bearer ${token.value}` }
-    })
+    const res = await platformAdmin.getCarousel()
     slides.value = res.data
   } catch (e) {
     message.error('加载轮播图失败')
@@ -146,14 +143,10 @@ const saveSlide = async () => {
   saving.value = true
   try {
     if (editingSlide.value) {
-      await axios.patch(`/api/admin/platform/carousel/${editingSlide.value.id}`, formData.value, {
-        headers: { Authorization: `Bearer ${token.value}` }
-      })
+      await platformAdmin.updateCarouselSlide(editingSlide.value.id, formData.value)
       message.success('更新成功')
     } else {
-      await axios.post('/api/admin/platform/carousel', formData.value, {
-        headers: { Authorization: `Bearer ${token.value}` }
-      })
+      await platformAdmin.createCarouselSlide(formData.value)
       message.success('添加成功')
     }
     showAddModal.value = false
@@ -170,9 +163,7 @@ const confirmDelete = async (slide) => {
   if (!confirm(`确定删除轮播图"${slide.title || '(无标题)'}"吗？`)) return
   
   try {
-    await axios.delete(`/api/admin/platform/carousel/${slide.id}`, {
-      headers: { Authorization: `Bearer ${token.value}` }
-    })
+    await platformAdmin.deleteCarouselSlide(slide.id)
     message.success('删除成功')
     fetchSlides()
   } catch (e) {

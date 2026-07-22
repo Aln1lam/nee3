@@ -183,15 +183,13 @@
 </template>
 
 <script>
-import { ref, inject, onMounted, watch, computed } from 'vue'
+import { ref, onMounted, watch, computed } from 'vue'
 import { useMessage } from 'naive-ui'
 import { platformAdmin as adminApi } from '@/services/admin'
 
 export default {
   name: 'LogAudit',
   setup() {
-    const axios = inject('axios')
-    
     const logs = ref([])
     const searchText = ref('')
     const filterAction = ref('')
@@ -228,17 +226,12 @@ export default {
 
     async function loadLogs() {
       try {
-        const token = localStorage.getItem('neepu_token') || localStorage.getItem('token')
-        const headers = token ? { Authorization: `Bearer ${token}` } : {}
-        const res = await axios.get('/api/admin/platform/logs', {
-          params: {
-            page: currentPage.value,
-            per_page: perPage.value,
-            search: searchText.value,
-            action: filterAction.value,
-            target: filterTarget.value
-          },
-          headers
+        const res = await adminApi.getLogs({
+          page: currentPage.value,
+          per_page: perPage.value,
+          search: searchText.value,
+          action: filterAction.value,
+          target: filterTarget.value,
         })
         logs.value = res.data.items || []
         // 更新分页元数据
@@ -249,12 +242,14 @@ export default {
         loadStats()
       } catch (e) {
         console.error('加载日志失败:', e)
-        // 更友好的错误提示，处理 token 过期场景
+        // 更友好的错误提示，处理会话过期场景
         const errMsg = (e && e.response && (e.response.data && (e.response.data.error || e.response.data.msg))) || e.message || '加载日志失败'
-        if (/(token\s*expired|expired token|token expired)/i.test(errMsg)) {
+        if (/(token\s*expired|expired token|token expired|unauthorized|401)/i.test(errMsg) || e?.response?.status === 401) {
           message.error('加载失败：登录已过期，请重新登录')
-          localStorage.removeItem('neepu_token')
-          localStorage.removeItem('token')
+          try {
+            localStorage.removeItem('neepu_token')
+            localStorage.removeItem('token')
+          } catch (_) { /* ignore */ }
           setTimeout(() => { window.location.href = '/' }, 1200)
         } else {
           message.error(`加载日志失败：${errMsg}`)
@@ -264,9 +259,7 @@ export default {
 
     async function loadStats() {
       try {
-        const token = localStorage.getItem('neepu_token') || localStorage.getItem('token')
-        const headers = token ? { Authorization: `Bearer ${token}` } : {}
-        const res = await axios.get('/api/admin/platform/logs/stats', { headers })
+        const res = await adminApi.getLogsStats()
         stats.value = res.data
       } catch (e) {
         console.error('加载统计失败:', e)

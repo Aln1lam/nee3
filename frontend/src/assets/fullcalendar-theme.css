@@ -9,8 +9,8 @@
   --fc-event-coming-bg: rgba(var(--primary-rgb, 45, 181, 138), 0.88);
   --fc-event-coming-accent: rgb(var(--primary-rgb, 45, 181, 138));
   --fc-event-coming-text: #ffffff;
-  --fc-event-cn-bg: rgba(236, 72, 153, 0.86);
-  --fc-event-cn-accent: #DB2777;
+  --fc-event-cn-bg: rgba(94, 217, 168, 0.86);
+  --fc-event-cn-accent: #5ED9A8;
   --fc-event-cn-text: #ffffff;
   --fc-event-depth-bg: rgba(96, 165, 250, 0.82);
   --fc-event-past-bg: rgba(100, 116, 139, 0.18);
@@ -29,7 +29,7 @@
 html[data-theme="dark"] {
   --fc-today-bg-color: rgba(94, 217, 168, 0.14);
   --fc-event-coming-bg: rgba(94, 217, 168, 0.88);
-  --fc-event-cn-bg: rgba(244, 114, 182, 0.86);
+  --fc-event-cn-bg: rgba(94, 217, 168, 0.86);
 }
 
 .calendar-full,

@@ -66,6 +66,7 @@
     </button>
 
     <main class="bulletin-main sidebar-main">
+      <div class="bulletin-container">
       <header class="matrix-page-head">
         <p class="matrix-page-prompt">公告栏 · BULLETIN</p>
         <h2 class="matrix-page-title">公告列表</h2>
@@ -106,6 +107,7 @@
         :item-count="bulletins.length"
         class="bulletin-pagination"
       />
+      </div>
     </main>
 
     <n-modal v-model:show="showDetail" preset="card" :title="selected?.title" style="max-width: 640px">
@@ -302,15 +304,28 @@ export default {
   color: var(--primary);
 }
 
+.bulletin-layout {
+  height: calc(100vh - var(--nav-height, 72px));
+  max-height: calc(100vh - var(--nav-height, 72px));
+  overflow: hidden;
+}
 .bulletin-main {
   overflow: auto;
+  min-height: 0;
+  width: 100%;
 }
-
+.bulletin-container {
+  max-width: 900px;
+  margin: 0 auto;
+  width: 100%;
+  padding: 8px 8px 24px;
+  box-sizing: border-box;
+}
 .bulletin-list {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  max-width: 720px;
+  max-width: none;
   width: 100%;
 }
 
@@ -346,9 +361,9 @@ export default {
   font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.06em;
-  color: var(--gradient-tag-text, var(--accent));
-  background: var(--gradient-tag-fill, rgba(var(--primary-rgb), 0.12));
-  border: 1px solid var(--gradient-tag-border, rgba(var(--primary-rgb), 0.28));
+  color: #5ED9A8 !important;
+  background: rgba(94, 217, 168, 0.1) !important;
+  border: 1px solid rgba(94, 217, 168, 0.25) !important;
   border-radius: var(--radius-pill);
   font-family: var(--font-ui);
 }

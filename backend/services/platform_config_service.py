@@ -154,4 +154,8 @@ def load_public_platform_info() -> Dict[str, Any]:
     if not info.get("brand_desc") and info.get("site_description"):
         info["brand_desc"] = info["site_description"]
 
+    # 兼容别名：训练场欢迎公告
+    if info.get("training_welcome"):
+        info["training_welcome_banner"] = info["training_welcome"]
+
     return info

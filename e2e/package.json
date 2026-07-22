@@ -6,6 +6,8 @@
   "description": "NEEPU CTF 平台 Playwright 端到端全量扫描",
   "scripts": {
     "test": "playwright test",
+    "test:topology": "playwright test topology-scan.spec.js",
+    "test:api": "playwright test api-topology.spec.js",
     "test:headed": "playwright test --headed",
     "report": "playwright show-report"
   },

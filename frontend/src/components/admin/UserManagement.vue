@@ -97,14 +97,14 @@
 </template>
 
 <script>
-import { ref, computed, inject, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useMessage } from 'naive-ui'
 import { apiErrorMessage } from '@/utils/apiError'
+import platformAdmin from '@/services/admin/platform'
 
 export default {
   name: 'UserManagement',
   setup() {
-    const axios = inject('axios')
     const message = useMessage()
 
     const users = ref([])
@@ -123,13 +123,9 @@ export default {
       loading.value = true
       loadError.value = false
       try {
-        const token = localStorage.getItem('neepu_token')
-        const res = await axios.get('/api/admin/platform/users', {
-          params: {
-            page: currentPage.value,
-            search: searchText.value,
-          },
-          headers: { Authorization: `Bearer ${token}` },
+        const res = await platformAdmin.listUsers({
+          page: currentPage.value,
+          search: searchText.value,
         })
         users.value = res.data?.items || res.data?.users || []
       } catch (e) {
@@ -156,12 +152,7 @@ export default {
       if (saving.value || !editForm.value?.id) return
       saving.value = true
       try {
-        const token = localStorage.getItem('neepu_token')
-        await axios.patch(
-          `/api/admin/platform/users/${editForm.value.id}`,
-          editForm.value,
-          { headers: { Authorization: `Bearer ${token}` } },
-        )
+        await platformAdmin.updateUser(editForm.value.id, editForm.value)
         message.success('保存成功')
         closeModal()
         await loadUsers()
@@ -177,10 +168,7 @@ export default {
       if (!confirm('确定删除此用户吗？删除后不可恢复。')) return
       deleting.value = true
       try {
-        const token = localStorage.getItem('neepu_token')
-        await axios.delete(`/api/admin/platform/users/${userId}`, {
-          headers: { Authorization: `Bearer ${token}` },
-        })
+        await platformAdmin.deleteUser(userId)
         message.success('删除成功')
         await loadUsers()
       } catch (e) {

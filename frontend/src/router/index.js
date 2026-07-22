@@ -133,7 +133,19 @@ const routes = [
   { path: '/reset-password', name: 'ResetPassword', component: ResetPassword },
   { path: '/events', name: 'Events', component: Events },
   { path: '/training', name: 'Training', component: Training },
-  { path: '/training/:gameId', name: 'TrainingGame', component: Training, props: true },
+  {
+    path: '/training/challenge/:id',
+    name: 'TrainingChallenge',
+    component: ChallengeWorkspace,
+    props: (route) => ({
+      gameId: route.params.id,
+      mode: 'training',
+      embedded: false,
+    }),
+    meta: { requiresAuth: true },
+  },
+  // 旧路径兼容：/training/:gameId → 独立做题大厅
+  { path: '/training/:gameId', redirect: to => `/training/challenge/${to.params.gameId}` },
 
   // 赛事
   { path: '/games', name: 'GamesHub', component: GamesHub },

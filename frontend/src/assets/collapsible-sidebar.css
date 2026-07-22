@@ -396,3 +396,26 @@
 .layout-with-sidebar .sidebar-desc {
   padding: 0;
 }
+
+/* 侧栏导航：隐形滚动条 */
+.sidebar-rail-nav,
+.training-nav {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.sidebar-rail-nav::-webkit-scrollbar,
+.training-nav::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}
+.sidebar-item {
+  min-height: 40px;
+  align-items: center;
+}
+.sidebar-item .item-title {
+  line-height: 1.35;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

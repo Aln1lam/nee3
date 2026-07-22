@@ -51,7 +51,6 @@
           :end-time="gameMeta.end_time"
         />
         <UiTimeProgress v-else-if="isTrainingMode" permanent />
-        <UiThemeBox />
         <InstanceBox v-if="user" />
         <UiNotificationBox />
         <template v-if="user">
@@ -78,7 +77,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { NButton, NDropdown, useMessage } from 'naive-ui'
 import LogoAnimate from './LogoAnimate.vue'
 import { InstanceBox } from '@/components/shared'
-import { UiTimer, UiTimeProgress, UiNotificationBox, UiThemeBox } from '@/components/ui'
+import { UiTimer, UiTimeProgress, UiNotificationBox } from '@/components/ui'
 import { usePlatformStore } from '@/stores/platform'
 import { resolveUploadUrl } from '../utils/uploadUrl'
 import { fetchSession } from '../services/auth'
@@ -92,11 +91,19 @@ const NAV_CODE_FALLBACK = {
 }
 
 const DEFAULT_NAV = [
+  { label: '工作台', path: '/home' },
   { label: '知识', path: '/wiki' },
   { label: '训练', path: '/training' },
   { label: '赛事', path: '/games' },
   { label: '公告', path: '/bulletin' },
 ]
+
+/** 保证「工作台」始终在主导航最左，并跟随路由高亮 */
+function normalizeGlobalNav(items) {
+  const list = (items || []).filter((l) => l && l.path && l.path !== '/')
+  const rest = list.filter((l) => l.path !== '/home')
+  return enrichNav([{ label: '工作台', path: '/home' }, ...rest])
+}
 
 function enrichNav(items) {
   return (items || []).map((link) => ({
@@ -108,7 +115,7 @@ function enrichNav(items) {
 export default {
   name: 'TitleBar',
   components: {
-    NButton, NDropdown, LogoAnimate, InstanceBox, UiThemeBox,
+    NButton, NDropdown, LogoAnimate, InstanceBox,
     UiTimer, UiTimeProgress, UiNotificationBox,
   },
   props: { user: { type: Object, default: null } },
@@ -200,6 +207,7 @@ export default {
     function isActive(path) {
       const current = route.path
       if (path === '/') return current === '/'
+      if (path === '/home') return current === '/home' || current.startsWith('/home/')
       if (path === '/games') return current === '/games'
       const id = gameId.value
       if (id && path === `/games/${id}`) return current === path || current === `${path}/`
@@ -245,9 +253,7 @@ export default {
     function applyPlatform(info) {
       if (!info) return
       platformName.value = info.name || platformName.value || 'NEEPU CTF 平台'
-      globalNav.value = enrichNav(
-        (info.nav?.length ? info.nav : DEFAULT_NAV).filter((l) => l.path !== '/home' && l.path !== '/')
-      )
+      globalNav.value = normalizeGlobalNav(info.nav?.length ? info.nav : DEFAULT_NAV)
       highlightBanner.value = info.highlight_banner || null
     }
 
@@ -350,7 +356,7 @@ export default {
   font-size: var(--text-xs);
   font-weight: 700;
   letter-spacing: 0.06em;
-  color: var(--color-accent, #D97706);
+  color: var(--primary);
   font-family: var(--font-ui);
 }
 .title-bar-nav a.active .nav-code { color: var(--primary); }
