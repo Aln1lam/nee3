@@ -4,7 +4,7 @@
     :class="{ 'sidebar-collapsed': collapsed }"
     style="--sidebar-width: 248px"
   >
-    <BulletinSidebar :items="bulletins" :is-admin="isAdmin" />
+    <BulletinSidebar :items="bulletins" />
 
     <button
       type="button"
@@ -39,12 +39,6 @@ export default {
     const { collapsed, toggleSidebar } = useCollapsibleSidebar('neepu_bulletin_sidebar')
     const bulletins = ref([])
     const listLoading = ref(false)
-    const isAdmin = ref(false)
-
-    try {
-      const u = JSON.parse(localStorage.getItem('neepu_user') || '{}')
-      isAdmin.value = !!u.is_admin
-    } catch { /* ignore */ }
 
     async function loadList() {
       listLoading.value = true
@@ -64,7 +58,7 @@ export default {
 
     onMounted(loadList)
 
-    return { collapsed, toggleSidebar, bulletins, isAdmin }
+    return { collapsed, toggleSidebar, bulletins }
   },
 }
 </script>

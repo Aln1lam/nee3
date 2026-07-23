@@ -1,5 +1,6 @@
 <template>
   <MatrixShell
+    class="scoreboard-shell"
     prompt=""
     title="积分排行"
     subtitle="SCORE · BOARD"
@@ -9,17 +10,13 @@
     :items="navItems"
   >
     <template #sidebar-footer>
-      <router-link :to="`/games/${gameId}`" class="sidebar-link">
-        <span class="link-code">GME</span>
-        <span>返回赛事</span>
-      </router-link>
-      <router-link to="/games" class="sidebar-link">
+      <router-link to="/contests" class="sidebar-link">
         <span class="link-code">CTF</span>
-        <span>赛事列表</span>
+        <span>返回赛事</span>
       </router-link>
     </template>
 
-    <div class="scoreboard-layout">
+    <div class="scoreboard-layout game-challenges-content">
       <div class="matrix-panel scoreboard-panel matrix-data-panel">
         <div class="scoreboard-toolbar">
           <div>
@@ -168,6 +165,37 @@ export default {
 </script>
 
 <style scoped>
+.scoreboard-shell {
+  height: 100%;
+  max-height: 100%;
+  overflow: hidden;
+}
+.scoreboard-shell :deep(.matrix-main) {
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  height: 100%;
+}
+.scoreboard-shell :deep(.matrix-page) {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.game-challenges-content {
+  height: 100%;
+  max-height: 100%;
+  overflow-x: hidden;
+  overflow-y: auto;
+  box-sizing: border-box;
+}
+.scoreboard-layout {
+  min-height: 0;
+}
+
 .toolbar-actions {
   display: flex;
   gap: var(--fib-8);

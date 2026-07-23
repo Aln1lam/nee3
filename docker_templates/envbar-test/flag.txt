@@ -1,0 +1,1 @@
+flag{mcp_container_envbar_2026}

@@ -16,6 +16,7 @@
       </select>
       <button class="btn-primary" @click="loadArticles">搜索</button>
       <button class="btn-secondary" @click="loadArticles">刷新</button>
+      <button class="btn-primary btn-create-wiki" @click="goCreateArticle">新建文章</button>
     </div>
 
     <table class="articles-table">
@@ -46,6 +47,7 @@
           <td>{{ formatDate(article.published_at) }}</td>
           <td class="actions">
             <button class="btn-small view" @click="openArticle(article.id)">查看</button>
+            <button class="btn-small edit" @click="goEditArticle(article.id)">编辑</button>
             <button 
               v-if="article.status !== 'published'"
               class="btn-small publish" 
@@ -70,15 +72,24 @@
 
 <script>
 import { ref, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import platformAdmin from '@/services/admin/platform'
 
 export default {
   name: 'ContentManagement',
   setup() {
+    const router = useRouter()
     const articles = ref([])
     const searchText = ref('')
     const filterStatus = ref('')
     const currentPage = ref(1)
+
+    function goCreateArticle() {
+      router.push('/admin/content/new')
+    }
+    function goEditArticle(articleId) {
+      router.push(`/admin/content/${articleId}/edit`)
+    }
 
     async function loadArticles() {
       try {
@@ -175,6 +186,8 @@ export default {
       getStatusLabel,
       getStatusClass,
       openArticle,
+      goCreateArticle,
+      goEditArticle,
       publishArticle,
       deleteArticle,
       formatDate

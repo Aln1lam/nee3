@@ -84,27 +84,14 @@
         </div>
       </template>
       <template v-else>
-        <router-link :to="`/games/${gameId}`" class="sidebar-link">
-          <span class="link-code">GME</span>
-          <span>赛事详情</span>
-        </router-link>
-        <router-link to="/games" class="sidebar-link">
+        <router-link to="/contests" class="sidebar-link">
           <span class="link-code">CTF</span>
-          <span>赛事列表</span>
+          <span>返回赛事</span>
         </router-link>
-        <router-link :to="`/games/${gameId}/scoreboard`" class="sidebar-link">
-          <span class="link-code">SB</span>
-          <span>排行榜</span>
-        </router-link>
-        <router-link
-          :to="selectedChallenge
-            ? { path: '/submissions', query: { challenge: String(selectedChallenge.id), game: String(gameId) } }
-            : '/submissions'"
-          class="sidebar-link"
-        >
-          <span class="link-code">SUB</span>
-          <span>我的提交</span>
-        </router-link>
+        <div class="sidebar-footer-copy" style="margin-top: 10px;">
+          © 2022-2026
+          <a href="https://www.neepu.edu.cn/" target="_blank" rel="noopener">东北电力大学</a>
+        </div>
       </template>
     </template>
 
@@ -963,13 +950,21 @@ export default {
             message.error('启容器排队失败或超时')
             return
           }
-          message.success('容器已启动')
           await loadContainerInstance()
+          if (!instance.value) {
+            message.error('容器已创建但立即退出，请检查镜像配置或联系管理员')
+            return
+          }
+          message.success('容器已启动')
           return
         }
         if (payload?.code === 200 || payload?.success || d.instance_id) {
-          message.success('容器已启动')
           await loadContainerInstance()
+          if (!instance.value) {
+            message.error('容器已创建但立即退出，请检查镜像配置或联系管理员')
+            return
+          }
+          message.success('容器已启动')
         } else {
           message.error(payload?.msg || payload?.message || '启动失败')
         }
@@ -2391,4 +2386,11 @@ export default {
 
 
 
+
+/* 题目页：壳层定死，仅内容区滚动 */
+.challenge-workspace-matrix {
+  height: 100%;
+  max-height: 100%;
+  overflow: hidden;
+}
 </style>

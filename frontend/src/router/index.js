@@ -5,8 +5,9 @@ import { createRouter, createWebHistory } from 'vue-router'
 const PlatformLanding = () => import('../components/PlatformLanding.vue')
 const Home = () => import('../components/Home.vue')
 const Auth = () => import('../components/Auth.vue')
-const GamesHub = () => import('../components/GamesHub.vue')
-const GameDetail = () => import('../components/GameDetail.vue')
+const Contests = () => import('../components/Contests.vue')
+const GameOverview = () => import('../components/GameOverview.vue')
+const GameChallenges = () => import('../components/GameChallenges.vue')
 const GameTeams = () => import('../components/GameTeams.vue')
 const Teams = () => import('../components/Teams.vue')
 const Submissions = () => import('../components/Submissions.vue')
@@ -35,7 +36,6 @@ const AccountSettings = () => import('../components/AccountSettings.vue')
 const AccountPassword = () => import('../components/AccountPassword.vue')
 const AccountOAuth = () => import('../components/AccountOAuth.vue')
 const AccountDelete = () => import('../components/AccountDelete.vue')
-const BulletinCreate = () => import('../components/BulletinCreate.vue')
 const DevComponents = () => import('../components/DevComponents.vue')
 
 import { ADMIN_MENU, ADMIN_LEGACY_SECTIONS } from '../config/adminMenu'
@@ -112,7 +112,6 @@ const routes = [
 
   { path: '/home', name: 'PlatformHome', component: Home, meta: { requiresAuth: true } },
   { path: '/archive', name: 'Archive', component: Archive },
-  { path: '/bulletin/create', name: 'BulletinCreate', component: BulletinCreate, meta: { requiresAuth: true, requiresAdmin: true } },
   {
     path: '/bulletin',
     component: BulletinLayout,
@@ -121,17 +120,18 @@ const routes = [
       { path: ':id', name: 'BulletinDetail', component: BulletinDetail, props: true },
     ],
   },
-  { path: '/wiki/create', redirect: '/knowledge/new' },
+  { path: '/bulletin/create', redirect: '/admin/announcement' },
+  { path: '/wiki/create', redirect: '/admin/content/new' },
   { path: '/users', name: 'UserList', component: UserList },
   { path: '/users/:id', name: 'UserProfile', component: UserPublicProfile, props: true },
   { path: '/myprofile', name: 'MyProfile', component: MyProfile, meta: { requiresAuth: true } },
   { path: '/profile', redirect: '/account/settings/info' },
   { path: '/wiki', name: 'Wiki', component: KnowledgeList },
   { path: '/knowledge', redirect: '/wiki' },
-  { path: '/knowledge/new', name: 'ArticleNew', component: () => import('../components/ArticleUpload.vue') },
+  { path: '/knowledge/new', redirect: '/admin/content/new' },
   { path: '/wiki/:id', name: 'WikiArticle', component: ArticleView, props: true },
   { path: '/knowledge/:id', redirect: to => `/wiki/${to.params.id}` },
-  { path: '/knowledge/:id/edit', name: 'ArticleEdit', component: () => import('../components/ArticleEdit.vue'), props: true },
+  { path: '/knowledge/:id/edit', redirect: to => `/admin/content/${to.params.id}/edit` },
 
   { path: '/magic/sakana', name: 'MagicSakana', component: () => import('../components/MagicSakana.vue') },
   { path: '/auth', name: 'Auth', component: Auth },
@@ -155,13 +155,14 @@ const routes = [
   { path: '/training/:gameId', redirect: to => `/training/challenge/${to.params.gameId}` },
 
   // 赛事
-  { path: '/games', name: 'GamesHub', component: GamesHub },
-  { path: '/ctf', redirect: '/games' },
-  { path: '/games/:id', name: 'GameDetail', component: GameDetail, props: true },
+  { path: '/contests', name: 'Contests', component: Contests },
+  { path: '/games', redirect: '/contests' },
+  { path: '/ctf', redirect: '/contests' },
+  { path: '/games/:id', name: 'GameDetail', component: GameOverview, props: true },
   {
     path: '/games/:id/challenges',
     name: 'GameChallenges',
-    component: ChallengeWorkspace,
+    component: GameChallenges,
     props: (route) => ({
       gameId: route.params.id,
       mode: 'competition',
@@ -203,16 +204,32 @@ const routes = [
     component: AdminPanel,
     meta: { requiresAuth: true, requiresAdmin: true },
     redirect: '/admin/dashboard',
-    children: ADMIN_MENU.map(item => ({
-      path: item.key,
-      name: `Admin${item.key.charAt(0).toUpperCase() + item.key.slice(1)}`,
-      component: AdminContent,
-      meta: {
-        requiresAuth: true,
-        requiresAdmin: true,
-        adminView: item.key,
+    children: [
+      ...ADMIN_MENU.map(item => ({
+        path: item.key,
+        name: `Admin${item.key.charAt(0).toUpperCase() + item.key.slice(1)}`,
+        component: AdminContent,
+        meta: {
+          requiresAuth: true,
+          requiresAdmin: true,
+          adminView: item.key,
+        },
+      })),
+      {
+        path: 'content/new',
+        name: 'AdminContentNew',
+        component: () => import('../components/ArticleUpload.vue'),
+        meta: { requiresAuth: true, requiresAdmin: true, adminView: 'content' },
       },
-    })),
+      {
+        path: 'content/:id/edit',
+        name: 'AdminContentEdit',
+        component: () => import('../components/ArticleEdit.vue'),
+        props: true,
+        meta: { requiresAuth: true, requiresAdmin: true, adminView: 'content' },
+      },
+      { path: 'bulletin', redirect: '/admin/announcement' },
+    ],
   },
   ...ADMIN_LEGACY_SECTIONS.map(section => ({
     path: `/admin/${section}`,
@@ -247,7 +264,7 @@ import { fetchSession } from '../services/auth'
 
 const PUBLIC_ROUTES = new Set([
   'Landing', 'Auth', 'VerifyEmail', 'ForgotPassword', 'ResetPassword',
-  'Wiki', 'WikiArticle', 'Archive', 'Bulletin', 'GamesHub', 'GameDetail',
+  'Wiki', 'WikiArticle', 'Archive', 'Bulletin', 'Contests', 'GameDetail',
   'Training', 'TrainingGame', 'Sigtrap',
   'BulletinDetail', 'UserList', 'UserProfile', 'GameScoreboard',
 ])

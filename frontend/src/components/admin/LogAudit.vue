@@ -1,10 +1,25 @@
 <template>
   <div class="log-audit">
-    
+    <!-- 1) 统计指标  2) 工具栏  3) 表格 -->
+    <div class="logs-stats">
+      <div class="stat-card">
+        <div class="stat-label">24小时操作数</div>
+        <div class="stat-value">{{ stats.today_count }}</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">本周操作数</div>
+        <div class="stat-value">{{ stats.week_count }}</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">本月操作数</div>
+        <div class="stat-value">{{ stats.month_count }}</div>
+      </div>
+    </div>
+
     <div class="action-bar">
-      <input 
-        v-model="searchText" 
-        placeholder="搜索日志（操作、对象）..." 
+      <input
+        v-model="searchText"
+        placeholder="搜索日志（操作、对象）..."
         class="search-input"
         @keyup.enter="loadLogs"
       />
@@ -55,23 +70,7 @@
             </template>
           </label>
         </div>
-        <!-- 预览功能已移除（不再需要） -->
         <button class="btn-danger btn-small" @click="confirmDeleteByMonths">按月删除</button>
-      </div>
-    </div>
-
-    <div class="logs-stats">
-      <div class="stat-card">
-        <div class="stat-label">24小时操作数</div>
-        <div class="stat-value">{{ stats.today_count }}</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-label">本周操作数</div>
-        <div class="stat-value">{{ stats.week_count }}</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-label">本月操作数</div>
-        <div class="stat-value">{{ stats.month_count }}</div>
       </div>
     </div>
 
@@ -195,7 +194,7 @@ export default {
     const filterAction = ref('')
     const filterTarget = ref('')
     const currentPage = ref(1)
-    const perPage = ref(10)
+    const perPage = ref(15)
     const total = ref(0)
     const totalPages = computed(() => {
       return perPage.value > 0 ? Math.max(1, Math.ceil(total.value / perPage.value)) : 1
@@ -520,6 +519,13 @@ export default {
 </script>
 
 <style scoped>
+.log-audit {
+  width: 100%;
+  max-width: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
 h2 {
   margin-top: 0;
   color: #333;
@@ -531,8 +537,11 @@ h2 {
 .action-bar {
   display: flex;
   gap: 10px;
-  margin-bottom: 20px;
+  margin-top: 0;
+  margin-bottom: 16px;
   flex-wrap: wrap;
+  width: 100%;
+  align-items: center;
 }
 
 .search-input, .filter-select {
@@ -573,30 +582,58 @@ h2 {
 
 .logs-stats {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 15px;
-  margin-bottom: 20px;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  width: 100%;
+  margin: 0 0 16px;
+  box-sizing: border-box;
 }
 
 .stat-card {
-  background: var(--gradient-card-bg, var(--card-bg));
-  padding: 15px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  width: 100%;
+  min-width: 0;
+  height: 86px;
+  min-height: 86px;
+  max-height: 90px;
+  padding: 8px 12px;
+  margin: 0;
+  box-sizing: border-box;
+  background: rgba(20, 26, 33, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.06);
   border-radius: 8px;
-  box-shadow: var(--card-shadow);
-  border: 1px solid rgba(0,0,0,0.06);
+  box-shadow: none;
   text-align: center;
 }
 
 .stat-label {
-  font-size: 12px;
-  color: #999;
-  margin-bottom: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #9ca3af;
+  margin: 0;
+  line-height: 1.2;
 }
 
 .stat-value {
-  font-size: 28px;
+  font-size: 26px;
   font-weight: 700;
-  color: var(--card-accent);
+  color: #ffffff;
+  margin: 0;
+  line-height: 1.15;
+}
+
+@media (max-width: 720px) {
+  .logs-stats {
+    grid-template-columns: 1fr;
+  }
+  .stat-card {
+    height: 80px;
+    min-height: 80px;
+  }
 }
 
 .logs-table {
@@ -606,7 +643,7 @@ h2 {
   border-radius: 8px;
   overflow: hidden;
   box-shadow: var(--card-shadow);
-  margin-bottom: 20px;
+  margin-bottom: 16px;
   font-size: 12px;
 }
 

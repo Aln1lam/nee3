@@ -2,10 +2,8 @@
   <div class="landing-page" :style="authBgStyle">
     
     <div class="center-content">
-      <div class="bracket-title">
-        <span class="bracket">[</span>
+      <div class="bracket-title auth-hero-title">
         <span class="title-text">NEEPU CTF 终端</span>
-        <span class="bracket">]</span>
       </div>
       
       <div class="action-area">
@@ -23,7 +21,8 @@
 
   <n-modal v-model:show="showLogin" :class="modalAnimationClass">
       <n-card
-        :style="{ width: 'var(--auth-modal-width, 400px)' }"
+        class="auth-login-card"
+        :style="{ width: 'var(--auth-modal-width, 420px)' }"
         :bordered="false"
         size="huge"
         role="dialog"
@@ -42,7 +41,7 @@
             <div v-if="captchaRequired" class="auth-captcha">
               <Captcha v-model="loginCaptchaAnswer" v-model:captcha-id="loginCaptchaId" />
             </div>
-            <n-button type="primary" block strong @click="login" :loading="loading">
+            <n-button type="primary" block strong class="auth-enter-btn" @click="login" :loading="loading">
               确认进入系统
             </n-button>
             <div class="auth-links">
@@ -273,8 +272,10 @@ export default {
 }
 
 .bracket {
-  font-weight: 300;
-  color: var(--muted, var(--muted));
+  display: none !important;
+}
+.auth-hero-title .title-text {
+  color: var(--text);
 }
 
 /* 2. 红色小按钮区域 */
@@ -416,4 +417,122 @@ export default {
 .n-modal__mask {
   background-color: rgba(15, 23, 42, 0.14) !important;
 }
+
+
+/* NEEPU_AUTH_MODAL_FIX */
+/* Login modal — sleek inputs / glow button / glass card */
+.n-modal .auth-login-card.n-card,
+.n-modal .n-card.auth-login-card,
+html .n-modal .auth-login-card.n-card {
+  background: rgba(15, 21, 28, 0.85) !important;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(94, 217, 168, 0.18) !important;
+  border-radius: 12px !important;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5) !important;
+  --n-color: rgba(15, 21, 28, 0.85) !important;
+  --n-border-color: rgba(94, 217, 168, 0.18) !important;
+  --n-text-color: #e5e7eb !important;
+  --n-padding-top: 0 !important;
+  --n-padding-bottom: 0 !important;
+  --n-padding-left: 0 !important;
+  --n-padding-right: 0 !important;
+}
+.n-modal .auth-login-card .n-card__content {
+  padding: 32px 28px !important;
+  color: #e5e7eb !important;
+}
+.n-modal .auth-login-card .n-tabs-nav {
+  margin-bottom: 20px !important;
+}
+.n-modal .auth-login-card .n-tabs-tab,
+.n-modal .auth-login-card .n-form-item-label,
+.n-modal .auth-login-card .n-tabs-tab__label {
+  color: #e5e7eb !important;
+  font-weight: 500 !important;
+}
+.n-modal .auth-login-card .n-form-item {
+  margin-bottom: 18px !important;
+}
+.n-modal .auth-login-card .n-input {
+  --n-height: 44px !important;
+  --n-font-size: 14px !important;
+  --n-padding-left: 14px !important;
+  --n-padding-right: 14px !important;
+  --n-color: rgba(255, 255, 255, 0.03) !important;
+  --n-color-focus: rgba(255, 255, 255, 0.05) !important;
+  --n-text-color: #ffffff !important;
+  --n-placeholder-color: rgba(156, 163, 175, 0.8) !important;
+  --n-border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  --n-border-hover: 1px solid rgba(94, 217, 168, 0.4) !important;
+  --n-border-focus: 1px solid rgba(94, 217, 168, 0.55) !important;
+  --n-box-shadow-focus: 0 0 0 2px rgba(16, 185, 129, 0.12) !important;
+  background: rgba(255, 255, 255, 0.03) !important;
+  border-radius: 8px !important;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease !important;
+}
+.n-modal .auth-login-card .n-input .n-input__input-el,
+.n-modal .auth-login-card .n-input input,
+.n-modal .auth-login-card input {
+  height: 44px !important;
+  line-height: 44px !important;
+  padding: 0 14px !important;
+  font-size: 14px !important;
+  color: #ffffff !important;
+  caret-color: #10b981 !important;
+  background-color: transparent !important;
+  text-align: left !important;
+}
+.n-modal .auth-login-card input:-webkit-autofill,
+.n-modal .auth-login-card input:-webkit-autofill:hover,
+.n-modal .auth-login-card input:-webkit-autofill:focus,
+.n-modal .auth-login-card input:-webkit-autofill:active,
+.n-modal input:-webkit-autofill,
+.n-modal input:-webkit-autofill:hover,
+.n-modal input:-webkit-autofill:focus,
+.n-modal input:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 1000px #0f151c inset !important;
+  box-shadow: 0 0 0 1000px #0f151c inset !important;
+  -webkit-text-fill-color: #ffffff !important;
+  caret-color: #10b981 !important;
+  border-radius: 8px;
+  transition: background-color 5000s ease-in-out 0s;
+}
+.n-modal .auth-login-card .auth-enter-btn.n-button,
+.n-modal .auth-login-card .n-button--primary-type {
+  --n-height: 42px !important;
+  --n-font-size: 14px !important;
+  --n-border-radius: 8px !important;
+  height: 42px !important;
+  font-size: 14px !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.02em !important;
+  color: #0a0f14 !important;
+  background: #10b981 !important;
+  border: none !important;
+  border-radius: 8px !important;
+  box-shadow: 0 4px 14px rgba(16, 185, 129, 0.18) !important;
+  transition: box-shadow 0.22s ease, transform 0.18s ease, filter 0.18s ease !important;
+}
+.n-modal .auth-login-card .auth-enter-btn.n-button:hover,
+.n-modal .auth-login-card .n-button--primary-type:hover {
+  background: #10b981 !important;
+  color: #0a0f14 !important;
+  filter: brightness(1.05);
+  box-shadow: 0 0 16px rgba(16, 185, 129, 0.35) !important;
+  transform: translateY(-1px);
+}
+.n-modal .auth-login-card .auth-enter-btn.n-button:active,
+.n-modal .auth-login-card .n-button--primary-type:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.22) !important;
+}
+.n-modal .auth-login-card .auth-links {
+  margin-top: 18px !important;
+}
+.n-modal .auth-login-card .auth-captcha {
+  margin: 8px 0 18px !important;
+}
+/* /NEEPU_AUTH_MODAL_FIX */
+
 </style>

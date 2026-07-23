@@ -1353,3 +1353,20 @@
   overflow: hidden;
   box-sizing: border-box;
 }
+
+/* 赛场概览：禁用全局 φ 大 padding，避免视口溢出 */
+.game-overview-container,
+.game-layout-page,
+.game-layout-main.is-overview {
+  padding: 0 !important;
+}
+.game-overview-container {
+  padding: 24px 32px 32px !important;
+  box-sizing: border-box;
+}
+/* 强制概览毛玻璃卡片四周 36px 留白，防止海报贴边 */
+.overview-hero.game-overview-card,
+.game-overview-card {
+  padding: 32px !important;
+  box-sizing: border-box !important;
+}

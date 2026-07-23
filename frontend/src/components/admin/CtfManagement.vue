@@ -16,26 +16,32 @@
 
     <!-- 竞赛管理 -->
     <div v-show="activeTab === 'games'" class="tab-content">
-      <div class="card">
-        <div class="card-header">
-          <h3>竞赛列表</h3>
-          <button class="btn-primary" @click="showCreateGameModal = true">新建竞赛</button>
-        </div>
-        <div class="games-filters">
-          <label class="filter-item">
-            类型
-            <select v-model="gameTypeFilter" class="form-input filter-select" @change="loadGames">
-              <option value="">全部</option>
-              <option value="official">正式赛</option>
-              <option value="training">训练场</option>
-              <option value="practice">练习</option>
-            </select>
-          </label>
-          <label class="filter-item">
-            <input v-model="showEphemeral" type="checkbox" @change="loadGames">
-            显示探针/E2E
-          </label>
-          <span class="filter-meta">共 {{ games.length }} 场</span>
+      <div class="games-panel">
+        <div class="games-toolbar">
+          <h3 class="toolbar-title">竞赛列表</h3>
+          <div class="toolbar-filters">
+            <label class="filter-item">
+              <span class="filter-label">类型</span>
+              <select v-model="gameTypeFilter" class="modern-select" @change="loadGames">
+                <option value="">全部</option>
+                <option value="official">正式赛</option>
+                <option value="training">训练场</option>
+                <option value="practice">练习</option>
+              </select>
+            </label>
+            <button
+              type="button"
+              class="filter-chip"
+              :class="{ active: showEphemeral }"
+              @click="showEphemeral = !showEphemeral; loadGames()"
+            >
+              显示探针/E2E
+            </button>
+            <span class="count-badge">{{ games.length }} 场</span>
+          </div>
+          <button type="button" class="btn-primary btn-create-game" @click="showCreateGameModal = true">
+            + 新建竞赛
+          </button>
         </div>
         <table class="data-table">
           <thead>
@@ -1703,29 +1709,132 @@ export default {
   font-size: 12px;
   color: #888;
 }
-.game-filters {
+/* ===== Games toolbar (flattened, no card nesting) ===== */
+.games-panel {
+  width: 100%;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  padding: 0;
+  margin: 0;
+}
+.games-toolbar {
   display: flex;
   flex-wrap: wrap;
-  gap: 12px 20px;
   align-items: center;
-  padding: 0 4px 14px;
+  gap: 12px 16px;
+  width: 100%;
+  margin-bottom: 14px;
+  padding: 0;
+  box-sizing: border-box;
 }
-.game-filters .filter-item {
+.games-toolbar .toolbar-title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #f3f4f6;
+  letter-spacing: 0.01em;
+  flex: 0 0 auto;
+}
+.games-toolbar .toolbar-filters {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 12px;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.games-toolbar .filter-item {
   display: inline-flex;
   align-items: center;
   gap: 8px;
+  margin: 0;
   font-size: 13px;
-  color: #555;
+  color: #9ca3af;
 }
-.game-filters .filter-select {
-  width: auto;
-  min-width: 120px;
-  padding: 4px 8px;
+.games-toolbar .filter-label {
+  color: #9ca3af;
+  font-weight: 500;
+  white-space: nowrap;
 }
-.game-filters .filter-meta {
-  margin-left: auto;
+.games-toolbar .modern-select {
+  appearance: none;
+  -webkit-appearance: none;
+  height: 34px;
+  min-width: 128px;
+  padding: 0 28px 0 12px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #e5e7eb;
+  background-color: rgba(255, 255, 255, 0.04);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%239ca3af' d='M3 4.5L6 8l3-3.5'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  outline: none;
+  cursor: pointer;
+  transition: border-color 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+}
+.games-toolbar .modern-select:hover,
+.games-toolbar .modern-select:focus {
+  border-color: rgba(16, 185, 129, 0.45);
+  box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.12);
+  background-color: rgba(255, 255, 255, 0.06);
+  color: #f3f4f6;
+}
+.games-toolbar .modern-select option {
+  background: #141a21;
+  color: #e5e7eb;
+}
+.games-toolbar .filter-chip {
+  height: 34px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(107, 114, 128, 0.35);
+  background: rgba(107, 114, 128, 0.12);
+  color: #d1d5db;
   font-size: 12px;
-  color: #888;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.18s ease;
+  white-space: nowrap;
+}
+.games-toolbar .filter-chip:hover {
+  border-color: rgba(16, 185, 129, 0.35);
+  color: #e5e7eb;
+}
+.games-toolbar .filter-chip.active {
+  background: rgba(16, 185, 129, 0.14);
+  border-color: rgba(16, 185, 129, 0.4);
+  color: #10b981;
+  box-shadow: 0 0 0 1px rgba(16, 185, 129, 0.12);
+}
+.games-toolbar .count-badge {
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  padding: 0 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: #10b981;
+  background: rgba(16, 185, 129, 0.12);
+  border: 1px solid rgba(16, 185, 129, 0.28);
+  white-space: nowrap;
+}
+.games-toolbar .btn-create-game {
+  margin-left: auto;
+  height: 34px;
+  padding: 0 14px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.games-panel .data-table {
+  width: 100%;
 }
 .ctf-management {
   padding: var(--fib-21);

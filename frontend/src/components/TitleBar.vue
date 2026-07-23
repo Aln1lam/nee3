@@ -5,7 +5,7 @@
       <button type="button" class="banner-close" aria-label="关闭" @click="bannerDismissed = true">×</button>
     </div>
 
-    <div class="title-bar-inner" :data-print-time="printTime">
+    <div class="title-bar-inner" :class="{ 'is-game-mode': isGameMode }" :data-print-time="printTime">
       <div class="title-bar-left">
         <div class="brand" @click="goHome">
           <LogoAnimate :size="28" />
@@ -33,7 +33,7 @@
             <span class="nav-label">{{ link.label }}</span>
           </a>
           <a
-            v-if="user?.is_admin"
+            v-if="isAdminUser"
             class="btn btn-md btn-ghost"
             :class="{ 'btn-active': isActive('/admin'), active: isActive('/admin') }"
             @click.prevent="navigate('/admin/dashboard')"
@@ -43,29 +43,28 @@
         </template>
       </nav>
 
-      <div class="title-bar-right">
-        <UiTimer v-if="isGameMode && gameMeta" :start-time="gameMeta.start_time" :end-time="gameMeta.end_time" />
-        <UiTimeProgress
-          v-if="isGameMode && gameMeta && !isTrainingMode"
-          :start-time="gameMeta.start_time"
-          :end-time="gameMeta.end_time"
-        />
+      <div class="title-bar-right" :class="{ 'is-game': isGameMode }">
+        <div v-if="isGameMode && gameMeta" class="game-clock" aria-label="比赛倒计时">
+          <UiTimer :start-time="gameMeta.start_time" :end-time="gameMeta.end_time" />
+        </div>
         <UiTimeProgress v-else-if="isTrainingMode" permanent />
-        <InstanceBox v-if="user" />
-        <UiNotificationBox />
-        <template v-if="user">
-          <n-dropdown :options="userMenuOptions" trigger="click" @select="onUserMenuSelect">
-            <button type="button" class="user-trigger" aria-label="用户菜单">
-              <span class="header-avatar">
-                <img v-if="avatarUrl && !avatarBroken" :src="avatarUrl" alt="" @error="avatarBroken = true" />
-                <span v-else class="avatar-initial">{{ avatarInitial }}</span>
-              </span>
-              <span class="user-nick">{{ user.nickname || user.username || '用户' }}</span>
-              <span class="user-role-chip">{{ userRoleBadge }}</span>
-            </button>
-          </n-dropdown>
-        </template>
-        <n-button v-else size="small" type="primary" @click="navigate('/auth')">登录</n-button>
+        <div class="title-bar-user">
+          <InstanceBox v-if="user" />
+          <UiNotificationBox />
+          <template v-if="user">
+            <n-dropdown :options="userMenuOptions" trigger="click" @select="onUserMenuSelect">
+              <button type="button" class="user-trigger" aria-label="用户菜单">
+                <span class="header-avatar">
+                  <img v-if="avatarUrl && !avatarBroken" :src="avatarUrl" alt="" @error="avatarBroken = true" />
+                  <span v-else class="avatar-initial">{{ avatarInitial }}</span>
+                </span>
+                <span class="user-nick">{{ user.nickname || user.username || '用户' }}</span>
+                <span class="user-role-chip">{{ userRoleBadge }}</span>
+              </button>
+            </n-dropdown>
+          </template>
+          <n-button v-else size="small" type="primary" @click="navigate('/auth')">登录</n-button>
+        </div>
       </div>
     </div>
   </header>
@@ -86,6 +85,7 @@ const NAV_CODE_FALLBACK = {
   '/home': 'HOM',
   '/wiki': 'DOC',
   '/training': 'TRN',
+  '/contests': 'CTF',
   '/games': 'CTF',
   '/bulletin': 'BUL',
 }
@@ -94,7 +94,7 @@ const DEFAULT_NAV = [
   { label: '工作台', path: '/home' },
   { label: '知识', path: '/wiki' },
   { label: '训练', path: '/training' },
-  { label: '赛事', path: '/games' },
+  { label: '赛事', path: '/contests' },
   { label: '公告', path: '/bulletin' },
 ]
 
@@ -165,7 +165,6 @@ export default {
         { label: '题目', path: `/games/${id}/challenges` },
         { label: '积分榜', path: `/games/${id}/scoreboard` },
         { label: '队伍', path: `/games/${id}/teams` },
-        { label: '返回', path: '/games' },
       ]
     })
 
@@ -177,12 +176,17 @@ export default {
       return `NEEPU-${String(id).padStart(6, '0')}-${userHexId.value.slice(2).toUpperCase()}`
     })
 
+    const isAdminUser = computed(() => {
+      const u = props.user || {}
+      return !!(u.is_admin || u.role === 'admin' || u.role === 'Admin')
+    })
+
     const userMenuOptions = computed(() => [
       { label: `${props.user?.nickname || '用户'} · ${userHexId.value}`, key: 'info', disabled: true },
       { type: 'divider' },
       { label: '复制临时身份码', key: 'tempcode' },
       { label: '账号设置', key: 'settings' },
-      ...(props.user?.is_admin ? [{ label: '管理后台', key: 'admin' }] : []),
+      ...(isAdminUser.value ? [{ label: '管理后台', key: 'admin' }] : []),
       { type: 'divider' },
       { label: '退出登录', key: 'logout' },
     ])
@@ -208,7 +212,7 @@ export default {
       const current = route.path
       if (path === '/') return current === '/'
       if (path === '/home') return current === '/home' || current.startsWith('/home/')
-      if (path === '/games') return current === '/games'
+      if (path === '/contests' || path === '/games') return current === '/contests' || current === '/games'
       const id = gameId.value
       if (id && path === `/games/${id}`) return current === path || current === `${path}/`
       if (path === '/admin') return current.startsWith('/admin')
@@ -272,6 +276,7 @@ export default {
     onUnmounted(() => window.removeEventListener('neepu_platform_updated', onPlatformUpdated))
 
     return {
+      isAdminUser,
       highlightBanner, bannerDismissed, displayName, globalNav, gameNav,
       isGameMode, isTrainingMode, gameMeta, userMenuOptions, avatarUrl, avatarBroken,
       avatarInitial, userRoleBadge, printTime, isActive, navigate, goHome, onUserMenuSelect,
@@ -362,16 +367,51 @@ export default {
 .title-bar-nav a.active .nav-code { color: var(--primary); }
 .title-bar-nav a:hover { color: var(--text); background: var(--gradient-nav-hover, var(--hover)); }
 .title-bar-nav a.active { color: var(--primary); font-weight: 700; background: var(--gradient-nav-active, var(--hover)); }
+.title-bar-inner.is-game-mode {
+  grid-template-columns: minmax(140px, 240px) minmax(0, 1fr) minmax(220px, auto);
+  gap: 16px;
+}
+.title-bar-inner.is-game-mode .brand-name {
+  max-width: 220px;
+}
+.title-bar-inner.is-game-mode .title-bar-nav a {
+  padding: 10px 14px;
+  font-size: var(--text-base, 0.95rem);
+  grid-template-columns: auto;
+}
 .title-bar-right {
   display: flex;
   align-items: center;
   gap: 12px;
   justify-self: end;
   flex-shrink: 0;
-  padding-right: 24px;
-  margin-right: 8px;
+  padding-right: 8px;
   min-width: 0;
   overflow: visible;
+}
+.title-bar-right.is-game {
+  gap: 0;
+}
+.game-clock {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  padding: 6px 16px;
+  margin-right: 12px;
+  border-right: 1px solid var(--border);
+}
+.game-clock :deep(.ui-timer) {
+  min-width: 96px;
+}
+.title-bar-user {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+  padding-left: 4px;
+}
+.title-bar-right.is-game .user-nick {
+  max-width: 72px;
 }
 /* NSSCTF 风：无白药丸，图标哑光 + 用户扁平行 */
 .title-bar-right :deep(.notif-btn),

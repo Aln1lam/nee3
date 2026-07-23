@@ -26,7 +26,7 @@ export const ADMIN_MENU = [
     label: '公告管理',
     code: 'BLT',
     cmd: 'notices',
-    desc: '发布公告与上下线控制',
+    desc: '平台公告与赛事通知维护',
   },
   {
     key: 'ctf',

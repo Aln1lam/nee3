@@ -1,8 +1,8 @@
 <template>
-  <div class="article-root" :class="{ 'article-root--with-toc': showToc && toc.length }">
-    <nav v-if="showToc && toc.length" class="article-toc" aria-label="目录">
+  <div class="article-root" :class="{ 'article-root--with-toc': showSideRail }">
+    <nav v-if="showSideRail" class="article-toc" aria-label="目录">
       <div class="article-toc__title">目录</div>
-      <ul>
+      <ul class="article-toc__list">
         <li
           v-for="item in toc"
           :key="item.id"
@@ -41,11 +41,19 @@ export default {
     const bodyRef = ref(null)
     const toc = computed(() => extractToc(props.content))
     const html = computed(() => renderMarkdown(props.content))
+    const showSideRail = computed(() => props.showToc && toc.value.length > 0)
 
     function scrollTo(id) {
       const safeId = typeof CSS !== 'undefined' && CSS.escape ? CSS.escape(id) : id.replace(/[^\w-]/g, '')
       const el = bodyRef.value?.querySelector(`#${safeId}`)
-      el?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      if (!el) return
+      const scroller = el.closest('.wiki-detail-main') || el.closest('.wiki-detail-page') || el.closest('.page-wrap')
+      if (scroller) {
+        const top = el.getBoundingClientRect().top - scroller.getBoundingClientRect().top + scroller.scrollTop - 24
+        scroller.scrollTo({ top, behavior: 'smooth' })
+      } else {
+        el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      }
     }
 
     function attachCodeCopy() {
@@ -83,7 +91,7 @@ export default {
       attachCodeCopy()
     })
 
-    return { bodyRef, toc, html, scrollTo }
+    return { bodyRef, toc, html, scrollTo, showSideRail }
   },
 }
 </script>
@@ -109,22 +117,49 @@ export default {
 }
 .article-toc {
   position: sticky;
-  top: calc(var(--nav-height, 64px) + 16px);
+  top: 12px;
+  align-self: start;
+  max-height: calc(100vh - 120px);
+  overflow: auto;
   padding: 12px;
   border: 1px solid var(--border);
   border-radius: var(--card-radius, 10px);
   background: var(--card-bg);
   font-size: var(--text-sm);
+  z-index: 2;
+}
+.article-toc__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
+}
+.article-toc__list::-webkit-scrollbar {
+  width: 6px;
+}
+.article-toc__list::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 3px;
+}
+.article-toc::-webkit-scrollbar {
+  width: 6px;
+}
+.article-toc::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 3px;
+}
+.article-toc::-webkit-scrollbar-track {
+  background: transparent;
 }
 .article-toc__title {
   font-weight: 700;
   color: var(--primary);
   margin-bottom: 8px;
-}
-.article-toc ul {
-  list-style: none;
-  margin: 0;
-  padding: 0;
 }
 .article-toc a {
   color: var(--muted);

@@ -57,7 +57,7 @@
           </p>
         </div>
 
-        <!-- Top Control Rail：紧凑搜索 + 投稿 -->
+        <!-- Top Control Rail：选手视角仅保留搜索 -->
         <div class="wiki-control-rail">
           <div class="wiki-search">
             <svg class="wiki-search-icon" viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
@@ -72,9 +72,6 @@
               @keyup.enter="fetch"
             />
           </div>
-          <button type="button" class="wiki-submit-btn" @click="$router.push('/knowledge/new')">
-            + 投稿 WriteUp
-          </button>
         </div>
       </header>
 
@@ -146,24 +143,20 @@
             </ul>
           </section>
 
-          <!-- WriteUp 投稿指引：细线框 + 文字链 -->
+          <!-- 阅读指引（无投稿入口） -->
           <section class="wiki-aside-card wiki-aside-card--guide">
             <div class="wiki-aside-head wiki-aside-head--muted">
-              <span class="link-code chip-cut">WRT</span>
-              <span>WriteUp 投稿指引</span>
+              <span class="link-code chip-cut">TIP</span>
+              <span>阅读提示</span>
             </div>
             <p class="wiki-guide-text">
-              使用 Markdown 撰写：题目背景 → 思路拆解 → Payload / 关键命令 → 复盘总结。
-              附件请控制在合理体积，并打上准确分类标签，便于侧栏检索。
+              知识库收录 WriteUp 与教程：建议按标签筛选，结合题目背景与复盘总结对照练习。
             </p>
             <ul class="wiki-guide-mini">
-              <li>标题简洁，摘要 1–2 句</li>
-              <li>代码块标明语言</li>
-              <li>敏感 Flag 打码后再公开</li>
+              <li>侧栏标签可快速过滤主题</li>
+              <li>热门阅读优先展示高浏览条目</li>
+              <li>内容由管理员在后台维护</li>
             </ul>
-            <button type="button" class="wiki-guide-link" @click="$router.push('/knowledge/new')">
-              了解 WriteUp 撰写规范 →
-            </button>
           </section>
         </aside>
       </div>

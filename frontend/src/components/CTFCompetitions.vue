@@ -6,14 +6,6 @@
         <template #header>
           <div class="header-title">
             <span>CTF 竞赛</span>
-            <n-button 
-              v-if="isAdmin" 
-              type="primary" 
-              @click="showCreateDialog = true"
-              size="small"
-            >
-              创建竞赛
-            </n-button>
           </div>
         </template>
 

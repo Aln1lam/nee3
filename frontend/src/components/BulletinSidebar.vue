@@ -37,15 +37,6 @@
           <span class="item-title">{{ item.title }}</span>
         </router-link>
 
-        <router-link
-          v-if="isAdmin"
-          to="/bulletin/create"
-          class="sidebar-item"
-        >
-          <span class="item-code">NEW</span>
-          <span class="item-title">发布公告</span>
-          <span class="item-count">→</span>
-        </router-link>
       </div>
     </nav>
 
@@ -66,7 +57,6 @@ export default {
   name: 'BulletinSidebar',
   props: {
     items: { type: Array, default: () => [] },
-    isAdmin: { type: Boolean, default: false },
   },
   setup() {
     const route = useRoute()

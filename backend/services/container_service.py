@@ -23,24 +23,33 @@ class ContainerService:
     """容器管理服务"""
     
     def __init__(self):
-        """初始化 Docker 客户端"""
+        """初始化 Docker 客户端（失败不永久缓存：后续 is_available 会重连）"""
+        self.client = None
+        self._connect()
+
+    def _connect(self) -> bool:
+        """连接 / 重连 Docker Engine（覆盖 Desktop 晚于 Flask 启动的场景）"""
         try:
-            self.client = docker.from_env()
+            client = docker.from_env()
+            client.ping()
+            self.client = client
             logger.info("Docker client initialized successfully")
-        except Exception as e:
-            logger.error(f"Failed to initialize Docker client: {e}")
-            self.client = None
-    
-    def is_available(self) -> bool:
-        """检查 Docker 是否可用"""
-        if self.client is None:
-            return False
-        try:
-            self.client.ping()
             return True
         except Exception as e:
-            logger.error(f"Docker is not available: {e}")
+            self.client = None
+            logger.error(f"Failed to initialize Docker client: {e}")
             return False
+
+    def is_available(self) -> bool:
+        """检查 Docker 是否可用；不可用时尝试重连一次"""
+        if self.client is not None:
+            try:
+                self.client.ping()
+                return True
+            except Exception as e:
+                logger.warning(f"Docker ping failed, will reconnect: {e}")
+                self.client = None
+        return self._connect()
 
     def create_container(
         self,
@@ -82,10 +91,10 @@ class ContainerService:
             container_name = f"ctf-{challenge.id}-{user.id}-{uuid.uuid4().hex[:8]}"
 
             is_dynamic_container = int(challenge.challenge_type or 0) == 3
+            # 使用模块顶层 CtfGame，勿在函数内再 import（会遮蔽导致 UnboundLocalError）
+            game = CtfGame.query.get(challenge.game_id)
             team_hash_salt = None
             if challenge.flag_template or is_dynamic_container:
-                from backend.server.db_models import CtfGame
-                game = CtfGame.query.get(challenge.game_id)
                 team_hash_salt = ensure_team_hash_salt(game)
 
             dynamic_flag = ContainerFlagService.generate_dynamic_flag(
@@ -97,7 +106,6 @@ class ContainerService:
                 team_hash_salt=team_hash_salt,
             ) if (challenge.flag_template or is_dynamic_container) else None
 
-            game = CtfGame.query.get(challenge.game_id)
             capture_enabled = bool(game and game.enable_traffic_capture and is_dynamic_container)
             host_port = allocate_host_port()
             if not host_port:

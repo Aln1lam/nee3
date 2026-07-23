@@ -47,26 +47,6 @@
 
     <main class="training-main sidebar-main">
       <div class="welcome-panel">
-        <div v-if="showCreateForm" class="create-form-panel matrix-panel">
-          <header class="matrix-page-head">
-            <h2 class="matrix-page-title">创建练习场</h2>
-            <p class="matrix-page-desc">管理员可新建永久开放的训练靶场</p>
-          </header>
-          <n-form label-placement="top" class="create-form">
-            <n-form-item label="练习场名称">
-              <n-input v-model:value="createForm.title" placeholder="如：Web 安全审计" />
-            </n-form-item>
-            <n-form-item label="简介">
-              <n-input v-model:value="createForm.description" type="textarea" placeholder="练习场说明（可选）" :rows="3" />
-            </n-form-item>
-            <div class="create-actions">
-              <n-button type="primary" :loading="creating" @click="createPlayground">创建</n-button>
-              <n-button @click="showCreateForm = false">取消</n-button>
-            </div>
-          </n-form>
-        </div>
-
-        <template v-else>
           <header class="matrix-page-head">
             <h2 class="matrix-page-title text-section">开始今日份的训练！</h2>
             <p class="matrix-page-desc text-muted">
@@ -124,14 +104,12 @@
 
           <div v-else class="empty-panel">
             <p>{{ loadError ? '加载失败，请刷新重试' : '暂无练习场' }}</p>
-            <p v-if="!loadError" class="muted">管理员可创建练习场，或运行 <code>python backend/init_ctf.py</code> 初始化示例数据</p>
+            <p v-if="!loadError" class="muted">练习场由管理员在后台维护，请稍后再来</p>
             <div class="empty-actions">
-              <router-link to="/games">查看赛事</router-link>
+              <router-link to="/contests">查看赛事</router-link>
               <router-link to="/wiki">查看 Wiki</router-link>
             </div>
           </div>
-
-        </template>
       </div>
     </main>
   </div>
@@ -327,7 +305,6 @@ export default {
 
     onMounted(async () => {
       isHost.value = checkIsAdmin()
-      if (route.query.create === 'true' && isHost.value) showCreateForm.value = true
       await loadTrainingWelcome()
       window.addEventListener('neepu_platform_updated', onPlatformUpdated)
       await loadTrainingGames()

@@ -73,7 +73,7 @@ export default {
     const { collapsed, toggleSidebar } = useCollapsibleSidebar('neepu_admin_sidebar_collapsed')
     const menuItems = ADMIN_MENU
 
-    const activeKey = computed(() => route.meta?.adminView || route.path.split('/').pop() || 'dashboard')
+    const activeKey = computed(() => route.meta?.adminView || (route.path.startsWith('/admin/content') ? 'content' : route.path.split('/').pop()) || 'dashboard')
     const currentMenu = computed(() => menuItems.find(m => m.key === activeKey.value) || menuItems[0])
 
     return {
@@ -88,7 +88,6 @@ export default {
 </script>
 
 <style scoped>
-
 /* NEEPU_ADMIN_PANEL_HD */
 .admin-layout,
 .admin-main,

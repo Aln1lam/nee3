@@ -112,7 +112,8 @@ export default {
     const isLandingRoute = computed(() => route.path === '/')
     const isImmersiveRoute = computed(() => {
       const p = route.path
-      if (/^\/games\/\d+\/challenges/.test(p)) return true
+      // 赛场全系（概览/题目/积分榜/队伍）：顶栏+侧栏固定，禁止整页滚动
+      if (/^\/games\/\d+/.test(p) && !/\/admin/.test(p)) return true
       if (/^\/training\/(challenge\/)?\d+/.test(p)) return true
       return false
     })

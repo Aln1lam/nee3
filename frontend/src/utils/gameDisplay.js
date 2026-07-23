@@ -64,8 +64,12 @@ export function formatGameTimeRange(g) {
 }
 
 export function getGamePosterPath(g) {
-  if (g?.poster_url) return g.poster_url
-  return extractPosterPath(g?.description)
+  if (!g) return ''
+  if (g.poster_url) return g.poster_url
+  if (g.cover_url) return g.cover_url
+  if (g.poster) return g.poster
+  // 简介 / 规则 Markdown 内嵌图均可作为海报
+  return extractPosterPath(g.description) || extractPosterPath(g.rules)
 }
 
 export function extractPosterPath(text) {

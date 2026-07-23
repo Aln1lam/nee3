@@ -352,11 +352,13 @@ def resolve_challenge_expected_flag(challenge, user, user_id, running_instance=N
     from backend.services.scoring_service import ChallengeCType
 
     base = (challenge.flag or "").strip()
-    if not challenge.flag_template:
-        return base
 
+    # 动态容器启动时会写入 instance.dynamic_flag（即使未显式配置 flag_template）
     if running_instance and getattr(running_instance, "dynamic_flag", None):
         return running_instance.dynamic_flag.strip()
+
+    if not challenge.flag_template:
+        return base
 
     if int(challenge.challenge_type or 0) != ChallengeCType.DYNAMIC_ATTACHMENT:
         return ""
