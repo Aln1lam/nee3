@@ -1220,4 +1220,332 @@ html .admin-panel .status-message.info {
 }
 /* /NEEPU_CTF_GAMES_TOOLBAR */
 
+/* NEEPU_CTF_HUD_ALIGN — 靶场管理：禁浅色白卡 / 奶油作弊卡，对齐 Obsidian HUD */
+.admin-panel .ctf-management .game-stats-grid {
+  display: grid !important;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)) !important;
+  gap: 10px !important;
+  margin: 0 0 16px !important;
+}
+
+.admin-panel .ctf-management .stat-chip {
+  padding: 12px 14px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 6px !important;
+  background: rgba(15, 18, 26, 0.72) !important;
+  border: 1px solid rgba(16, 185, 129, 0.18) !important;
+  border-radius: var(--ops-radius, 10px) !important;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.02) !important;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.admin-panel .ctf-management .stat-chip span {
+  font-size: 11px !important;
+  letter-spacing: 0.04em !important;
+  color: var(--ops-muted, #9ca3af) !important;
+}
+
+.admin-panel .ctf-management .stat-chip strong {
+  font-size: 18px !important;
+  font-weight: 700 !important;
+  color: var(--ops-text, #e5e7eb) !important;
+  font-family: var(--font-mono, 'JetBrains Mono', monospace) !important;
+}
+
+.admin-panel .ctf-management .cheat-card {
+  background: rgba(15, 18, 26, 0.72) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border-left: 1px solid rgba(16, 185, 129, 0.35) !important;
+  border-radius: var(--ops-radius, 10px) !important;
+  padding: 16px !important;
+  margin-bottom: 12px !important;
+  box-shadow: none !important;
+}
+
+.admin-panel .ctf-management .cheat-id {
+  color: var(--ops-muted) !important;
+  font-family: var(--font-mono, monospace) !important;
+}
+
+.admin-panel .ctf-management .cheat-time {
+  color: var(--ops-muted) !important;
+}
+
+.admin-panel .ctf-management .cheat-type-badge,
+.admin-panel .ctf-management .cheat-status-badge,
+.admin-panel .ctf-management .similarity-badge {
+  border-radius: 8px !important;
+  border: 1px solid transparent !important;
+  font-weight: 600 !important;
+}
+
+.admin-panel .ctf-management .cheat-type-badge.type-flag_origin,
+.admin-panel .ctf-management .cheat-type-badge.type-similar_flag {
+  background: rgba(239, 68, 68, 0.12) !important;
+  color: #f87171 !important;
+  border-color: rgba(239, 68, 68, 0.28) !important;
+}
+
+.admin-panel .ctf-management .cheat-type-badge.type-rapid_submission {
+  background: rgba(245, 158, 11, 0.12) !important;
+  color: #fbbf24 !important;
+  border-color: rgba(245, 158, 11, 0.28) !important;
+}
+
+.admin-panel .ctf-management .cheat-status-badge.status-pending {
+  background: rgba(59, 130, 246, 0.12) !important;
+  color: #93c5fd !important;
+  border-color: rgba(59, 130, 246, 0.28) !important;
+}
+
+.admin-panel .ctf-management .cheat-status-badge.status-confirmed {
+  background: rgba(239, 68, 68, 0.12) !important;
+  color: #f87171 !important;
+  border-color: rgba(239, 68, 68, 0.28) !important;
+}
+
+.admin-panel .ctf-management .cheat-status-badge.status-dismissed {
+  background: rgba(16, 185, 129, 0.12) !important;
+  color: #5ed9a8 !important;
+  border-color: rgba(16, 185, 129, 0.28) !important;
+}
+
+.admin-panel .ctf-management .similarity-badge,
+.admin-panel .ctf-management .similarity-badge.high {
+  background: rgba(239, 68, 68, 0.1) !important;
+  color: #f87171 !important;
+  border-color: rgba(239, 68, 68, 0.25) !important;
+}
+
+.admin-panel .ctf-management .user-box {
+  background: rgba(255, 255, 255, 0.03) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border-left: 1px solid rgba(16, 185, 129, 0.35) !important;
+  border-radius: 8px !important;
+}
+
+.admin-panel .ctf-management .user-label,
+.admin-panel .ctf-management .user-name {
+  color: var(--ops-text) !important;
+}
+
+.admin-panel .ctf-management .user-id {
+  color: var(--ops-muted) !important;
+}
+
+.admin-panel .ctf-management .vs-mark {
+  color: var(--ops-primary) !important;
+}
+
+.admin-panel .ctf-management .reason-box,
+.admin-panel .ctf-management .admin-note-box,
+.admin-panel .ctf-management .submission-info {
+  background: rgba(255, 255, 255, 0.03) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border-radius: 8px !important;
+  border-left: 1px solid rgba(16, 185, 129, 0.28) !important;
+  color: var(--ops-text) !important;
+}
+
+.admin-panel .ctf-management .reason-box p,
+.admin-panel .ctf-management .admin-note-box p,
+.admin-panel .ctf-management .submission-info p {
+  color: var(--ops-muted) !important;
+}
+
+.admin-panel .ctf-management .data-table tbody tr:hover {
+  background: rgba(16, 185, 129, 0.06) !important;
+}
+
+.admin-panel .ctf-management .card-header {
+  border-bottom-color: var(--ops-border) !important;
+}
+
+.admin-panel .ctf-management .form-group label {
+  color: var(--ops-muted) !important;
+}
+
+.admin-panel .ctf-management .btn-small {
+  background: rgba(255, 255, 255, 0.04) !important;
+  color: var(--ops-text) !important;
+  border: 1px solid var(--ops-border) !important;
+  border-radius: 8px !important;
+}
+
+.admin-panel .ctf-management .btn-small:hover {
+  background: rgba(16, 185, 129, 0.1) !important;
+  border-color: rgba(16, 185, 129, 0.35) !important;
+  color: var(--ops-primary) !important;
+}
+
+.admin-panel .ctf-management .btn-edit {
+  color: var(--ops-primary) !important;
+  background: transparent !important;
+}
+
+.admin-panel .ctf-management .btn-edit:hover {
+  background: rgba(16, 185, 129, 0.1) !important;
+}
+
+.admin-panel .ctf-management .btn-danger {
+  color: #f87171 !important;
+  background: transparent !important;
+}
+
+.admin-panel .ctf-management .btn-danger:hover {
+  background: rgba(239, 68, 68, 0.1) !important;
+}
+
+.admin-panel .ctf-management .btn-primary {
+  background: #10b981 !important;
+  color: #0a0f14 !important;
+  border: 1px solid rgba(16, 185, 129, 0.55) !important;
+  border-radius: 8px !important;
+  font-weight: 600 !important;
+}
+
+.admin-panel .ctf-management .btn-primary:hover {
+  box-shadow: 0 0 18px rgba(16, 185, 129, 0.28) !important;
+  background: #34d399 !important;
+}
+
+.admin-panel .ctf-management .btn-secondary {
+  background: rgba(255, 255, 255, 0.04) !important;
+  color: var(--ops-text) !important;
+  border: 1px solid var(--ops-border) !important;
+}
+
+.admin-panel .ctf-management .btn-secondary:hover {
+  border-color: rgba(16, 185, 129, 0.35) !important;
+  color: var(--ops-primary) !important;
+  background: rgba(16, 185, 129, 0.08) !important;
+}
+
+.admin-panel .ctf-management .badge {
+  background: rgba(16, 185, 129, 0.1) !important;
+  color: var(--ops-primary) !important;
+  border: 1px solid rgba(16, 185, 129, 0.22) !important;
+}
+
+.admin-panel .ctf-management .badge-blue {
+  background: rgba(59, 130, 246, 0.12) !important;
+  color: #93c5fd !important;
+  border-color: rgba(59, 130, 246, 0.28) !important;
+}
+
+.admin-panel .ctf-management .badge-green {
+  background: rgba(16, 185, 129, 0.12) !important;
+  color: #5ed9a8 !important;
+  border-color: rgba(16, 185, 129, 0.28) !important;
+}
+
+.admin-panel .ctf-management .badge-orange,
+.admin-panel .ctf-management .badge-yellow {
+  background: rgba(245, 158, 11, 0.12) !important;
+  color: #fbbf24 !important;
+  border-color: rgba(245, 158, 11, 0.28) !important;
+}
+
+.admin-panel .ctf-management .badge-red {
+  background: rgba(239, 68, 68, 0.12) !important;
+  color: #f87171 !important;
+  border-color: rgba(239, 68, 68, 0.28) !important;
+}
+
+.admin-panel .ctf-management .container-config,
+.admin-panel .ctf-management .attachment-section,
+.admin-panel .ctf-management .file-upload-box {
+  background: rgba(255, 255, 255, 0.03) !important;
+  border: 1px dashed rgba(16, 185, 129, 0.28) !important;
+  color: var(--ops-text) !important;
+}
+
+.admin-panel .ctf-management .file-upload-box:hover {
+  background: rgba(16, 185, 129, 0.06) !important;
+  border-color: rgba(16, 185, 129, 0.45) !important;
+}
+
+.admin-panel .ctf-management .file-label {
+  color: var(--ops-muted) !important;
+}
+
+.admin-panel .ctf-management .modal {
+  background: rgba(15, 18, 26, 0.92) !important;
+  border: 1px solid rgba(16, 185, 129, 0.2) !important;
+  backdrop-filter: blur(16px);
+}
+
+.admin-panel .ctf-management .modal-header,
+.admin-panel .ctf-management .modal-footer {
+  border-color: var(--ops-border) !important;
+}
+
+.admin-panel .ctf-management .modal-header h4,
+.admin-panel .ctf-management .form-hint {
+  color: var(--ops-muted) !important;
+}
+
+.admin-panel .ctf-management .tabs {
+  border-bottom: 1px solid var(--ops-border) !important;
+}
+
+.admin-panel .ctf-management .tab-btn {
+  color: var(--ops-muted) !important;
+  border-bottom-color: transparent !important;
+}
+
+.admin-panel .ctf-management .tab-btn.active,
+.admin-panel .ctf-management .tab-btn:hover {
+  color: var(--ops-primary) !important;
+  border-bottom-color: transparent !important;
+  background: rgba(16, 185, 129, 0.1) !important;
+  border: 1px solid rgba(16, 185, 129, 0.28) !important;
+}
+
+/* Naive UI alert / empty inside traffic panel */
+.admin-panel .ctf-management .pcap-alert.n-alert,
+.admin-panel .ctf-management .n-alert {
+  background: rgba(16, 185, 129, 0.08) !important;
+  border: 1px solid rgba(16, 185, 129, 0.22) !important;
+  border-radius: 10px !important;
+  color: var(--ops-text) !important;
+}
+
+.admin-panel .ctf-management .n-alert .n-alert__icon {
+  color: var(--ops-primary) !important;
+}
+
+.admin-panel .ctf-management .n-empty .n-empty__description {
+  color: var(--ops-muted) !important;
+}
+
+.admin-panel .ctf-management .n-data-table {
+  --n-th-color: rgba(20, 30, 38, 0.85) !important;
+  --n-td-color: transparent !important;
+  --n-border-color: rgba(255, 255, 255, 0.08) !important;
+  --n-td-text-color: #e5e7eb !important;
+  --n-th-text-color: #9ca3af !important;
+}
+
+.admin-panel .ctf-management .podium {
+  background: rgba(16, 185, 129, 0.08) !important;
+}
+.admin-panel .ctf-management .podium td {
+  color: #e5e7eb !important;
+}
+.admin-panel .ctf-management .game-divisions-section {
+  background: rgba(255, 255, 255, 0.03) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+}
+.admin-panel .ctf-management .division-item {
+  background: rgba(15, 18, 26, 0.55) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+}
+/* /NEEPU_CTF_HUD_ALIGN */
+
+
+
+
 

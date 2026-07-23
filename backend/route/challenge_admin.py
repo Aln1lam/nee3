@@ -5,6 +5,7 @@ from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from datetime import datetime
 from backend.server.extensions import db
+from backend.services.scoring_service import ScoringService
 from backend.server.db_models import (
     User, CtfGame, CtfChallenge, CtfChallengeCategory
 )
@@ -113,8 +114,9 @@ def create_challenge(game_id):
             flag=data.get("flag", "").strip(),
             flag_template=data.get("flag_template", "").strip() or None,
             original_points=int(points_value),
-            min_score_rate=float(data.get("min_score_rate", 0.25)),
-            difficulty=float(data.get("difficulty", 5.0)),
+            # 必须使用请求体中的真实衰减配置（仅缺省时才用默认）
+            min_score_rate=float(data["min_score_rate"]) if data.get("min_score_rate") is not None and str(data.get("min_score_rate")) != "" else 0.25,
+            difficulty=float(data["difficulty"]) if data.get("difficulty") is not None and str(data.get("difficulty")) != "" else 10.0,
             docker_image=data.get("docker_image") or None,
             docker_port=int(data.get("docker_port", 80)) if data.get("docker_port") else 80,
             challenge_type=int(data.get("challenge_type", 0)) if data.get("challenge_type") else 0,
@@ -214,16 +216,26 @@ def update_challenge(game_id, challenge_id):
             challenge.flag_template = data["flag_template"].strip() or None
         
         # 兼容 original_points / points / score
+        scoring_changed = False
         if "original_points" in data or "points" in data or "score" in data:
-            points_val = data.get("original_points") or data.get("points") or data.get("score")
-            if points_val:
-                challenge.original_points = int(points_val)
-        
-        if "min_score_rate" in data:
-            challenge.min_score_rate = float(data.get("min_score_rate", 0.25))
-        
-        if "difficulty" in data:
-            challenge.difficulty = float(data.get("difficulty", 5.0))
+            points_val = data.get("original_points", data.get("points", data.get("score")))
+            if points_val is not None and str(points_val) != "":
+                new_pts = int(points_val)
+                if new_pts != challenge.original_points:
+                    scoring_changed = True
+                challenge.original_points = new_pts
+
+        if "min_score_rate" in data and data.get("min_score_rate") is not None and str(data.get("min_score_rate")) != "":
+            new_rate = float(data.get("min_score_rate"))
+            if float(challenge.min_score_rate or 0) != new_rate:
+                scoring_changed = True
+            challenge.min_score_rate = new_rate
+
+        if "difficulty" in data and data.get("difficulty") is not None and str(data.get("difficulty")) != "":
+            new_diff = float(data.get("difficulty"))
+            if float(challenge.difficulty or 0) != new_diff:
+                scoring_changed = True
+            challenge.difficulty = new_diff
         
         if "category" in data:
             challenge.category = data.get("category", "").strip()
@@ -264,7 +276,12 @@ def update_challenge(game_id, challenge_id):
         
         if "is_enabled" in data:
             challenge.is_enabled = bool(data.get("is_enabled", True))
-        
+
+        db.session.flush()
+        # 衰减参数变更：立即回写该题所有已解队伍 points_earned + scoreboard
+        if scoring_changed:
+            ScoringService.recalculate_challenge_scores(challenge_id)
+
         db.session.commit()
         
         return jsonify({

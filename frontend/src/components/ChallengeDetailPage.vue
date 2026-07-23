@@ -406,7 +406,7 @@ export default {
       if (challenge.value?.game_id) {
         router.push(`/games/${challenge.value.game_id}/challenges`)
       } else {
-        router.push({ name: 'GamesHub' })
+        router.push({ name: 'Contests' })
       }
     }
 

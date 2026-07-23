@@ -3,7 +3,7 @@ CTF 管理员接口 (/api/admin)
 
 路由约定（与 frontend/src/services/admin/ctf.js 对齐）：
 - 题目 CRUD、附件：/api/admin/challenges/games/*
-- 作弊检测、首解：/api/admin/cheat-*、/api/admin/first-solves
+- 作弊检测：/api/admin/cheat-*
 - 比赛写操作 / 统计 / 导出 / 分组 / 流量：/api/competitions/admin/*
 - 比赛只读列表：/api/competitions/
 
@@ -22,8 +22,8 @@ from flask_jwt_extended import jwt_required, get_jwt_identity
 
 from backend.server.db_models import (
     db, CtfGame, CtfChallenge, CtfChallengeSubmission, CtfCheatInfo,
-    CtfSolves, User, Team, CtfDivision, FileResource, CtfGameInstance,
-    CtfScoreboard, CtfParticipatingUser, CtfParticipation, CtfHammerMessage
+    User, Team, CtfDivision, FileResource, CtfGameInstance,
+    CtfScoreboard, CtfParticipatingUser, CtfParticipation
 )
 from backend.services.scoring_service import (
     ScoringService, CheatDetectionService, PermissionService,
@@ -192,7 +192,7 @@ def create_challenge(game_id):
     category = request.form.get('category')
     original_points = int(request.form.get('original_points', 1000))
     min_score_rate = float(request.form.get('min_score_rate', 0.25))
-    difficulty = float(request.form.get('difficulty', 5.0))
+    difficulty = float(request.form.get('difficulty', 10.0))
     flag = request.form.get('flag')
     flag_template = request.form.get('flag_template')
     description = request.form.get('description', '')
@@ -278,12 +278,21 @@ def update_challenge(challenge_id):
             setattr(challenge, field, data[field])
     
     # 更新数值字段
+    scoring_changed = False
     for field in ['original_points', 'difficulty', 'min_score_rate', 'challenge_type', 'submission_limit']:
-        if field in data:
-            setattr(challenge, field, type(getattr(challenge, field))(data[field]))
+        if field in data and data[field] is not None and str(data[field]) != '':
+            typ = type(getattr(challenge, field))
+            new_val = typ(data[field])
+            if field in ('original_points', 'difficulty', 'min_score_rate') and getattr(challenge, field) != new_val:
+                scoring_changed = True
+            setattr(challenge, field, new_val)
     
     if 'disable_blood_bonus' in data:
         challenge.disable_blood_bonus = data['disable_blood_bonus']
+
+    db.session.flush()
+    if scoring_changed:
+        ScoringService.recalculate_challenge_scores(challenge_id)
     
     db.session.commit()
     
@@ -532,99 +541,6 @@ def dismiss_cheat_record(record_id):
     return _review_cheat(record_id, 'dismissed', '已驳回标记')
 
 
-# ==================== 首解管理 ====================
-
-@ctf_admin_bp.route('/first-solves', methods=['GET'])
-@staff_required
-def list_first_solves():
-    """获取首解记录"""
-    game_id = request.args.get('game_id', type=int)
-    page = request.args.get('page', 1, type=int)
-    per_page = request.args.get('per_page', 50, type=int)
-    
-    query = CtfSolves.query
-    
-    if game_id:
-        query = query.join(CtfChallenge).filter(CtfChallenge.game_id == game_id)
-    
-    total = query.count()
-    items = query.order_by(CtfSolves.solved_at.asc()).paginate(
-        page=page, per_page=per_page
-    ).items
-
-    user_ids = {f.user_id for f in items if f.user_id}
-    team_ids = {f.team_id for f in items if f.team_id}
-    challenge_ids = {f.challenge_id for f in items if f.challenge_id}
-    users = {u.id: u for u in User.query.filter(User.id.in_(user_ids)).all()} if user_ids else {}
-    teams = {t.id: t for t in Team.query.filter(Team.id.in_(team_ids)).all()} if team_ids else {}
-    challenges = {c.id: c for c in CtfChallenge.query.filter(CtfChallenge.id.in_(challenge_ids)).all()} if challenge_ids else {}
-
-    def serialize_first_solve(f):
-        user = users.get(f.user_id)
-        team = teams.get(f.team_id)
-        challenge = challenges.get(f.challenge_id)
-        return {
-            'id': f.id,
-            'challenge_id': f.challenge_id,
-            'user_id': f.user_id,
-            'user_name': (user.nickname or user.username) if user else None,
-            'team_id': f.team_id,
-            'team_name': team.name if team else None,
-            'blood_level': f.blood_level,
-            'solved_at': f.solved_at.isoformat(),
-            'challenge_title': challenge.title if challenge else '未知',
-        }
-
-    return jsonify({
-        'status': 'success',
-        'data': {
-            'items': [serialize_first_solve(f) for f in items],
-            'total': total,
-            'page': page,
-            'per_page': per_page
-        }
-    })
-
-
-
-@ctf_admin_bp.route('/hammer-messages', methods=['GET'])
-@staff_required
-def list_hammer_messages():
-    """管理端聚合锤子消息（按时间倒序）"""
-    game_id = request.args.get('game_id', type=int)
-    challenge_id = request.args.get('challenge_id', type=int)
-    page = request.args.get('page', 1, type=int)
-    per_page = min(request.args.get('per_page', 50, type=int) or 50, 200)
-
-    query = CtfHammerMessage.query
-    if game_id:
-        query = query.filter_by(game_id=game_id)
-    if challenge_id:
-        query = query.filter_by(challenge_id=challenge_id)
-
-    total = query.count()
-    rows = query.order_by(CtfHammerMessage.created_at.desc()).paginate(
-        page=page, per_page=per_page
-    ).items
-
-    challenge_ids = {r.challenge_id for r in rows}
-    challenges = {
-        c.id: c for c in CtfChallenge.query.filter(CtfChallenge.id.in_(challenge_ids)).all()
-    } if challenge_ids else {}
-
-    items = []
-    for r in rows:
-        row = r.to_dict()
-        ch = challenges.get(r.challenge_id)
-        row['challenge_title'] = ch.title if ch else f'题目#{r.challenge_id}'
-        items.append(row)
-
-    return jsonify({
-        'status': 'success',
-        'code': 200,
-        'data': {'items': items, 'total': total, 'page': page, 'per_page': per_page},
-    })
-
 # ==================== 排行榜和统计（已迁 competitions/admin） ====================
 
 @ctf_admin_bp.route('/games/<int:game_id>/stats', methods=['GET'])
@@ -701,57 +617,6 @@ def export_scoreboard(game_id):
     resp.headers['Deprecation'] = 'true'
     resp.headers['Link'] = f'</api/competitions/admin/{game_id}/export-scoreboard>; rel="successor-version"'
     return resp
-
-
-# ==================== 赛季 ====================
-
-@ctf_admin_bp.route("/seasons", methods=["GET"])
-@staff_required
-def list_seasons():
-    from backend.server.db_models import CtfSeason
-    rows = CtfSeason.query.order_by(CtfSeason.year.desc(), CtfSeason.id.desc()).all()
-    return jsonify({"code": 200, "status": "success", "data": [r.to_dict() for r in rows]})
-
-
-@ctf_admin_bp.route("/seasons", methods=["POST"])
-@admin_required
-def create_season():
-    from backend.server.db_models import CtfSeason
-    data = request.get_json(silent=True) or {}
-    year = data.get("year")
-    season = (data.get("season") or "").strip()
-    if not year or not season:
-        return jsonify({"code": 400, "msg": "year 与 season 必填"}), 400
-    row = CtfSeason(year=int(year), season=season, description=(data.get("description") or None))
-    db.session.add(row)
-    db.session.commit()
-    return jsonify({"code": 200, "msg": "已创建", "data": row.to_dict()})
-
-
-@ctf_admin_bp.route("/seasons/<int:season_id>", methods=["PUT"])
-@admin_required
-def update_season(season_id):
-    from backend.server.db_models import CtfSeason
-    row = CtfSeason.query.get_or_404(season_id)
-    data = request.get_json(silent=True) or {}
-    if "year" in data:
-        row.year = int(data["year"])
-    if "season" in data:
-        row.season = str(data["season"]).strip()
-    if "description" in data:
-        row.description = data.get("description") or None
-    db.session.commit()
-    return jsonify({"code": 200, "msg": "已更新", "data": row.to_dict()})
-
-
-@ctf_admin_bp.route("/seasons/<int:season_id>", methods=["DELETE"])
-@admin_required
-def delete_season(season_id):
-    from backend.server.db_models import CtfSeason
-    row = CtfSeason.query.get_or_404(season_id)
-    db.session.delete(row)
-    db.session.commit()
-    return jsonify({"code": 200, "msg": "已删除"})
 
 
 @ctf_admin_bp.route("/users/<int:user_id>/moderator", methods=["POST"])

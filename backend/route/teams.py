@@ -269,29 +269,35 @@ def team_solves(team_id):
 
 @bp.get("/<int:team_id>/score-timeline")
 def team_score_timeline(team_id):
-    """队伍累计得分曲线数据"""
+    """队伍积分走势：ret2shell Snapshot Replay（允许下挫，禁止累加 points_earned）。"""
     game_id = request.args.get("game_id", type=int)
     if not game_id:
         return {"msg": "missing game_id"}, 400
-    rows = (
-        CtfChallengeSubmission.query.filter_by(
-            team_id=team_id, game_id=game_id, is_correct=True,
-        )
-        .order_by(CtfChallengeSubmission.submitted_at.asc())
-        .all()
-    )
-    points = 0
-    timeline = [{"time": None, "points": 0}]
-    for r in rows:
-        ch = CtfChallenge.query.get(r.challenge_id)
-        earned = r.points_earned or (ch.points if ch else 0)
-        points += earned
-        timeline.append({
-            "time": r.submitted_at.isoformat() if r.submitted_at else None,
-            "points": points,
-            "challenge": ch.title if ch else None,
-        })
-    return {"timeline": timeline, "total": points}
+
+    from backend.services.scoring_service import ScoringService
+
+    payload = ScoringService.get_timeline_cached(game_id, top_n=10)
+    td = (payload.get("timeline_data") or {}).get(str(team_id))
+    if not td:
+        # 缓存 TopN 可能不含该队：强制全量重演一次
+        payload = ScoringService.generate_gzctf_style_timeline(game_id, top_n=10_000)
+        td = (payload.get("timeline_data") or {}).get(str(team_id))
+
+    if not td:
+        return {
+            "timeline": [{"time": None, "points": 0}],
+            "total": 0,
+            "algorithm": payload.get("algorithm") or "ret2shell_snapshot_replay",
+        }
+
+    timeline = [{"time": None, "points": 0}] + [
+        {"time": p[0], "points": p[1], "challenge": None} for p in td
+    ]
+    return {
+        "timeline": timeline,
+        "total": int(td[-1][1] if td else 0),
+        "algorithm": payload.get("algorithm") or "ret2shell_snapshot_replay",
+    }
 
 
 @bp.get('/admin')

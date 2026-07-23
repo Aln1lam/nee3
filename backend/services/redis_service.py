@@ -244,10 +244,11 @@ class RedisService:
 # ======================== 特定缓存操作 ========================
 
 class ScoreboardCache:
-    """排行榜缓存"""
+    """排行榜缓存（含 GZCTF 式 Timeline 快照）"""
     
     CACHE_KEY_PREFIX = "scoreboard"
     CACHE_EXPIRATION = 300  # 5分钟
+    TIMELINE_EXPIRATION = 120  # Timeline 提交后更快失效/刷新
     
     @staticmethod
     def get_cache_key(game_id: int, team_id: Optional[int] = None) -> str:
@@ -255,6 +256,10 @@ class ScoreboardCache:
         if team_id:
             return f"{ScoreboardCache.CACHE_KEY_PREFIX}:{game_id}:team:{team_id}"
         return f"{ScoreboardCache.CACHE_KEY_PREFIX}:{game_id}:all"
+
+    @staticmethod
+    def get_timeline_key(game_id: int) -> str:
+        return f"{ScoreboardCache.CACHE_KEY_PREFIX}:{game_id}:timeline"
     
     @staticmethod
     def cache_scoreboard(redis_service: RedisService, game_id: int, scoreboard_data: Dict) -> bool:
@@ -267,10 +272,21 @@ class ScoreboardCache:
         """获取缓存的排行榜数据"""
         key = ScoreboardCache.get_cache_key(game_id)
         return redis_service.get_json(key)
+
+    @staticmethod
+    def cache_timeline(redis_service: RedisService, game_id: int, timeline_data: Dict) -> bool:
+        """缓存 Timeline 快照（ScoreboardCacheHandler 风格）"""
+        key = ScoreboardCache.get_timeline_key(game_id)
+        return redis_service.set_json(key, timeline_data, ScoreboardCache.TIMELINE_EXPIRATION)
+
+    @staticmethod
+    def get_cached_timeline(redis_service: RedisService, game_id: int) -> Optional[Dict]:
+        key = ScoreboardCache.get_timeline_key(game_id)
+        return redis_service.get_json(key)
     
     @staticmethod
     def invalidate_scoreboard(redis_service: RedisService, game_id: int) -> bool:
-        """清除排行榜缓存"""
+        """清除排行榜 + Timeline 缓存"""
         pattern = f"{ScoreboardCache.CACHE_KEY_PREFIX}:{game_id}:*"
         redis_service.delete_pattern(pattern)
         return True

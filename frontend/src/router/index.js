@@ -11,7 +11,7 @@ const GameChallenges = () => import('../components/GameChallenges.vue')
 const GameTeams = () => import('../components/GameTeams.vue')
 const Teams = () => import('../components/Teams.vue')
 const Submissions = () => import('../components/Submissions.vue')
-const Scoreboard = () => import('../components/Scoreboard.vue')
+const GameScoreboard = () => import('../components/GameScoreboard.vue')
 const AdminPanel = () => import('../components/AdminPanel.vue')
 const AdminSetup = () => import('../components/AdminSetup.vue')
 const KnowledgeList = () => import('../components/KnowledgeList.vue')
@@ -133,7 +133,6 @@ const routes = [
   { path: '/knowledge/:id', redirect: to => `/wiki/${to.params.id}` },
   { path: '/knowledge/:id/edit', redirect: to => `/admin/content/${to.params.id}/edit` },
 
-  { path: '/magic/sakana', name: 'MagicSakana', component: () => import('../components/MagicSakana.vue') },
   { path: '/auth', name: 'Auth', component: Auth },
   { path: '/verify-email', name: 'VerifyEmail', component: VerifyEmail },
   { path: '/forgot-password', name: 'ForgotPassword', component: ForgotPassword },
@@ -169,7 +168,7 @@ const routes = [
     }),
     meta: { requiresAuth: true },
   },
-  { path: '/games/:id/scoreboard', name: 'GameScoreboard', component: Scoreboard, props: (route) => ({ gameId: route.params.id }) },
+  { path: '/games/:id/scoreboard', name: 'GameScoreboard', component: GameScoreboard, props: (route) => ({ gameId: route.params.id }) },
   { path: '/competition/:id', redirect: to => `/games/${to.params.id}/challenges` },
   { path: '/scoreboard/:gameId', redirect: to => `/games/${to.params.gameId}/scoreboard` },
   { path: '/games/:id/teams', name: 'GameTeams', component: GameTeams, props: true, meta: { requiresAuth: true } },
@@ -251,8 +250,9 @@ const routes = [
   { path: '/dev/components', name: 'DevComponents', component: DevComponents, meta: { requiresAuth: true } },
 
   // 错误页
-  { path: '/sigtrap/:code', name: 'Sigtrap', component: ErrorPage, props: true },
-  { path: '/:pathMatch(.*)*', redirect: '/sigtrap/404' },
+  { path: '/error/:code', name: 'HttpError', component: ErrorPage, props: true },
+  { path: '/sigtrap/:code', redirect: to => `/error/${to.params.code}` },
+  { path: '/:pathMatch(.*)*', redirect: '/error/404' },
 ]
 
 const router = createRouter({
@@ -265,13 +265,13 @@ import { fetchSession } from '../services/auth'
 const PUBLIC_ROUTES = new Set([
   'Landing', 'Auth', 'VerifyEmail', 'ForgotPassword', 'ResetPassword',
   'Wiki', 'WikiArticle', 'Archive', 'Bulletin', 'Contests', 'GameDetail',
-  'Training', 'TrainingGame', 'Sigtrap',
+  'Training', 'TrainingGame', 'HttpError',
   'BulletinDetail', 'UserList', 'UserProfile', 'GameScoreboard',
 ])
 
 router.beforeEach(async (to, from, next) => {
   if (to.name === 'DevComponents' && !import.meta.env.DEV) {
-    return next({ name: 'Sigtrap', params: { code: '404' } })
+    return next({ name: 'HttpError', params: { code: '404' } })
   }
 
   // 所有路由先恢复 Cookie 会话，避免公开页（如赛事详情）误判未登录
@@ -286,7 +286,7 @@ router.beforeEach(async (to, from, next) => {
   }
 
   if (to.meta?.requiresAdmin && !user.is_admin) {
-    return next({ name: 'Sigtrap', params: { code: '403' } })
+    return next({ name: 'HttpError', params: { code: '403' } })
   }
 
   return next()

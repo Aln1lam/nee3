@@ -319,7 +319,8 @@ export default {
 }
 .title-bar-inner {
   display: grid;
-  grid-template-columns: auto 1fr auto;
+  /* 左右等宽 1fr，中间导航几何居中；训练页 UiTimeProgress / 赛场倒计时不再把导航挤偏 */
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   align-items: center;
   padding: 0 clamp(24px, 3vw, 48px);
   min-height: var(--nav-height, 72px);
@@ -328,7 +329,7 @@ export default {
   max-width: 100%;
   box-sizing: border-box;
 }
-.title-bar-left { display: flex; align-items: center; gap: 12px; justify-self: start; flex-shrink: 0; }
+.title-bar-left { display: flex; align-items: center; gap: 12px; justify-self: start; flex-shrink: 0; min-width: 0; }
 .brand { display: flex; align-items: center; gap: 10px; cursor: pointer; font-weight: 700; color: var(--text); }
 .brand .logo-animate { color: var(--primary); }
 .brand-game-logo { font-size: var(--text-2xl); line-height: 1; }
@@ -352,7 +353,7 @@ export default {
   padding: 12px 20px;
   border-radius: var(--card-radius);
   font-size: var(--text-lg);
-  font-weight: 500;
+  font-weight: 700; /* 与 active 同重，避免选中加粗导致邻项位移 */
   cursor: pointer;
   border: 1px solid transparent;
   transition: color 0.2s, background 0.2s, border-color 0.2s;
@@ -368,7 +369,8 @@ export default {
 .title-bar-nav a:hover { color: var(--text); background: var(--gradient-nav-hover, var(--hover)); }
 .title-bar-nav a.active { color: var(--primary); font-weight: 700; background: var(--gradient-nav-active, var(--hover)); }
 .title-bar-inner.is-game-mode {
-  grid-template-columns: minmax(140px, 240px) minmax(0, 1fr) minmax(220px, auto);
+  /* 与全局导航同一套对称栅格，避免进赛场后中栏跳动 */
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   gap: 16px;
 }
 .title-bar-inner.is-game-mode .brand-name {
@@ -385,9 +387,12 @@ export default {
   gap: 12px;
   justify-self: end;
   flex-shrink: 0;
-  padding-right: 8px;
+  /* 相对右缘内收，实例/通知/用户区整体略左移 */
+  padding-right: 22px;
+  margin-right: 8px;
   min-width: 0;
   overflow: visible;
+  justify-content: flex-end;
 }
 .title-bar-right.is-game {
   gap: 0;

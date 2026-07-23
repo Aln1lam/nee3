@@ -53,42 +53,69 @@ class ScoringService:
     """
 
     @staticmethod
+    def calculate_ret2shell_score(
+        initial: int,
+        minimum: int,
+        decay: int,
+        accepted_count: int,
+    ) -> int:
+        """
+        ret2shell maintain_score 标准公式（余弦插值）：
+
+        - N < 1 → initial
+        - N >= decay → minimum
+        - 否则：
+            ratio = (N - 1) / (decay - 1)
+            score = round(minimum + (initial - minimum) * (cos(ratio * π) + 1) / 2)
+        """
+        initial = int(initial or 0)
+        minimum = int(minimum or 0)
+        if minimum > initial:
+            minimum = initial
+        n = int(accepted_count or 0)
+        decay = int(decay or 0)
+        if decay < 2:
+            decay = 2
+        if n < 1:
+            return initial
+        if n >= decay:
+            return minimum
+        relative_ratio = (n - 1) / (decay - 1)
+        cos_theta = math.cos(relative_ratio * math.pi)
+        normalized = (cos_theta + 1.0) / 2.0
+        score_f = minimum + (initial - minimum) * normalized
+        return int(round(score_f))
+
+    @staticmethod
     def calculate_dynamic_score(
         original_score: int,
         accepted_count: int,
         min_score_rate: float = 0.25,
-        difficulty: float = 5.0
+        difficulty: float = 10.0
     ) -> int:
         """
-        计算动态分数
-        
-        公式：
-        若解题数 ≤ 1：分数 = 原始分数
-        否则：分数 = ⌊原始分数 × (最小分值率 + (1 - 最小分值率) × e^((1 - 解题数) / 难度))⌋
-        
-        Args:
-            original_score: 原始分值
-            accepted_count: 已解题队伍数
-            min_score_rate: 最小分值率（默认0.25 = 25%）
-            difficulty: 难度系数，越大衰减越慢（默认5）
-            
-        Returns:
-            当前分值
-            
-        Examples:
-            >>> ScoringService.calculate_dynamic_score(1000, 1)
-            1000
-            >>> ScoringService.calculate_dynamic_score(1000, 5)
-            490  # approximately
-        """
-        if accepted_count <= 1:
-            return original_score
+        动态分入口 —— 对齐 ret2shell score_rule：
 
-        # e^((1 - accepted_count) / difficulty)
-        exponent = (1 - accepted_count) / difficulty
-        decay = min_score_rate + (1 - min_score_rate) * math.exp(exponent)
-        
-        return int(original_score * decay)
+        - initial = original_score
+        - minimum = floor(original_score * min_score_rate)
+        - decay   = clamp(round(difficulty), 2..50)
+          （本平台 difficulty 字段复用为 ret2shell 的 decay：到达最低分所需解题队数）
+        """
+        initial = int(original_score or 0)
+        try:
+            rate = float(min_score_rate)
+        except (TypeError, ValueError):
+            rate = 0.25
+        rate = max(0.0, min(1.0, rate))
+        minimum = int(initial * rate)
+        try:
+            decay = int(round(float(difficulty)))
+        except (TypeError, ValueError):
+            decay = 10
+        decay = max(2, min(50, decay))
+        return ScoringService.calculate_ret2shell_score(
+            initial, minimum, decay, int(accepted_count or 0),
+        )
 
     @staticmethod
     def calculate_blood_bonus(
@@ -178,60 +205,179 @@ class ScoringService:
         return None
 
     @staticmethod
+    def count_accepted_solvers(challenge_id: int) -> int:
+        """已解唯一队伍数（无 team_id 时回退到唯一用户数）。"""
+        from sqlalchemy import func
+
+        team_cnt = db.session.query(
+            func.count(func.distinct(CtfChallengeSubmission.team_id))
+        ).filter(
+            CtfChallengeSubmission.challenge_id == challenge_id,
+            CtfChallengeSubmission.is_correct.is_(True),
+            CtfChallengeSubmission.team_id.isnot(None),
+        ).scalar()
+        team_cnt = int(team_cnt or 0)
+        if team_cnt > 0:
+            return team_cnt
+
+        user_cnt = db.session.query(
+            func.count(func.distinct(CtfChallengeSubmission.user_id))
+        ).filter(
+            CtfChallengeSubmission.challenge_id == challenge_id,
+            CtfChallengeSubmission.is_correct.is_(True),
+        ).scalar()
+        return int(user_cnt or 0)
+
+    @staticmethod
+    def challenge_base_dynamic_score(
+        challenge: CtfChallenge,
+        accepted_count: Optional[int] = None,
+    ) -> int:
+        """按题目自身 original_points / min_score_rate / difficulty 计算当前基础动态分。"""
+        if accepted_count is None:
+            accepted_count = ScoringService.count_accepted_solvers(challenge.id)
+        original = int(
+            getattr(challenge, "original_points", None)
+            or getattr(challenge, "points", None)
+            or 0
+        )
+        # 仅在字段缺失时回落默认；禁止覆盖管理员已写入的真实配置
+        min_rate = getattr(challenge, "min_score_rate", None)
+        if min_rate is None:
+            min_rate = 0.25
+        else:
+            min_rate = float(min_rate)
+        difficulty = getattr(challenge, "difficulty", None)
+        if difficulty is None:
+            difficulty = 10.0
+        else:
+            difficulty = float(difficulty)
+        if difficulty <= 0:
+            difficulty = 0.1  # 防止除零；极小值 = 极快衰减
+        return ScoringService.calculate_dynamic_score(
+            original,
+            int(accepted_count),
+            float(min_rate),
+            float(difficulty),
+        )
+
+    @staticmethod
+    def score_with_blood_for_solver(
+        challenge: CtfChallenge,
+        accepted_count: int,
+        team_id: Optional[int] = None,
+        user_id: Optional[int] = None,
+    ) -> int:
+        """基础动态分 + 该队/用户的血奖励（若有）。"""
+        base = ScoringService.challenge_base_dynamic_score(challenge, accepted_count)
+        if getattr(challenge, "disable_blood_bonus", False):
+            return base
+        q = CtfSolves.query.filter_by(challenge_id=challenge.id)
+        blood = None
+        if team_id:
+            blood = q.filter_by(team_id=team_id).first()
+        elif user_id:
+            blood = q.filter_by(user_id=user_id).first()
+        if blood is None:
+            return base
+        bonus, _ = ScoringService.calculate_blood_bonus(
+            base, blood_level=int(blood.blood_level or 0)
+        )
+        return bonus
+
+    @staticmethod
+    def recalculate_challenge_scores(challenge_id: int) -> int:
+        """
+        题目被解出后：按最新 accepted_count 回写所有已解提交的 points_earned，
+        并刷新所有受影响队伍的 CtfScoreboard。
+        Returns: 当前基础动态分（不含血奖励）
+        """
+        challenge = CtfChallenge.query.get(challenge_id)
+        if not challenge:
+            return 0
+
+        accepted = ScoringService.count_accepted_solvers(challenge_id)
+        base = ScoringService.challenge_base_dynamic_score(challenge, accepted)
+
+        submissions = CtfChallengeSubmission.query.filter_by(
+            challenge_id=challenge_id,
+            is_correct=True,
+        ).all()
+
+        affected: List[Tuple[int, int, Optional[int]]] = []
+        seen_keys = set()
+        for sub in submissions:
+            sub.points_earned = ScoringService.score_with_blood_for_solver(
+                challenge,
+                accepted,
+                team_id=sub.team_id,
+                user_id=sub.user_id,
+            )
+            key = (challenge.game_id, sub.team_id or 0, sub.user_id or 0)
+            if key in seen_keys:
+                continue
+            seen_keys.add(key)
+            affected.append((challenge.game_id, sub.user_id, sub.team_id))
+
+        db.session.flush()
+
+        refreshed = set()
+        for game_id, user_id, team_id in affected:
+            rk = (game_id, team_id if team_id else user_id)
+            if rk in refreshed:
+                continue
+            refreshed.add(rk)
+            ScoringService.update_scoreboard(game_id, user_id, team_id)
+
+        return base
+
+    @staticmethod
     def update_scoreboard(
         game_id: int,
         user_id: int,
         team_id: Optional[int] = None
     ) -> None:
         """
-        更新排分表
-        
-        Args:
-            game_id: 比赛ID
-            user_id: 用户ID
-            team_id: 队伍ID
+        更新排分表：按队（或用户）已解题目汇总当前 points_earned（含衰减与血）。
         """
-        # 计算该用户在该比赛的总分
         game = CtfGame.query.get(game_id)
         if not game:
             return
 
-        submissions = CtfChallengeSubmission.query.filter_by(
-            user_id=user_id,
-            is_correct=True
-        ).join(CtfChallenge).filter_by(game_id=game_id).all()
+        q = (
+            CtfChallengeSubmission.query.filter_by(is_correct=True)
+            .join(CtfChallenge)
+            .filter(CtfChallenge.game_id == game_id)
+        )
+        if team_id:
+            q = q.filter(CtfChallengeSubmission.team_id == team_id)
+        else:
+            q = q.filter(CtfChallengeSubmission.user_id == user_id)
 
-        total_points = 0
-        solved_count = 0
+        submissions = q.order_by(CtfChallengeSubmission.submitted_at.asc()).all()
 
-        for submission in submissions:
-            challenge = submission.challenge
-            # 获取该题目当前的动态分数
-            accepted_count = CtfChallengeSubmission.query.filter_by(
-                challenge_id=challenge.id,
-                is_correct=True
-            ).count()
+        # 同题只计一次（取该队/用户该题最新正确提交的 points_earned）
+        by_challenge: Dict[int, int] = {}
+        for sub in submissions:
+            by_challenge[sub.challenge_id] = int(sub.points_earned or 0)
 
-            dynamic_score = ScoringService.calculate_dynamic_score(
-                challenge.points,
-                accepted_count,
-                0.25,  # min_score_rate
-                5.0    # difficulty
-            )
+        total_points = sum(by_challenge.values())
+        solved_count = len(by_challenge)
 
-            total_points += dynamic_score
-            solved_count += 1
-
-        # 更新或创建排分记录
-        scoreboard = CtfScoreboard.query.filter_by(
-            game_id=game_id,
-            user_id=user_id,
-            team_id=team_id
-        ).first()
+        if team_id:
+            scoreboard = CtfScoreboard.query.filter_by(
+                game_id=game_id, team_id=team_id
+            ).first()
+        else:
+            scoreboard = CtfScoreboard.query.filter_by(
+                game_id=game_id, user_id=user_id
+            ).first()
 
         if scoreboard:
             scoreboard.total_points = total_points
             scoreboard.solved_challenges = solved_count
+            scoreboard.user_id = user_id or scoreboard.user_id
+            scoreboard.team_id = team_id if team_id is not None else scoreboard.team_id
             scoreboard.updated_at = datetime.utcnow()
         else:
             scoreboard = CtfScoreboard(
@@ -239,7 +385,7 @@ class ScoringService:
                 user_id=user_id,
                 team_id=team_id,
                 total_points=total_points,
-                solved_challenges=solved_count
+                solved_challenges=solved_count,
             )
             db.session.add(scoreboard)
 
@@ -256,6 +402,192 @@ class ScoringService:
                 ScoreboardCache.invalidate_scoreboard(rs, game_id)
         except Exception:
             pass
+
+    @staticmethod
+    def generate_gzctf_style_timeline(game_id: int, top_n: int = 10) -> Dict:
+        """
+        ret2shell 式 ScoreTimeLine：基于事件的快照重演（Snapshot Replay）。
+
+        每个正确提交事件 T：
+          1) 统计截至 T 每题唯一解题队数 N
+          2) 用 ret2shell 余弦衰减算 Score(c,T)
+          3) TotalScore_team,T = Σ Score(c,T)（允许相对 T-1 下挫）
+        """
+        from collections import defaultdict
+
+        challenges = {
+            c.id: c
+            for c in CtfChallenge.query.filter_by(game_id=game_id).all()
+        }
+        rows = (
+            CtfChallengeSubmission.query.filter_by(game_id=game_id, is_correct=True)
+            .order_by(
+                CtfChallengeSubmission.submitted_at.asc(),
+                CtfChallengeSubmission.id.asc(),
+            )
+            .all()
+        )
+
+        team_names: Dict[int, str] = {}
+        for sb in CtfScoreboard.query.filter_by(game_id=game_id).all():
+            if not sb.team_id:
+                continue
+            t = Team.query.get(sb.team_id)
+            team_names[sb.team_id] = t.name if t else f"Team #{sb.team_id}"
+
+        solve_counts: Dict[int, int] = {cid: 0 for cid in challenges}
+        team_solved: Dict[int, set] = defaultdict(set)
+        # timeline_data[team_id] = [[iso, score], ...]
+        timeline_data: Dict[int, List] = defaultdict(list)
+        prev_score: Dict[int, int] = {}
+        event_count = 0
+        dip_events = 0
+
+        def challenge_score_now(cid: int, count: int) -> int:
+            """ret2shell 余弦衰减：与 challenge_base_dynamic_score 一致。"""
+            ch = challenges.get(cid)
+            if not ch or count <= 0:
+                return 0
+            return ScoringService.challenge_base_dynamic_score(ch, count)
+
+        for sub in rows:
+            tid = sub.team_id
+            cid = sub.challenge_id
+            if not tid or cid not in challenges:
+                continue
+            if tid not in team_names:
+                t = Team.query.get(tid)
+                team_names[tid] = t.name if t else f"Team #{tid}"
+
+            # 同队同题重复 AC：不推进
+            if cid in team_solved[tid]:
+                continue
+
+            team_solved[tid].add(cid)
+            solvers = {t for t, solved in team_solved.items() if cid in solved}
+            solve_counts[cid] = len(solvers)
+            event_count += 1
+
+            timestamp = sub.submitted_at.isoformat() if sub.submitted_at else None
+
+            current_challenge_scores: Dict[int, int] = {}
+            for solved_cid, count in solve_counts.items():
+                if count <= 0:
+                    continue
+                current_challenge_scores[solved_cid] = challenge_score_now(solved_cid, count)
+
+            # 结算全场已上场队伍绝对总分（允许下挫，禁止 Math.max 防降）
+            for team_id, solved_set in team_solved.items():
+                total_score = sum(
+                    current_challenge_scores.get(c, 0) for c in solved_set
+                )
+                prev = prev_score.get(team_id)
+                if prev is not None and total_score < prev:
+                    dip_events += 1
+                hist = timeline_data[team_id]
+                if hist and hist[-1][0] == timestamp and hist[-1][1] == total_score:
+                    continue
+                hist.append([timestamp, int(total_score)])
+                prev_score[team_id] = int(total_score)
+
+        # TopN：按重演峰值优先（露出早解断崖），终局分次之
+        peak_score = {
+            tid: max((p[1] for p in pts), default=0)
+            for tid, pts in timeline_data.items()
+        }
+        ranked = sorted(
+            prev_score.items(),
+            key=lambda x: (-peak_score.get(x[0], 0), -x[1], x[0]),
+        )[: max(1, int(top_n))]
+        top_ids = [tid for tid, _ in ranked]
+
+        series = []
+        for tid in top_ids:
+            pts = timeline_data.get(tid) or []
+            series.append({
+                "team_id": tid,
+                "team_name": team_names.get(tid, f"Team #{tid}"),
+                "data": [{"time": p[0], "points": p[1]} for p in pts],
+                "points": pts,
+                "final_points": prev_score.get(tid, 0),
+            })
+
+        submissions_payload = []
+        seen_pair = set()
+        for r in rows:
+            if not r.team_id:
+                continue
+            key = (r.team_id, r.challenge_id)
+            if key in seen_pair:
+                continue
+            seen_pair.add(key)
+            submissions_payload.append({
+                "team_id": r.team_id,
+                "challenge_id": r.challenge_id,
+                "created_at": r.submitted_at.isoformat() if r.submitted_at else None,
+            })
+
+        challenges_payload = [
+            {
+                "id": c.id,
+                "title": c.title,
+                "original_points": int(c.original_points or 0),
+                "min_score_rate": float(c.min_score_rate if c.min_score_rate is not None else 0.25),
+                "difficulty": float(c.difficulty if c.difficulty is not None else 10.0),
+            }
+            for c in challenges.values()
+        ]
+        teams_payload = [
+            {"id": tid, "name": team_names.get(tid, f"Team #{tid}")}
+            for tid in sorted(team_names.keys())
+        ]
+
+        # 全量 timeline_data 供队伍页 / 前端重演；series 仍只取 TopN 画图
+        timeline_map = {str(tid): pts for tid, pts in timeline_data.items()}
+
+        return {
+            "series": series,
+            "timeline_data": timeline_map,
+            "teams": teams_payload,
+            "team_count": len(team_solved),
+            "challenges": challenges_payload,
+            "submissions": submissions_payload,
+            "algorithm": "ret2shell_snapshot_replay",
+            "events": event_count,
+            "dip_events": dip_events,
+            "score_formula": "ret2shell_cosine",
+        }
+
+    @staticmethod
+    def build_decay_timeline(game_id: int, top_n: int = 10) -> Dict:
+        """兼容别名 → GZCTF Snapshot Replay。"""
+        return ScoringService.generate_gzctf_style_timeline(game_id, top_n=top_n)
+
+    @staticmethod
+    def get_timeline_cached(game_id: int, top_n: int = 10) -> Dict:
+        """ScoreboardCacheHandler：优先读 Redis Timeline 快照。"""
+        try:
+            from backend.services.redis_service import get_redis, ScoreboardCache
+            rs = get_redis()
+            if rs and rs.is_available():
+                cached = ScoreboardCache.get_cached_timeline(rs, game_id)
+                if cached and isinstance(cached, dict) and cached.get("series") is not None:
+                    out = dict(cached)
+                    out["from_cache"] = True
+                    return out
+        except Exception:
+            pass
+
+        payload = ScoringService.generate_gzctf_style_timeline(game_id, top_n=top_n)
+        payload["from_cache"] = False
+        try:
+            from backend.services.redis_service import get_redis, ScoreboardCache
+            rs = get_redis()
+            if rs and rs.is_available():
+                ScoreboardCache.cache_timeline(rs, game_id, payload)
+        except Exception:
+            pass
+        return payload
 
     @staticmethod
     def resolve_last_submission_time(

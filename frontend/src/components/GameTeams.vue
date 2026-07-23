@@ -520,13 +520,15 @@ export default {
           tooltip: { trigger: 'axis' },
           grid: { left: 40, right: 16, top: 24, bottom: 32 },
           xAxis: { type: 'time' },
-          yAxis: { type: 'value', name: 'pts' },
+          yAxis: { type: 'value', name: 'pts', scale: true },
           series: [{
             type: 'line',
-            smooth: true,
-            showSymbol: true,
+            step: 'end',
+            smooth: false,
+            showSymbol: false,
             data: timeline.filter(p => p.time).map(p => [p.time, p.points]),
             itemStyle: { color: '#2DB58A' },
+            lineStyle: { width: 2 },
           }],
         })
       } catch { /* ignore */ }

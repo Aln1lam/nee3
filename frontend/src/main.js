@@ -100,7 +100,7 @@ const PUBLIC_ROUTE_NAMES = new Set([
 
     'Wiki', 'WikiArticle', 'Archive', 'Bulletin', 'GamesHub', 'GameDetail',
 
-    'Training', 'TrainingGame', 'Sigtrap',
+    'Training', 'TrainingGame', 'HttpError',
 
     'BulletinDetail', 'UserList', 'UserProfile', 'GameScoreboard',
 
@@ -158,7 +158,7 @@ axios.interceptors.response.use(
 
         } else if (status === 502) {
 
-            if (router) router.push('/sigtrap/502')
+            if (router) router.push('/error/502')
 
         } else if (status === 503) {
 

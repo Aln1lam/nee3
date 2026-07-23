@@ -85,9 +85,6 @@ def main():
             ok("G08_delete", r3.status_code == 200, f"status={r3.status_code}")
 
         # G19 already done - skip
-        # first-solves admin
-        r = client.get(f"/api/admin/first-solves?game_id={game.id}&per_page=20")
-        ok("G15_first_solves_admin", r.status_code == 200, f"status={r.status_code}")
 
         # G06 challenge type-3 fields (flag_template / docker / traffic / network)
         import io
@@ -230,12 +227,7 @@ def main():
                 client.delete(f"/api/competitions/admin/{pgid}/divisions/{pdid}")
             client.delete(f"/api/competitions/admin/{pgid}/delete")
 
-        # G15 / G17 / G20
-        r = client.get(f"/api/admin/first-solves?game_id={game.id}&per_page=5")
-        ok("G15_first_solves_ui_api", r.status_code == 200, f"status={r.status_code}")
-        r = client.get("/api/admin/hammer-messages?page=1&per_page=5")
-        j = r.get_json() or {}
-        ok("G17_hammer_aggregate", r.status_code == 200 and isinstance((j.get("data") or {}).get("items"), list), f"status={r.status_code}")
+        # G20
         r = client.get(f"/api/ctf/games/{game.id}/scoreboard/timeline")
         ok("G20_scoreboard_timeline", r.status_code == 200, f"status={r.status_code}")
 
@@ -244,8 +236,8 @@ def main():
         info = load_public_platform_info()
         ok("G18_captcha_flag_public", "captcha_required" in info, f"val={info.get('captcha_required')}")
 
-        # G16 game stats
-        r = client.get(f"/api/admin/games/{game.id}/stats")
+        # G16 game stats（主路径 /api/competitions/admin；旧 /api/admin/games/*/stats 已 410）
+        r = client.get(f"/api/competitions/admin/{game.id}/stats")
         j = r.get_json() or {}
         stats = ((j.get("data") or {}).get("statistics") or {})
         ok(
@@ -254,8 +246,8 @@ def main():
             f"status={r.status_code} keys={list(stats.keys())[:6]}",
         )
 
-        # G13 export scoreboard CSV
-        r = client.get(f"/api/admin/games/{game.id}/export-scoreboard")
+        # G13 export scoreboard CSV（主路径 /api/competitions/admin）
+        r = client.get(f"/api/competitions/admin/{game.id}/export-scoreboard")
         body = r.get_data(as_text=True) if r.status_code == 200 else ""
         ok(
             "G13_export_scoreboard",
@@ -331,18 +323,6 @@ def main():
         # logs endpoint exists (404 on missing instance is fine)
         r = client.get("/api/challenges/instances/999999999/logs?tail=10")
         ok("G42_instance_logs_route", r.status_code in (404, 403, 200), f"status={r.status_code}")
-
-        r = client.get("/api/admin/seasons")
-        j = r.get_json() or {}
-        ok("P2_seasons_list", r.status_code == 200 and j.get("code") == 200, f"status={r.status_code}")
-        year = datetime.utcnow().year
-        r = client.post("/api/admin/seasons", json={"year": year, "season": f"smoke-{datetime.utcnow().strftime('%H%M%S')}", "description": "gap smoke"})
-        j = r.get_json() or {}
-        sid = (j.get("data") or {}).get("id")
-        ok("P2_seasons_create", r.status_code == 200 and sid, f"status={r.status_code} id={sid}")
-        if sid:
-            r = client.delete(f"/api/admin/seasons/{sid}")
-            ok("P2_seasons_delete", r.status_code == 200, f"status={r.status_code}")
 
         r = client.get("/api/auth/oauth/providers")
         j = r.get_json() or {}

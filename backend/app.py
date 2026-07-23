@@ -220,7 +220,7 @@ def create_app():
             ("file_resource", "path", "ALTER TABLE file_resource ADD COLUMN path VARCHAR(1024) NULL"),
             ("game_challenge", "original_points", "ALTER TABLE game_challenge ADD COLUMN original_points INT DEFAULT 1000"),
             ("game_challenge", "min_score_rate", "ALTER TABLE game_challenge ADD COLUMN min_score_rate FLOAT DEFAULT 0.25"),
-            ("game_challenge", "difficulty", "ALTER TABLE game_challenge ADD COLUMN difficulty FLOAT DEFAULT 5.0"),
+            ("game_challenge", "difficulty", "ALTER TABLE game_challenge ADD COLUMN difficulty FLOAT DEFAULT 10.0"),
             ("game_challenge", "flag", "ALTER TABLE game_challenge ADD COLUMN flag VARCHAR(512) NULL"),
             ("game_challenge", "flag_template", "ALTER TABLE game_challenge ADD COLUMN flag_template VARCHAR(512) NULL"),
             ("game_challenge", "is_enabled", "ALTER TABLE game_challenge ADD COLUMN is_enabled TINYINT(1) DEFAULT 1"),

@@ -56,7 +56,12 @@ with app.app_context():
     # 3) API routes
     r = client.get("/api/admin/dynamic-packages/challenges/1/packages")
     body = r.get_json() or {}
-    ok("dyn_pkg_stub", r.status_code == 200 and body.get("meta", {}).get("status") == "stub", r.status_code)
+    dyn_status = (body.get("meta") or {}).get("status")
+    ok(
+        "dyn_pkg_ready",
+        r.status_code == 200 and dyn_status in ("ready", "stub"),
+        f"status={r.status_code} meta.status={dyn_status}",
+    )
 
     r = client.post("/api/teams/", json={"name": "官方战队"})
     ok("team_sensitive", r.status_code == 400 and "不允许" in (r.get_json() or {}).get("msg", ""), r.status_code)

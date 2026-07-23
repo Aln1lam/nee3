@@ -586,8 +586,8 @@ class CtfChallenge(db.Model):
     description = db.Column(db.Text, nullable=True)
     category = db.Column(db.String(64), nullable=False)  # 如 web, pwn, misc, crypto 等
     original_points = db.Column(db.Integer, default=1000)  # 原始分值
-    min_score_rate = db.Column(db.Float, default=0.25)  # 最小分值率
-    difficulty = db.Column(db.Float, default=5.0)  # 难度系数
+    min_score_rate = db.Column(db.Float, default=0.25)  # 最小分值率 → minimum = original * rate
+    difficulty = db.Column(db.Float, default=10.0)  # ret2shell decay：到达最低分所需解题队数（2–50）
     flag = db.Column(db.String(512), nullable=False, default="flag{testflag}")  # 默认占位符，实际flag自己修改
     flag_template = db.Column(db.String(512), nullable=True)  # 动态flag模板
     is_enabled = db.Column(db.Boolean, default=True)

@@ -41,8 +41,9 @@
 | `/events` | Events | Events | 公开 |
 | `/magic/sakana` | MagicSakana | MagicSakana | 公开 |
 | `/dev/components` | DevComponents | DevComponents | 登录 + 仅 DEV |
-| `/sigtrap/:code` | Sigtrap | ErrorPage | 公开 |
-| `/*` | — | → `/sigtrap/404` | — |
+| `/error/:code` | HttpError | ErrorPage | 公开 |
+| `/sigtrap/:code` | — | → `/error/:code`（兼容旧链） | — |
+| `/*` | — | → `/error/404` | — |
 
 ### 2.2 账号 / 认证
 

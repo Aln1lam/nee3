@@ -261,7 +261,7 @@
               <th>题目名称</th>
               <th>分类</th>
               <th>原始分值</th>
-              <th>难度系数</th>
+              <th>衰减 decay</th>
               <th>题目类型</th>
               <th>解题数</th>
               <th>附件</th>
@@ -323,9 +323,24 @@
                 <input v-model.number="challengeForm.min_score_rate" type="number" placeholder="0.25" step="0.01" class="form-input">
               </div>
               <div class="form-group">
-                <label>难度系数</label>
-                <input v-model.number="challengeForm.difficulty" type="number" placeholder="5.0" step="0.1" class="form-input">
+                <label>衰减参数 decay</label>
+                <input v-model.number="challengeForm.difficulty" type="number" placeholder="10" step="1" min="2" max="50" class="form-input">
               </div>
+            </div>
+
+            <!-- 动态计分说明提示框 -->
+            <div class="dynamic-score-callout">
+              <div class="dynamic-score-callout__head">
+                <span class="dynamic-score-callout__badge">INFO</span>
+                <span>动态积分衰减（ret2shell 余弦公式）</span>
+              </div>
+              <p class="dynamic-score-callout__body">
+                对齐 ret2shell <code>maintain_score</code>：initial=原始分，minimum=原始分×最小分率，decay=难度字段（2–50）。
+                <br>
+                <code class="dynamic-score-callout__formula">N&lt;1 → initial；N≥decay → minimum；否则 round(min + (init-min)×(cos((N-1)/(decay-1)×π)+1)/2)</code>
+                <br>
+                <span class="dynamic-score-callout__note">（decay 越大衰减越慢；新队解出后 Snapshot Replay 重算全员总分，允许折线下挫）</span>
+              </p>
             </div>
 
             <div class="form-group">
@@ -598,74 +613,6 @@
       </div>
     </div>
 
-    <!-- 首解 / 血榜 -->
-    <div v-show="activeTab === 'firstsolve'" class="tab-content">
-      <div class="card">
-        <div class="card-header">
-          <h3>首解 / 血榜</h3>
-          <select v-model="selectedFirstSolveGameId" class="form-input" style="width: 220px;">
-            <option value="">选择竞赛...</option>
-            <option v-for="game in games" :key="game.id" :value="game.id">{{ game.title }}</option>
-          </select>
-        </div>
-        <div v-if="!selectedFirstSolveGameId" class="empty-state"><p>请选择竞赛查看首解</p></div>
-        <div v-else-if="firstSolves.length === 0" class="empty-state"><p>暂无首解记录</p></div>
-        <table v-else class="data-table">
-          <thead>
-            <tr>
-              <th>时间</th>
-              <th>题目</th>
-              <th>用户</th>
-              <th>队伍</th>
-              <th>血</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="fs in firstSolves" :key="fs.id">
-              <td>{{ formatTime(fs.solved_at) }}</td>
-              <td>{{ fs.challenge_title || ('#' + fs.challenge_id) }}</td>
-              <td>{{ fs.user_name || fs.username || ('#' + fs.user_id) }}</td>
-              <td>{{ fs.team_name || '-' }}</td>
-              <td>{{ fs.blood_level != null ? (['一血','二血','三血'][fs.blood_level] || fs.blood_level) : '-' }}</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
-
-    <!-- 锤子聚合 -->
-    <div v-show="activeTab === 'hammer'" class="tab-content">
-      <div class="card">
-        <div class="card-header">
-          <h3>锤子消息</h3>
-          <div style="display:flex;gap:10px;align-items:center;">
-            <select v-model="selectedHammerGameId" class="form-input" style="width: 220px;">
-              <option value="">全部竞赛</option>
-              <option v-for="game in games" :key="game.id" :value="game.id">{{ game.title }}</option>
-            </select>
-            <button class="btn-small" @click="loadHammerMessages">刷新</button>
-          </div>
-        </div>
-        <div v-if="hammerMessages.length === 0" class="empty-state"><p>暂无锤子消息</p></div>
-        <div v-else class="cheat-list">
-          <div v-for="m in hammerMessages" :key="m.id" class="cheat-card">
-            <div class="cheat-header">
-              <span class="cheat-id">#{{ m.id }}</span>
-              <span class="cheat-type-badge">{{ m.challenge_title || ('题目#' + m.challenge_id) }}</span>
-              <span class="cheat-status-badge" :class="m.is_staff ? 'status-confirmed' : 'status-pending'">
-                {{ m.is_staff ? '裁判' : '选手' }}
-              </span>
-              <span class="cheat-time">{{ formatTime(m.created_at) }}</span>
-            </div>
-            <div class="cheat-content">
-              <strong>{{ m.nickname || ('用户#' + m.user_id) }}</strong>
-              <p>{{ m.content }}</p>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
     <!-- 动态附件包 -->
     <div v-show="activeTab === 'traffic'" class="tab-content">
       <div class="card">
@@ -676,12 +623,6 @@
     <div v-show="activeTab === 'packages'" class="tab-content">
       <div class="card">
         <DynamicPackageManager :game-id="selectedGameId || null" />
-      </div>
-    </div>
-
-    <div v-show="activeTab === 'seasons'" class="tab-content">
-      <div class="card">
-        <SeasonManager />
       </div>
     </div>
 
@@ -738,7 +679,6 @@
 </template>
 <script>
 import DynamicPackageManager from './DynamicPackageManager.vue'
-import SeasonManager from './SeasonManager.vue'
 import TrafficCapturePanel from './TrafficCapturePanel.vue'
 import { useMessage } from 'naive-ui'
 import { apiErrorFromPayload } from '@/utils/apiError'
@@ -752,7 +692,6 @@ export default {
   components: {
     DockerWhaleIcon,
     DynamicPackageManager,
-    SeasonManager,
     TrafficCapturePanel,
   },
   setup() {
@@ -772,16 +711,13 @@ export default {
   data() {
     return {
       activeTab: 'games',
-      tabs: ['games', 'challenges', 'packages', 'seasons', 'traffic', 'cheat', 'scoreboard', 'firstsolve', 'hammer', 'teams'],
+      tabs: ['games', 'challenges', 'packages', 'traffic', 'cheat', 'scoreboard', 'teams'],
       gameTypeFilter: '',
       showEphemeral: false,
       games: [],
       challenges: [],
       cheatRecords: [],
       scoreboard: [],
-      firstSolves: [],
-      hammerMessages: [],
-      selectedHammerGameId: '',
 
       selectedGameId: '',
       selectedCheatGameId: '',
@@ -789,7 +725,6 @@ export default {
       selectedScoreboardGameId: '',
       gameStats: null,
       exportingScoreboard: false,
-      selectedFirstSolveGameId: '',
 
       showCreateGameModal: false,
       showCreateChallengeModal: false,
@@ -852,16 +787,6 @@ export default {
       this.loadScoreboard(newVal);
       this.loadGameStats(newVal);
     },
-    selectedHammerGameId() {
-      this.loadHammerMessages();
-    },
-    selectedFirstSolveGameId(newVal) {
-      if (!newVal) {
-        this.firstSolves = [];
-        return;
-      }
-      this.loadFirstSolves(newVal);
-    }
   },
 
   methods: {
@@ -870,12 +795,9 @@ export default {
         games: 'GMS',
         challenges: 'CHL',
         packages: 'PKG',
-        seasons: 'SEA',
         traffic: 'TRF',
         cheat: 'CHT',
         scoreboard: 'SCR',
-        firstsolve: 'FST',
-        hammer: 'HMR',
         teams: 'TMS',
       };
       return codes[tab] || 'TAB';
@@ -886,11 +808,8 @@ export default {
         challenges: '题目管理',
         cheat: '作弊检测',
         scoreboard: '排行榜',
-        firstsolve: '首解',
-        hammer: '锤子',
         traffic: '流量捕获',
         packages: '动态附件包',
-        seasons: '赛季管理',
         teams: '队伍管理',
       };
       return labels[tab] || tab;
@@ -1274,7 +1193,7 @@ export default {
         }
 
         const fields = [
-          'title', 'category', 'original_points', 'min_score_rate', 'difficulty', 'flag', 'flag_template',
+          'title', 'category', 'flag', 'flag_template',
           'description', 'challenge_type', 'submission_limit', 'docker_image', 'docker_port',
           'memory_limit', 'cpu_count', 'storage_limit', 'network_mode',
         ];
@@ -1283,6 +1202,22 @@ export default {
           if (this.challengeForm[k] !== undefined && this.challengeForm[k] !== null && this.challengeForm[k] !== '') {
             payload[k] = this.challengeForm[k];
           }
+        }
+        // 衰减三件套必须真实提交（禁止因空串判定被静默丢弃）
+        payload.original_points = Number(this.challengeForm.original_points);
+        if (!Number.isFinite(payload.original_points) || payload.original_points <= 0) {
+          this.message.warning('请填写有效的原始分值');
+          return;
+        }
+        payload.min_score_rate = Number(this.challengeForm.min_score_rate);
+        if (!Number.isFinite(payload.min_score_rate) || payload.min_score_rate < 0 || payload.min_score_rate > 1) {
+          this.message.warning('最小分值率须在 0~1 之间');
+          return;
+        }
+        payload.difficulty = Number(this.challengeForm.difficulty);
+        if (!Number.isFinite(payload.difficulty) || payload.difficulty < 2 || payload.difficulty > 50) {
+          this.message.warning('衰减参数 decay 须在 2–50（对齐 ret2shell）');
+          return;
         }
         payload.disable_blood_bonus = !!this.challengeForm.disable_blood_bonus;
         payload.enable_traffic_capture = !!this.challengeForm.enable_traffic_capture;
@@ -1378,7 +1313,7 @@ export default {
             category: c.category || '',
             original_points: c.original_points || c.points || 1000,
             min_score_rate: c.min_score_rate || 0.25,
-            difficulty: c.difficulty || 5.0,
+            difficulty: c.difficulty != null ? Number(c.difficulty) : 10,
             flag: c.flag || '',
             flag_template: c.flag_template || '',
             description: c.description || '',
@@ -1402,7 +1337,7 @@ export default {
             category: challenge.category || '',
             original_points: challenge.original_points || 1000,
             min_score_rate: challenge.min_score_rate || 0.25,
-            difficulty: challenge.difficulty || 5.0,
+            difficulty: challenge.difficulty != null ? Number(challenge.difficulty) : 10,
             flag: '',
             flag_template: challenge.flag_template || '',
             description: challenge.description || '',
@@ -1450,12 +1385,6 @@ export default {
         this.loadCheatRecords('');
       }
       if (this.activeTab === 'scoreboard') {
-        // 加载竞赛列表用于选择
-        if (!this.games || this.games.length === 0) {
-          this.loadGames();
-        }
-      }
-      if (this.activeTab === 'firstsolve') {
         // 加载竞赛列表用于选择
         if (!this.games || this.games.length === 0) {
           this.loadGames();
@@ -1542,45 +1471,6 @@ export default {
         this.message.error(e.message || '导出失败');
       } finally {
         this.exportingScoreboard = false;
-      }
-    },
-
-    async loadHammerMessages() {
-      try {
-        let params = 'page=1&per_page=50';
-        if (this.selectedHammerGameId) params += `&game_id=${this.selectedHammerGameId}`;
-        const res = await ctfAdmin.listHammerMessages(params);
-        const parsed = await parseJsonResponse(res);
-        if (!isApiSuccess(parsed)) {
-          this.hammerMessages = [];
-          this.message.error(apiErrorFromPayload(parsed.data, '加载锤子消息失败'));
-          return;
-        }
-        this.hammerMessages = parsed.data?.data?.items || parsed.data?.items || [];
-      } catch (e) {
-        this.hammerMessages = [];
-        this.message.error(e.message || '加载锤子消息失败');
-      }
-    },
-
-    async loadFirstSolves(gameId) {
-      try {
-        const res = await ctfAdmin.listFirstSolves(gameId);
-        const parsed = await parseJsonResponse(res);
-        if (!isApiSuccess(parsed)) {
-          console.error('loadFirstSolves failed', parsed.status);
-          this.firstSolves = [];
-          return;
-        }
-        const body = parsed.data?.data || parsed.data;
-        const rows = body?.items || body || [];
-        this.firstSolves = (Array.isArray(rows) ? rows : []).map(fs => ({
-          ...fs,
-          challenge_title: fs.challenge_title || `题目 ${fs.challenge_id}`
-        }));
-      } catch (e) {
-        console.error('加载一血二血失败:', e);
-        this.firstSolves = [];
       }
     },
 
@@ -1675,7 +1565,7 @@ export default {
     getEmptyDivisionForm() { return { name: '', invite_code: '', school_scope: '', description: '' }; },
     getEmptyChallengeForms() {
       return {
-        title: '', category: '', original_points: 1000, min_score_rate: 0.25, difficulty: 5.0,
+        title: '', category: '', original_points: 1000, min_score_rate: 0.25, difficulty: 10,
         flag: '', flag_template: '', description: '', challenge_type: 0, submission_limit: 0,
         docker_image: '', docker_port: 80, memory_limit: 256, cpu_count: 1,
         storage_limit: 1024, network_mode: 'Open', enable_traffic_capture: false,
@@ -1842,31 +1732,34 @@ export default {
 
 .tabs {
   display: flex;
-  gap: 10px;
+  gap: 8px;
   margin-bottom: 20px;
-  border-bottom: 2px solid #e0e0e0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
   overflow-x: auto;
+  padding-bottom: 8px;
 }
 
 .tab-btn {
-  padding: 10px 20px;
-  background: none;
-  border: none;
+  padding: 8px 14px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 8px;
   cursor: pointer;
-  font-size: 14px;
-  color: #666;
-  border-bottom: 3px solid transparent;
-  transition: all 0.3s;
+  font-size: 13px;
+  color: #9ca3af;
+  transition: all 0.2s;
   white-space: nowrap;
 }
 
 .tab-btn.active {
-  color: #0066cc;
-  border-bottom-color: #0066cc;
+  color: #10b981;
+  background: rgba(16, 185, 129, 0.1);
+  border-color: rgba(16, 185, 129, 0.28);
 }
 
 .tab-btn:hover {
-  color: #0066cc;
+  color: #10b981;
+  background: rgba(16, 185, 129, 0.08);
 }
 
 .tab-content {
@@ -1887,7 +1780,7 @@ export default {
 
 .card-header {
   padding: var(--fib-21);
-  border-bottom: 1px solid #e0e0e0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -1923,49 +1816,52 @@ export default {
 }
 
 .data-table tbody tr:hover {
-  background: #fafafa;
+  background: rgba(16, 185, 129, 0.06);
 }
 
 .badge {
   display: inline-block;
   padding: 4px 8px;
-  border-radius: 4px;
+  border-radius: 8px;
   font-size: 12px;
   font-weight: bold;
-  background: #e0e0e0;
-  color: #333;
+  background: rgba(16, 185, 129, 0.1);
+  color: #10b981;
+  border: 1px solid rgba(16, 185, 129, 0.22);
 }
 
-.badge-blue { background: #cce5ff; color: #0066cc; }
-.badge-green { background: #ccf0dd; color: #00b359; }
-.badge-orange { background: #ffd9b3; color: #ff8c00; }
-.badge-red { background: #ffcccc; color: #cc0000; }
-.badge-yellow { background: #fff4e6; color: #ffaa00; }
+.badge-blue { background: rgba(59, 130, 246, 0.12); color: #93c5fd; border-color: rgba(59, 130, 246, 0.28); }
+.badge-green { background: rgba(16, 185, 129, 0.12); color: #5ed9a8; border-color: rgba(16, 185, 129, 0.28); }
+.badge-orange { background: rgba(245, 158, 11, 0.12); color: #fbbf24; border-color: rgba(245, 158, 11, 0.28); }
+.badge-red { background: rgba(239, 68, 68, 0.12); color: #f87171; border-color: rgba(239, 68, 68, 0.28); }
+.badge-yellow { background: rgba(245, 158, 11, 0.12); color: #fbbf24; border-color: rgba(245, 158, 11, 0.28); }
 
 .btn-small {
   padding: 6px 12px;
   font-size: 12px;
   margin: 0 2px;
-  border: none;
-  border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
   cursor: pointer;
-  background: #f0f0f0;
-  color: #333;
+  background: rgba(255, 255, 255, 0.04);
+  color: #e5e7eb;
   transition: all 0.2s;
 }
 
 .btn-small:hover {
-  background: #e0e0e0;
+  background: rgba(16, 185, 129, 0.1);
+  border-color: rgba(16, 185, 129, 0.35);
+  color: #10b981;
 }
 
-.btn-edit { color: #0066cc; }
-.btn-edit:hover { background: #e6f2ff; }
+.btn-edit { color: #10b981; }
+.btn-edit:hover { background: rgba(16, 185, 129, 0.1); }
 
-.btn-danger { color: #cc0000; }
-.btn-danger:hover { background: #ffcccc; }
+.btn-danger { color: #f87171; }
+.btn-danger:hover { background: rgba(239, 68, 68, 0.1); }
 
-.btn-info { color: #0066cc; }
-.btn-warning { color: #ff8c00; }
+.btn-info { color: #93c5fd; }
+.btn-warning { color: #fbbf24; }
 
 .modal-overlay {
   position: fixed;
@@ -1995,7 +1891,7 @@ export default {
 
 .modal-header {
   padding: var(--fib-21);
-  border-bottom: 1px solid #e0e0e0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -2031,7 +1927,7 @@ export default {
   display: block;
   margin-bottom: 6px;
   font-weight: 500;
-  color: #333;
+  color: #9ca3af;
 }
 
 .form-input,
@@ -2040,33 +1936,36 @@ export default {
 .form-input select {
   width: 100%;
   padding: 8px 12px;
-  border: 1px solid #ddd;
-  border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
   font-size: 14px;
   font-family: inherit;
+  background: rgba(255, 255, 255, 0.04);
+  color: #e5e7eb;
 }
 
 .form-input input:focus,
 .form-input textarea:focus,
 .form-input select:focus {
   outline: none;
-  border-color: #0066cc;
-  box-shadow: 0 0 0 3px rgba(0,102,204,0.1);
+  border-color: rgba(16, 185, 129, 0.45);
+  box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.15);
 }
 
 .file-upload-box {
   position: relative;
-  border: 2px dashed #ddd;
-  border-radius: 4px;
+  border: 1px dashed rgba(16, 185, 129, 0.28);
+  border-radius: 8px;
   padding: var(--fib-21);
   text-align: center;
   cursor: pointer;
   transition: all 0.3s;
+  background: rgba(255, 255, 255, 0.03);
 }
 
 .file-upload-box:hover {
-  border-color: #0066cc;
-  background: #f5f9ff;
+  border-color: rgba(16, 185, 129, 0.45);
+  background: rgba(16, 185, 129, 0.06);
 }
 
 .file-input {
@@ -2080,22 +1979,24 @@ export default {
 }
 
 .container-config {
-  background: #f9f9f9;
+  background: rgba(255, 255, 255, 0.03);
   padding: 16px;
-  border-radius: 4px;
+  border-radius: 8px;
   margin: 16px 0;
+  border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .attachment-section {
-  background: #f9f9f9;
+  background: rgba(255, 255, 255, 0.03);
   padding: 16px;
-  border-radius: 4px;
+  border-radius: 8px;
   margin: 16px 0;
+  border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .modal-footer {
   padding: var(--fib-21);
-  border-top: 1px solid #e0e0e0;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
   display: flex;
   gap: 10px;
   justify-content: flex-end;
@@ -2103,30 +2004,36 @@ export default {
 
 .btn-primary {
   padding: 10px 20px;
-  background: #0066cc;
-  color: white;
-  border: none;
-  border-radius: 4px;
+  background: #10b981;
+  color: #0a0f14;
+  border: 1px solid rgba(16, 185, 129, 0.55);
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  transition: all 0.2s;
+}
+
+.btn-primary:hover {
+  background: #34d399;
+  box-shadow: 0 0 18px rgba(16, 185, 129, 0.28);
+}
+
+.btn-secondary {
+  padding: 10px 20px;
+  background: rgba(255, 255, 255, 0.04);
+  color: #e5e7eb;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
   cursor: pointer;
   font-size: 14px;
   transition: all 0.2s;
 }
 
-.btn-primary:hover {
-  background: #0052a3;
-}
-
-.btn-secondary {
-  padding: 10px 20px;
-  background: #f0f0f0;
-  color: #333;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-}
-
 .btn-secondary:hover {
-  background: #e0e0e0;
+  background: rgba(16, 185, 129, 0.08);
+  border-color: rgba(16, 185, 129, 0.35);
+  color: #10b981;
 }
 
 .cheat-list {
@@ -2134,11 +2041,12 @@ export default {
 }
 
 .cheat-card {
-  background: #fff9f0;
-  border-left: 4px solid #ff8c00;
+  background: rgba(15, 18, 26, 0.72);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-left: 1px solid rgba(16, 185, 129, 0.35);
   padding: 16px;
-  margin-bottom: 16px;
-  border-radius: 4px;
+  margin-bottom: 12px;
+  border-radius: 10px;
 }
 
 .cheat-header {
@@ -2150,8 +2058,8 @@ export default {
   align-items: center;
 }
 
-.cheat-id { font-weight: bold; color: #333; }
-.cheat-time { color: #999; }
+.cheat-id { font-weight: bold; color: #9ca3af; font-family: var(--font-mono, monospace); }
+.cheat-time { color: #9ca3af; }
 
 .cheat-type-badge {
   padding: 4px 8px;
@@ -2162,18 +2070,21 @@ export default {
 }
 
 .cheat-type-badge.type-flag_origin {
-  background: #ffcccc;
-  color: #990000;
+  background: rgba(239, 68, 68, 0.12);
+  color: #f87171;
+  border: 1px solid rgba(239, 68, 68, 0.28);
 }
 
 .cheat-type-badge.type-similar_flag {
-  background: #ffebe6;
-  color: #d32f2f;
+  background: rgba(239, 68, 68, 0.12);
+  color: #f87171;
+  border: 1px solid rgba(239, 68, 68, 0.28);
 }
 
 .cheat-type-badge.type-rapid_submission {
-  background: #fff9c4;
-  color: #f57f17;
+  background: rgba(245, 158, 11, 0.12);
+  color: #fbbf24;
+  border: 1px solid rgba(245, 158, 11, 0.28);
 }
 
 .cheat-status-badge {
@@ -2185,31 +2096,35 @@ export default {
 }
 
 .cheat-status-badge.status-pending {
-  background: #e3f2fd;
-  color: #1976d2;
+  background: rgba(59, 130, 246, 0.12);
+  color: #93c5fd;
+  border: 1px solid rgba(59, 130, 246, 0.28);
 }
 
 .cheat-status-badge.status-confirmed {
-  background: #ffcccc;
-  color: #990000;
+  background: rgba(239, 68, 68, 0.12);
+  color: #f87171;
+  border: 1px solid rgba(239, 68, 68, 0.28);
 }
 
 .cheat-status-badge.status-dismissed {
-  background: #e0f2f1;
-  color: #00695c;
+  background: rgba(16, 185, 129, 0.12);
+  color: #5ed9a8;
+  border: 1px solid rgba(16, 185, 129, 0.28);
 }
 
 .similarity-badge {
   padding: 2px 6px;
-  border-radius: 3px;
-  background: #ffe6e6;
-  color: #cc0000;
+  border-radius: 8px;
+  background: rgba(239, 68, 68, 0.1);
+  color: #f87171;
   font-weight: bold;
+  border: 1px solid rgba(239, 68, 68, 0.25);
 }
 
 .similarity-badge.high {
-  background: #ffcccc;
-  color: #990000;
+  background: rgba(239, 68, 68, 0.14);
+  color: #f87171;
 }
 
 .user-pair {
@@ -2224,22 +2139,23 @@ export default {
   flex: 1;
   min-width: 150px;
   padding: 12px;
-  background: var(--gradient-card-bg, var(--card-bg));
-  border-radius: 4px;
-  border-left: 3px solid #0066cc;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-left: 1px solid rgba(16, 185, 129, 0.35);
 }
 
 .user-label {
   display: block;
   font-weight: bold;
-  color: #333;
+  color: #9ca3af;
   margin-bottom: 4px;
   font-size: 12px;
 }
 
 .user-name {
   display: block;
-  color: #333;
+  color: #e5e7eb;
   font-weight: 500;
   margin-bottom: 2px;
 }
@@ -2251,39 +2167,42 @@ export default {
 }
 
 .vs-mark {
-  color: #ff8c00;
+  color: #10b981;
   font-weight: bold;
   font-size: 12px;
   padding: 0 4px;
 }
 
 .reason-box {
-  background: #fff5e6;
+  background: rgba(255, 255, 255, 0.03);
   padding: 12px;
-  border-radius: 4px;
+  border-radius: 8px;
   margin-bottom: 12px;
   font-size: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-left: 1px solid rgba(16, 185, 129, 0.28);
 }
 
 .reason-box p {
   margin: 6px 0 0 0;
-  color: #666;
+  color: #9ca3af;
   white-space: pre-wrap;
   word-break: break-word;
 }
 
 .admin-note-box {
-  background: #f0f0f0;
+  background: rgba(255, 255, 255, 0.03);
   padding: 12px;
-  border-radius: 4px;
+  border-radius: 8px;
   margin-bottom: 12px;
   font-size: 14px;
-  border-left: 3px solid #666;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-left: 1px solid rgba(156, 163, 175, 0.35);
 }
 
 .admin-note-box p {
   margin: 6px 0 0 0;
-  color: #666;
+  color: #9ca3af;
   white-space: pre-wrap;
   word-break: break-word;
 }
@@ -2313,24 +2232,25 @@ export default {
   margin: 0 0 16px;
 }
 .stat-chip {
-  padding: 10px 12px;
-  background: #f7f8fa;
-  border-radius: 8px;
+  padding: 12px 14px;
+  background: rgba(15, 18, 26, 0.72);
+  border: 1px solid rgba(16, 185, 129, 0.18);
+  border-radius: 10px;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 6px;
 }
-.stat-chip span { font-size: 12px; color: #888; }
-.stat-chip strong { font-size: 18px; color: #222; }
+.stat-chip span { font-size: 11px; color: #9ca3af; letter-spacing: 0.04em; }
+.stat-chip strong { font-size: 18px; color: #e5e7eb; font-family: var(--font-mono, monospace); }
 .scoreboard-container {
 
   padding: var(--fib-21);
 }
 
 .game-divisions-section {
-  background: #f9fafb;
-  border: 1px solid #e6e6e6;
-  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
   padding: 12px;
 }
 
@@ -2343,7 +2263,7 @@ export default {
 
 .divisions-title {
   font-weight: bold;
-  color: #333;
+  color: #e5e7eb;
 }
 
 .division-item {
@@ -2351,9 +2271,9 @@ export default {
   align-items: center;
   justify-content: space-between;
   padding: 10px 12px;
-  background: var(--gradient-card-bg, var(--card-bg));
-  border: 1px solid #eee;
-  border-radius: 6px;
+  background: rgba(15, 18, 26, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
   margin-bottom: 8px;
   gap: 10px;
   flex-wrap: wrap;
@@ -2384,8 +2304,8 @@ export default {
   display: inline-block;
   padding: 2px 6px;
   border-radius: 4px;
-  background: #eef5ff;
-  color: #1a73e8;
+  background: rgba(16, 185, 129, 0.12);
+  color: #5ed9a8;
   font-weight: 600;
 }
 
@@ -2395,8 +2315,11 @@ export default {
 }
 
 .podium {
-  background: #fff9e6;
-  font-weight: bold;
+  background: rgba(16, 185, 129, 0.08);
+  font-weight: 600;
+}
+.podium td {
+  color: #e5e7eb;
 }
 
 .medal {
@@ -2414,6 +2337,55 @@ export default {
 .form-input[placeholder] {
   padding: 8px 10px;
 }
+
+/* 动态积分衰减说明 Callout（题目新建/编辑弹窗） */
+.dynamic-score-callout {
+  margin: 8px 0 16px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: rgba(6, 78, 59, 0.18);
+  border: 1px solid rgba(16, 185, 129, 0.22);
+  box-shadow: 0 0 18px rgba(16, 185, 129, 0.08);
+  font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace);
+  font-size: 12px;
+}
+.dynamic-score-callout__head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+  color: #34d399;
+  font-weight: 700;
+  font-size: 11px;
+  letter-spacing: 0.02em;
+}
+.dynamic-score-callout__badge {
+  display: inline-block;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: rgba(16, 185, 129, 0.2);
+  color: #6ee7b7;
+  font-size: 10px;
+  font-weight: 700;
+}
+.dynamic-score-callout__body {
+  margin: 0;
+  color: #9ca3af;
+  line-height: 1.65;
+  font-size: 11px;
+}
+.dynamic-score-callout__formula {
+  display: inline-block;
+  margin: 4px 0;
+  color: #6ee7b7;
+  font-weight: 700;
+  font-size: 11px;
+  word-break: break-word;
+}
+.dynamic-score-callout__note {
+  color: #6b7280;
+}
+
 .docker-heading {
   display: inline-flex;
   align-items: center;

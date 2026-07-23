@@ -255,22 +255,6 @@ export const API_PROBES = [
     expect: 'auth',
     admin: true,
   },
-  {
-    id: 'admin_first_solves',
-    section: '3.7',
-    method: 'GET',
-    path: (ctx) => `/api/admin/first-solves?game_id=${ctx.gameId}&per_page=20`,
-    expect: 'auth',
-    admin: true,
-  },
-  {
-    id: 'admin_seasons',
-    section: '3.7',
-    method: 'GET',
-    path: '/api/admin/seasons',
-    expect: 'auth',
-    admin: true,
-  },
 
   // —— 已知前端误用（契约守卫）——
   {

@@ -223,10 +223,24 @@ export default {
 <style scoped>
 .pcap-panel { padding: 4px 0 16px; }
 .pcap-head { margin-bottom: 12px; }
-.pcap-title { margin: 0; font-size: 1.1rem; font-weight: 700; }
+.pcap-title { margin: 0; font-size: 1.1rem; font-weight: 700; color: #e5e7eb; }
 .pcap-desc { margin: 4px 0 0; font-size: 13px; color: var(--text-muted, var(--muted)); }
 .pcap-row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-bottom: 14px; }
 .pcap-label { font-size: 13px; color: var(--text-muted, var(--muted)); }
-.pcap-alert { margin-bottom: 12px; }
+.pcap-alert {
+  margin-bottom: 12px;
+  background: rgba(16, 185, 129, 0.08) !important;
+  border: 1px solid rgba(16, 185, 129, 0.22) !important;
+  border-radius: 10px !important;
+  color: #e5e7eb !important;
+}
+.pcap-alert :deep(.n-alert-body),
+.pcap-alert :deep(.n-alert__content) {
+  color: #e5e7eb !important;
+}
+.pcap-alert :deep(.n-alert__icon) {
+  color: #10b981 !important;
+}
 .pcap-empty { padding: 28px 0; }
+.pcap-empty :deep(.n-empty__description) { color: #9ca3af; }
 </style>

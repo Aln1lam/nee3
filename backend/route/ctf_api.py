@@ -418,18 +418,12 @@ def list_challenges(game_id):
     for challenge in challenges:
         data = challenge.to_public_dict()
         
-        # 添加解题统计
-        solved_count = CtfChallengeSubmission.query.filter_by(
-            challenge_id=challenge.id,
-            is_correct=True
-        ).count()
+        # 添加解题统计（唯一队伍数）
+        solved_count = ScoringService.count_accepted_solvers(challenge.id)
         
-        # 计算当前分数
-        current_score = ScoringService.calculate_dynamic_score(
-            challenge.original_points,
-            solved_count,
-            challenge.min_score_rate,
-            challenge.difficulty
+        # 计算当前分数（使用题目自身衰减参数）
+        current_score = ScoringService.challenge_base_dynamic_score(
+            challenge, solved_count
         )
         
         data['solved_count'] = solved_count
@@ -570,18 +564,6 @@ def submit_flag(challenge_id):
             )
 
             if is_correct:
-                solved_count = CtfChallengeSubmission.query.filter_by(
-                    challenge_id=challenge_id,
-                    is_correct=True,
-                ).count()
-
-                score = ScoringService.calculate_dynamic_score(
-                    challenge.original_points,
-                    solved_count,
-                    challenge.min_score_rate,
-                    challenge.difficulty,
-                )
-
                 blood_level = ScoringService.record_first_solve(
                     challenge.game_id,
                     challenge_id,
@@ -589,19 +571,12 @@ def submit_flag(challenge_id):
                     user.team_id,
                 )
 
-                if blood_level is not None and not challenge.disable_blood_bonus:
-                    score_with_bonus, _bonus_multiplier = ScoringService.calculate_blood_bonus(
-                        score, blood_level=blood_level
-                    )
-                    submission.points_earned = score_with_bonus
-                else:
-                    submission.points_earned = score
+                # 先落库当前正确提交，再按最新 accepted_count 全员回写衰减分
+                db.session.add(submission)
+                db.session.flush()
 
-                ScoringService.update_scoreboard(
-                    challenge.game_id,
-                    user_id,
-                    user.team_id,
-                )
+                ScoringService.recalculate_challenge_scores(challenge_id)
+                db.session.refresh(submission)
 
                 blood_names = ['一血', '二血', '三血']
                 if blood_level is not None:
@@ -617,8 +592,6 @@ def submit_flag(challenge_id):
                     similar_users = CheatDetectionService.detect_similar_flags(
                         answer, challenge_id, user_id
                     )
-                    db.session.add(submission)
-                    db.session.flush()
                     for similar_user_id, similarity in similar_users:
                         cheat_info = CtfCheatInfo(
                             game_id=challenge.game_id,
@@ -629,6 +602,8 @@ def submit_flag(challenge_id):
                         )
                         db.session.add(cheat_info)
                     return submission, status
+
+                return submission, status
 
             db.session.add(submission)
             return submission, status
@@ -704,11 +679,22 @@ def get_scoreboard(game_id):
             last_time = ScoringService.resolve_last_submission_time(
                 game_id, sb.team_id, sb.user_id
             )
+        school = None
+        motto = None
+        if team:
+            school = getattr(team, 'school', None) or getattr(team, 'tag', None)
+            motto = getattr(team, 'motto', None) or getattr(team, 'bio', None) or None
+            if not school and team.users:
+                for u in team.users:
+                    if getattr(u, 'school', None):
+                        school = u.school
+                        break
         rankings.append({
             'rank': idx,
             'team_id': sb.team_id,
             'team_name': team.name if team else 'Unknown',
-            'team_school': getattr(team, 'school', None) or getattr(team, 'tag', None) or '无组织',
+            'team_school': school or '无组织',
+            'team_motto': motto or '',
             'total_points': sb.total_points,
             'solved_challenges': sb.solved_challenges,
             'last_submission_time': last_time.isoformat() if last_time else None,
@@ -729,55 +715,19 @@ def get_scoreboard(game_id):
 
 @bp.route("/games/<int:game_id>/scoreboard/timeline", methods=["GET"])
 def get_scoreboard_timeline(game_id):
-    """积分随时间变化折线图数据"""
+    """GZCTF 式 Snapshot Replay 积分时间线（可下挫，带 Redis 快照缓存）"""
     game = CtfGame.query.get(game_id)
     if not game:
         return error_response("CtfGame not found", 404)
 
-    rows = (
-        CtfChallengeSubmission.query.filter_by(game_id=game_id, is_correct=True)
-        .order_by(CtfChallengeSubmission.submitted_at.asc())
-        .all()
-    )
-
-    team_points = {}
-    team_names = {}
-    events = []
-
-    for r in rows:
-        if not r.team_id:
-            continue
-        ch = CtfChallenge.query.get(r.challenge_id)
-        earned = r.points_earned or (ch.points if ch else 0)
-        team_points[r.team_id] = team_points.get(r.team_id, 0) + earned
-        if r.team_id not in team_names:
-            t = Team.query.get(r.team_id)
-            team_names[r.team_id] = t.name if t else f'Team #{r.team_id}'
-        events.append({
-            'team_id': r.team_id,
-            'team_name': team_names[r.team_id],
-            'time': r.submitted_at.isoformat() if r.submitted_at else None,
-            'points': team_points[r.team_id],
-        })
-
-    top_teams = sorted(team_points.items(), key=lambda x: -x[1])[:8]
-    top_ids = {tid for tid, _ in top_teams}
-
-    series_map = {tid: [] for tid in top_ids}
-    running = {tid: 0 for tid in top_ids}
-    for ev in events:
-        tid = ev['team_id']
-        if tid not in top_ids:
-            continue
-        running[tid] = ev['points']
-        series_map[tid].append({'time': ev['time'], 'points': running[tid]})
-
-    series = [
-        {'team_id': tid, 'team_name': team_names.get(tid, f'Team #{tid}'), 'data': series_map[tid]}
-        for tid in top_ids
-    ]
-
-    return success_response({'series': series, 'teams': len(team_points)})
+    payload = ScoringService.get_timeline_cached(game_id, top_n=10)
+    resp = success_response(payload)
+    try:
+        resp[0].headers["X-Timeline-Cache"] = "HIT" if payload.get("from_cache") else "MISS"
+        resp[0].headers["X-Timeline-Algo"] = str(payload.get("algorithm") or "")
+    except Exception:
+        pass
+    return resp
 
 
 @bp.route("/games/<int:game_id>/scoreboard/user", methods=["GET"])

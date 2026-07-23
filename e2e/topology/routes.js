@@ -25,14 +25,14 @@ export const SECTION_21_LANDING = [
   { path: '/archive', name: 'Archive', section: '2.1', auth: 'public' },
   { path: '/events', name: 'Events', section: '2.1', auth: 'public' },
   { path: '/magic/sakana', name: 'MagicSakana', section: '2.1', auth: 'public' },
-  { path: '/sigtrap/404', name: 'Sigtrap', section: '2.1', auth: 'public' },
+  { path: '/error/404', name: 'HttpError', section: '2.1', auth: 'public' },
   {
     path: '/__e2e_missing_page__',
     name: 'CatchAll404',
     section: '2.1',
     auth: 'public',
-    expectUrl: ['/sigtrap/404'],
-    note: '通配 → /sigtrap/404',
+    expectUrl: ['/error/404'],
+    note: '通配 → /error/404',
   },
 ]
 

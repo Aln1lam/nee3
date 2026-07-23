@@ -449,44 +449,21 @@ def submit_flag(challenge_id):
                     response_data['training_mode'] = True
                     response_data['blood_level'] = None
                 else:
-                    # 1. 获取该题目的已解题队伍数（用于动态分数计算）
-                    accepted_count = CtfChallengeSubmission.query.filter_by(
-                        challenge_id=challenge_id,
-                        is_correct=True
-                    ).count()
-
-                    # 2. 计算动态分数
-                    dynamic_score = ScoringService.calculate_dynamic_score(
-                        challenge.points,
-                        accepted_count + 1,  # 包括当前提交
-                        min_score_rate=0.25,
-                        difficulty=5.0
-                    )
-
-                    submission.points_earned = dynamic_score
-
-                    # 3. 检查是否为首解/二解/三解
+                    # 正式赛：落库正确提交后，按最新解题数全员回写衰减分
                     blood_level = ScoringService.record_first_solve(
                         game_id=challenge.game_id,
                         challenge_id=challenge_id,
                         user_id=user_id,
                         team_id=user.team_id
                     )
-
                     response_data['blood_level'] = blood_level
 
-                    # 4. 计算血液奖励
-                    if blood_level is not None:
-                        bonus_score, multiplier = ScoringService.calculate_blood_bonus(
-                            dynamic_score,
-                            (50 << 20) | (30 << 10) | 10,  # 一血5% 二血3% 三血1%
-                            blood_level
-                        )
-                        submission.points_earned = bonus_score
-                        response_data['bonus_multiplier'] = multiplier
-                        response_data['final_score'] = bonus_score
+                    db.session.flush()
+                    ScoringService.recalculate_challenge_scores(challenge_id)
+                    db.session.refresh(submission)
 
-                        # 发送首血公告
+                    response_data['final_score'] = int(submission.points_earned or 0)
+                    if blood_level is not None:
                         blood_names = ["一血", "二血", "三血"]
                         notice = CtfGameNotice(
                             game_id=challenge.game_id,
@@ -495,8 +472,12 @@ def submit_flag(challenge_id):
                             content=f"恭喜 {user.username} 获得{blood_names[blood_level]}！"
                         )
                         db.session.add(notice)
-                    else:
-                        response_data['final_score'] = dynamic_score
+                        # 血加成已含在 points_earned 中；暴露倍数供前端提示
+                        base_now = ScoringService.challenge_base_dynamic_score(challenge)
+                        if base_now > 0:
+                            response_data['bonus_multiplier'] = round(
+                                response_data['final_score'] / base_now, 4
+                            )
 
                     # 5. 作弊检测
                     similar_users = CheatDetectionService.detect_similar_flags(
@@ -518,14 +499,7 @@ def submit_flag(challenge_id):
                             db.session.add(cheat_info)
                         # 作弊信息仅写库，不回传相似用户数给选手
 
-                    # 6. 更新排分表
-                    ScoringService.update_scoreboard(
-                        game_id=challenge.game_id,
-                        user_id=user_id,
-                        team_id=user.team_id
-                    )
-
-                    # 7. 更新赛季统计（如果比赛属于某个赛季）
+                    # 6. 更新赛季统计（如果比赛属于某个赛季）
                     from backend.services.season_stats_service import SeasonStatsService
                     try:
                         SeasonStatsService.trigger_on_challenge_solved(user_id, user.team_id, challenge.game_id)

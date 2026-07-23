@@ -88,23 +88,16 @@ export const ctfAdmin = {
   deleteDynamicPackage: (packageId) =>
     authFetch(`/api/admin/dynamic-packages/packages/${packageId}`, { method: 'DELETE' }),
 
-  // —— 赛季 ——
-  listSeasons: () => authFetch('/api/admin/seasons'),
-  createSeason: (payload) => authFetch('/api/admin/seasons', { method: 'POST', ...jsonBody(payload) }),
-  updateSeason: (seasonId, payload) => authFetch(`/api/admin/seasons/${seasonId}`, { method: 'PUT', ...jsonBody(payload) }),
-  deleteSeason: (seasonId) => authFetch(`/api/admin/seasons/${seasonId}`, { method: 'DELETE' }),
 
-  // —— 作弊 / 首解 ——
+  // —— 作弊 ——
   listCheatRecords: (params = 'page=1&per_page=50') => authFetch(`/api/admin/cheat-detection?${params}`),
   reviewCheatRecord: (recordId, payload = {}) => authFetch(`/api/admin/cheat-records/${recordId}/review`, { method: 'POST', ...jsonBody(payload) }),
   confirmCheatRecord: (recordId, payload = {}) => authFetch(`/api/admin/cheat-records/${recordId}/confirm`, { method: 'POST', ...jsonBody(payload) }),
   dismissCheatRecord: (recordId, payload = {}) => authFetch(`/api/admin/cheat-records/${recordId}/dismiss`, { method: 'POST', ...jsonBody(payload) }),
-  listFirstSolves: (gameId, perPage = 100) => authFetch(`/api/admin/first-solves?game_id=${gameId}&per_page=${perPage}`),
 
   // —— 统计 / 导出 ——
   getGameStats: (gameId) => authFetch(`/api/competitions/admin/${gameId}/stats`),
   exportScoreboard: (gameId) => authFetch(`/api/competitions/admin/${gameId}/export-scoreboard`),
-  listHammerMessages: (params = 'page=1&per_page=50') => authFetch(`/api/admin/hammer-messages?${params}`),
 
   // —— 流量捕获 ——
   listTrafficCaptures: (gameId, sync = true) => authFetch(`/api/competitions/admin/${gameId}/traffic-captures?sync=${sync ? 1 : 0}`),
