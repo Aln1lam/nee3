@@ -10,10 +10,62 @@
       <aside class="teams-nav-rail">
         <div class="sidebar-head sidebar-rail-head">
           <div class="sidebar-head-row">
-            <h2 class="sidebar-title sidebar-rail-title">{{ gameTitle }}</h2>
+            <h2 class="sidebar-title sidebar-rail-title">{{ gameTitle || '战队' }}</h2>
           </div>
           <p class="sidebar-desc sidebar-rail-sub">TEAM · SQUAD</p>
         </div>
+
+        <nav class="sidebar-rail-nav teams-nav-list" aria-label="战队导航">
+          <template v-if="team">
+            <button
+              type="button"
+              class="sidebar-item teams-nav-item"
+              :class="{ active: displayMode === 'manage' && manageTab === 'team' }"
+              @click="openManageTab('team')"
+            >
+              <span class="item-code chip-cut">TEA</span>
+              <span class="item-title">队伍</span>
+            </button>
+            <button
+              type="button"
+              class="sidebar-item teams-nav-item"
+              :class="{ active: displayMode === 'manage' && manageTab === 'solves' }"
+              @click="openManageTab('solves')"
+            >
+              <span class="item-code chip-cut">SOL</span>
+              <span class="item-title">解题情况</span>
+            </button>
+          </template>
+          <template v-else>
+            <button
+              type="button"
+              class="sidebar-item teams-nav-item"
+              :class="{ active: displayMode === 'choose' }"
+              @click="openChoose"
+            >
+              <span class="item-code chip-cut">SQD</span>
+              <span class="item-title">选择方式</span>
+            </button>
+            <button
+              type="button"
+              class="sidebar-item teams-nav-item"
+              :class="{ active: displayMode === 'create' }"
+              @click="mode = 'create'"
+            >
+              <span class="item-code chip-cut">NEW</span>
+              <span class="item-title">创建队伍</span>
+            </button>
+            <button
+              type="button"
+              class="sidebar-item teams-nav-item"
+              :class="{ active: displayMode === 'join' }"
+              @click="mode = 'join'"
+            >
+              <span class="item-code chip-cut">KEY</span>
+              <span class="item-title">加入队伍</span>
+            </button>
+          </template>
+        </nav>
       </aside>
     </template>
 
@@ -42,7 +94,7 @@
     </template>
 
     <div class="game-teams-page">
-    <main class="teams-main" :class="{ 'is-form-mode': displayMode === 'create' || displayMode === 'join' }">
+    <main class="teams-main" :class="{ 'is-form-mode': displayMode === 'create' || displayMode === 'join', 'is-manage-mode': displayMode === 'manage' }">
       <header class="matrix-page-head" :class="{ 'is-compact': displayMode === 'create' || displayMode === 'join' }">
         <p class="matrix-page-prompt">战队 · {{ pageTitle }}</p>
         <template v-if="displayMode !== 'create' && displayMode !== 'join'">
@@ -50,8 +102,6 @@
           <p class="matrix-page-desc">{{ pageDesc }}</p>
         </template>
       </header>
-
-
 
       <div v-if="!team && displayMode === 'choose'" class="choose-panel">
         <div class="choose-deck matrix-panel">
@@ -143,7 +193,7 @@
       </div>
 
       <div v-else-if="displayMode === 'manage' && team" class="manage-panel">
-        <div v-if="!inGame" class="teams-banner" role="status">
+        <div v-if="!inGame && manageTab === 'team'" class="teams-banner" role="status">
           <span class="link-code">REG</span>
           <p class="teams-banner-copy">
             队伍已创建，但尚未报名本赛事。
@@ -154,7 +204,7 @@
           </button>
         </div>
 
-        <div class="matrix-panel manage-deck">
+        <div v-if="manageTab === 'team'" class="matrix-panel manage-deck">
           <header class="team-id-head">
             <span class="link-code chip-cut">TEA</span>
             <div class="team-id-copy">
@@ -208,10 +258,10 @@
           </div>
         </div>
 
-        <section class="solve-section matrix-panel">
+        <section v-else class="solve-section matrix-panel">
           <div class="section-head">
             <span class="link-code">SOL</span>
-            <h3>解题状况</h3>
+            <h3>解题情况</h3>
           </div>
           <div v-if="!solves.length" class="muted">暂无解题记录</div>
           <ul v-else class="solve-list">
@@ -313,6 +363,7 @@ export default {
     const team = ref(null)
     const solves = ref([])
     const mode = ref('choose')
+    const manageTab = ref('team') // team | solves
     const saving = ref(false)
     const gameEnded = ref(false)
     const inGame = ref(false)
@@ -351,21 +402,27 @@ export default {
     })
 
     const pageTitle = computed(() => {
+      if (displayMode.value === 'manage') {
+        return manageTab.value === 'solves' ? '解题情况' : '队伍'
+      }
       const map = {
         choose: '创建或加入队伍',
         create: '创建队伍',
         join: '加入队伍',
-        manage: '队伍管理',
       }
       return map[displayMode.value] || '战队中心'
     })
 
     const pageDesc = computed(() => {
+      if (displayMode.value === 'manage') {
+        return manageTab.value === 'solves'
+          ? '本队解题记录与血牌'
+          : '编辑组织 · 管理成员与密钥'
+      }
       const map = {
         choose: '正式赛事以战队为单位报名参赛。你可以创建新队伍，或使用邀请码加入队友的战队。',
         create: '填写队名，创建后自动获取邀请码',
         join: '向队长索取邀请码，输入后即可加入战队',
-        manage: '编辑组织 · 查看解题记录',
       }
       return map[displayMode.value] || 'TEAM · SQUAD'
     })
@@ -384,6 +441,16 @@ export default {
 
     function openManage() {
       mode.value = team.value ? 'manage' : 'choose'
+      if (team.value) manageTab.value = 'team'
+    }
+
+    function openManageTab(tab) {
+      if (!team.value) {
+        mode.value = 'choose'
+        return
+      }
+      mode.value = 'manage'
+      manageTab.value = tab === 'solves' ? 'solves' : 'team'
     }
 
     function formatTime(t) {
@@ -658,7 +725,7 @@ export default {
       isCampusGame, isOpenGame, CAMPUS_ORG,
       showGameInviteModal, gameInviteInput, confirmGameInviteJoin,
       formatTime, createTeam, joinTeam, saveTeam, leaveTeam, copyInvite, viewTeam, goChallenge, registerForGame,
-      openChoose, openManage, memberCode,
+      openChoose, openManage, openManageTab, manageTab, memberCode,
     }
   },
 }
@@ -670,23 +737,63 @@ export default {
   flex-direction: column;
   flex: 1 1 auto;
   min-height: 0;
+  height: 100%;
+  overflow: hidden;
+}
+
+.teams-nav-list {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 6px 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.teams-nav-item {
+  width: 100%;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-align: left;
+}
+
+.teams-nav-item .item-title {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
 }
 
 .game-teams-shell :deep(.game-layout-main) {
   padding: 0;
+  width: 100%;
+  max-width: none;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
 }
 
 .game-teams-page {
   margin: 0;
+  width: 100%;
   height: 100%;
   max-height: 100%;
   min-height: 0;
   display: flex;
   flex-direction: column;
+  align-items: stretch;
   overflow: hidden;
+  color: #e5e7eb;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  text-rendering: geometricPrecision;
+  text-rendering: optimizeLegibility;
+  text-shadow: none;
+  filter: none;
 }
 
 .teams-main {
@@ -694,14 +801,19 @@ export default {
   min-width: 0;
   min-height: 0;
   width: 100%;
-  max-width: 680px;
-  margin: 0 auto;
-  padding: 22px 24px 48px;
+  max-width: none;
+  margin: 0;
+  padding: 22px 28px 48px;
   box-sizing: border-box;
   overflow-x: hidden;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
   overscroll-behavior: contain;
+}
+
+.teams-main.is-form-mode,
+.teams-main.is-manage-mode {
+  max-width: none;
 }
 
 .teams-main > .matrix-page-head {
@@ -721,18 +833,21 @@ export default {
 
 .teams-main > .matrix-page-head .matrix-page-title {
   margin: 0;
-  font-size: 1.2rem;
-  line-height: 1.3;
-  color: var(--text, #e5e7eb);
-  font-weight: 600;
+  font-size: clamp(1.35rem, 2.2vw, 1.75rem);
+  line-height: 1.25;
+  color: #e5e7eb;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  text-shadow: none;
+  filter: none;
 }
 
 .teams-main > .matrix-page-head .matrix-page-desc {
-  margin: 4px 0 0;
-  font-size: 13px;
-  line-height: 1.5;
-  color: var(--muted, #9ca3af);
-  max-width: 40rem;
+  margin: 6px 0 0;
+  font-size: 14px;
+  line-height: 1.7;
+  color: #9ca3af;
+  max-width: none;
 }
 
 .mode-tabs {
@@ -1112,9 +1227,6 @@ export default {
   font-size: 12px !important;
 }
 
-.teams-main.is-form-mode {
-  max-width: 560px;
-}
 
 .teams-main.is-form-mode .form-panel {
   padding: 22px 22px 24px;
@@ -1150,7 +1262,8 @@ export default {
 /* choose stays stacked — avoid wide flat twin strips */
 
 .empty-main {
-  max-width: 560px;
+  max-width: none;
+  width: 100%;
   padding: 18px 20px;
 }
 
@@ -1234,11 +1347,11 @@ export default {
   font-weight: 600 !important;
   font-variant-ligatures: none;
   font-feature-settings: "liga" 0, "calt" 0;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.06em;
   line-height: 1.2;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  text-rendering: geometricPrecision;
+  text-rendering: optimizeLegibility;
   text-shadow: none !important;
   filter: none !important;
   user-select: all;
@@ -1329,13 +1442,31 @@ export default {
 
 .section-head h3 {
   margin: 0;
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--text, #e5e7eb);
+  font-size: 15px;
+  font-weight: 700;
+  color: #e5e7eb;
+  letter-spacing: 0.01em;
 }
 
 .solve-section {
   margin-top: 10px;
+  width: 100%;
+  color: #e5e7eb;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  text-shadow: none !important;
+  filter: none !important;
+}
+
+.manage-deck {
+  width: 100%;
+  color: #e5e7eb;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  text-shadow: none !important;
+  filter: none !important;
 }
 
 .blood-tag {
@@ -1369,8 +1500,10 @@ export default {
 }
 
 .muted {
-  color: var(--muted, #9ca3af);
-  font-size: 13px;
+  color: #9ca3af;
+  font-size: 14px;
+  line-height: 1.7;
+  font-weight: 500;
 }
 
 .solve-list {
@@ -1381,15 +1514,31 @@ export default {
 
 .solve-list li {
   display: grid;
-  grid-template-columns: 36px 1fr;
-  gap: 8px;
-  padding: 8px 0;
+  grid-template-columns: 40px 1fr;
+  gap: 10px;
+  align-items: start;
+  padding: 12px 0;
   border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-  font-size: 13px;
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 1.75;
+  color: #e5e7eb;
+  text-shadow: none;
+  filter: none;
+}
+
+.solve-list li strong {
+  font-weight: 700;
+  color: #f3f4f6;
+}
+
+.solve-list li > span:last-child {
+  color: #e5e7eb;
 }
 
 .solve-link {
-  color: var(--primary, #5ED9A8);
+  color: #5ed9a8;
+  font-weight: 600;
   text-decoration: none;
 }
 
@@ -1440,7 +1589,8 @@ export default {
   text-align: left;
   padding: 28px 0;
   color: var(--muted);
-  max-width: 480px;
+  max-width: none;
+  width: 100%;
 }
 
 @media (max-width: 720px) {

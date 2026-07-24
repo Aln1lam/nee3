@@ -5,7 +5,7 @@ let _sessionPromise = null
 
 function userKey(user) {
   if (!user || user.id == null) return ''
-  return `${user.id}:${user.is_admin ? 1 : 0}:${user.nickname || ''}:${user.avatar || ''}`
+  return `${user.id}:${user.is_admin ? 1 : 0}:${user.is_moderator ? 1 : 0}:${user.nickname || ''}:${user.avatar || ''}`
 }
 
 function emitUserRefreshed() {
@@ -42,6 +42,15 @@ export async function hasSession() {
 
 export function isAdmin() {
   return !!(_user && _user.is_admin)
+}
+
+export function isModerator() {
+  return !!(_user && _user.is_moderator)
+}
+
+/** 管理员或协管（可进运维后台靶场/审核） */
+export function isStaff() {
+  return !!(_user && (_user.is_admin || _user.is_moderator))
 }
 
 /**

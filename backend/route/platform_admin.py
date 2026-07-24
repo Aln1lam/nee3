@@ -166,6 +166,14 @@ def update_user(user_id):
         user.is_moderator = bool(data['is_moderator'])
     if 'nickname' in data:
         user.nickname = data['nickname']
+    if 'email' in data:
+        email = (data.get('email') or '').strip().lower()
+        if not email or '@' not in email:
+            return jsonify({'error': '邮箱格式无效'}), 400
+        conflict = User.query.filter(User.email == email, User.id != user_id).first()
+        if conflict:
+            return jsonify({'error': '该邮箱已被其他账号使用'}), 409
+        user.email = email
     if 'full_name' in data:
         user.full_name = data['full_name']
     if 'team_id' in data:

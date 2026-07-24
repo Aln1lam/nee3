@@ -33,12 +33,12 @@
             <span class="nav-label">{{ link.label }}</span>
           </a>
           <a
-            v-if="isAdminUser"
+            v-if="isStaffUser"
             class="btn btn-md btn-ghost"
             :class="{ 'btn-active': isActive('/admin'), active: isActive('/admin') }"
-            @click.prevent="navigate('/admin/dashboard')"
+            @click.prevent="navigate(staffHomePath)"
           >
-            <span class="nav-label">管理</span>
+            <span class="nav-label">{{ isAdminUser ? '管理' : '协管' }}</span>
           </a>
         </template>
       </nav>
@@ -73,7 +73,7 @@
 <script>
 import { ref, computed, watch, onMounted, onUnmounted, inject } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { NButton, NDropdown, useMessage } from 'naive-ui'
+import { NButton, NDropdown } from 'naive-ui'
 import LogoAnimate from './LogoAnimate.vue'
 import { InstanceBox } from '@/components/shared'
 import { UiTimer, UiTimeProgress, UiNotificationBox } from '@/components/ui'
@@ -124,7 +124,6 @@ export default {
     const route = useRoute()
     const router = useRouter()
     const axios = inject('axios')
-    const message = useMessage()
     const { platform, loadPlatform } = usePlatformStore()
 
     const platformName = ref('')
@@ -170,23 +169,25 @@ export default {
 
     const userHexId = computed(() => `0x${(props.user?.id || 0).toString(16).padStart(6, '0')}`)
 
-    const tempUserCode = computed(() => {
-      const id = props.user?.id
-      if (!id) return ''
-      return `NEEPU-${String(id).padStart(6, '0')}-${userHexId.value.slice(2).toUpperCase()}`
-    })
-
     const isAdminUser = computed(() => {
       const u = props.user || {}
       return !!(u.is_admin || u.role === 'admin' || u.role === 'Admin')
     })
 
+    const isStaffUser = computed(() => {
+      const u = props.user || {}
+      return !!(isAdminUser.value || u.is_moderator)
+    })
+
+    const staffHomePath = computed(() => (
+      isAdminUser.value ? '/admin/dashboard' : '/admin/ctf?tab=cheat'
+    ))
+
     const userMenuOptions = computed(() => [
       { label: `${props.user?.nickname || '用户'} · ${userHexId.value}`, key: 'info', disabled: true },
       { type: 'divider' },
-      { label: '复制临时身份码', key: 'tempcode' },
       { label: '账号设置', key: 'settings' },
-      ...(isAdminUser.value ? [{ label: '管理后台', key: 'admin' }] : []),
+      ...(isStaffUser.value ? [{ label: isAdminUser.value ? '管理后台' : '协管后台', key: 'admin' }] : []),
       { type: 'divider' },
       { label: '退出登录', key: 'logout' },
     ])
@@ -222,23 +223,10 @@ export default {
     function navigate(path) { router.push(path) }
     function goHome() { router.push(props.user ? '/home' : '/') }
 
-    function copyTempCode() {
-      const code = tempUserCode.value
-      if (!code) return
-      if (navigator.clipboard?.writeText) {
-        navigator.clipboard.writeText(code)
-          .then(() => message.success(`已复制临时身份码：${code}`))
-          .catch(() => message.info(`临时身份码：${code}`))
-      } else {
-        message.info(`临时身份码：${code}`)
-      }
-    }
-
     function onUserMenuSelect(key) {
       if (key === 'logout') emit('logout')
       else if (key === 'settings') router.push('/account/settings/info')
-      else if (key === 'admin') router.push('/admin/dashboard')
-      else if (key === 'tempcode') copyTempCode()
+      else if (key === 'admin') router.push(staffHomePath.value)
     }
 
     async function loadGameMeta(id) {
@@ -276,7 +264,7 @@ export default {
     onUnmounted(() => window.removeEventListener('neepu_platform_updated', onPlatformUpdated))
 
     return {
-      isAdminUser,
+      isAdminUser, isStaffUser, staffHomePath,
       highlightBanner, bannerDismissed, displayName, globalNav, gameNav,
       isGameMode, isTrainingMode, gameMeta, userMenuOptions, avatarUrl, avatarBroken,
       avatarInitial, userRoleBadge, printTime, isActive, navigate, goHome, onUserMenuSelect,

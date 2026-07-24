@@ -57,7 +57,8 @@ def can_access_resource(user, resource):
     if not resource:
         return False
 
-    if resource.purpose in ("carousel", "public", "avatar"):
+    # poster/image：赛事海报、编辑器插图需可匿名展示
+    if resource.purpose in ("carousel", "public", "avatar", "poster", "image"):
         return True
 
     if not user:

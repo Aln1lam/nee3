@@ -296,7 +296,7 @@ def upload_image():
         return jsonify({'msg': 'invalid identity'}), 400
 
     purpose = (request.form.get('purpose') or 'image').strip()
-    if purpose not in ('image', 'carousel', 'public', 'avatar', 'article', 'attachment'):
+    if purpose not in ('image', 'carousel', 'public', 'avatar', 'article', 'attachment', 'poster'):
         purpose = 'image'
 
     # 用文件内容的 MD5 作为文件名（去重）

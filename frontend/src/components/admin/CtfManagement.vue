@@ -3,7 +3,7 @@
     <!-- 选项卡 -->
     <div class="tabs">
       <button
-        v-for="tab in tabs"
+        v-for="tab in visibleTabs"
         :key="tab"
         type="button"
         :class="['tab-btn', { active: activeTab === tab }]"
@@ -195,6 +195,35 @@
                 启用流量捕获（动态容器经代理写 PCAP，选手须使用 connection_url）
               </label>
               <p class="form-hint">开启后，本赛事动态容器题启动时自动抓包，可在「流量捕获」页下载。</p>
+            </div>
+            <div class="form-group">
+              <label>赛事海报</label>
+              <div class="poster-edit">
+                <div v-if="gameForm.poster_url" class="poster-preview">
+                  <img :src="posterPreviewUrl" alt="海报预览" />
+                  <button type="button" class="btn-small" @click="clearGamePoster">清除海报</button>
+                </div>
+                <div class="file-upload-box poster-upload-box">
+                  <input
+                    id="game-poster"
+                    type="file"
+                    accept="image/*"
+                    class="file-input"
+                    :disabled="posterUploading"
+                    @change="onGamePosterPick"
+                  />
+                  <label for="game-poster" class="file-label">
+                    {{ posterUploading ? '上传中…' : '上传海报图片' }}
+                  </label>
+                </div>
+                <input
+                  v-model="gameForm.poster_url"
+                  type="text"
+                  class="form-input"
+                  placeholder="或粘贴图片 URL（如 /static/uploads/...）"
+                />
+                <p class="form-hint">建议 16:9。上传后自动填入地址；也可直接填外链。</p>
+              </div>
             </div>
           </div>
           <div class="modal-footer">
@@ -752,12 +781,14 @@
   </div>
 </template>
 <script>
+import { getUser } from '@/services/auth'
 import DynamicPackageManager from './DynamicPackageManager.vue'
 import TrafficCapturePanel from './TrafficCapturePanel.vue'
 import { useMessage } from 'naive-ui'
 import { apiErrorFromPayload } from '@/utils/apiError'
 import { ctfAdmin } from '@/services/admin/ctf'
 import { parseJsonResponse, isApiSuccess } from '@/utils/http'
+import { resolveUploadUrl } from '@/utils/uploadUrl'
 
 import DockerWhaleIcon from '@/components/icons/DockerWhaleIcon.vue'
 
@@ -785,7 +816,7 @@ export default {
   data() {
     return {
       activeTab: 'games',
-      tabs: ['games', 'challenges', 'packages', 'traffic', 'cheat', 'scoreboard', 'teams'],
+      allTabs: ['games', 'challenges', 'packages', 'traffic', 'cheat', 'scoreboard', 'teams'],
       gameTypeFilter: '',
       showEphemeral: false,
       games: [],
@@ -811,6 +842,7 @@ export default {
       editingGameId: null,
 
       gameForm: {},
+      posterUploading: false,
       challengeForm: {},
       divisionForm: {},
 
@@ -832,6 +864,21 @@ export default {
   },
 
   computed: {
+    isAdminUser() {
+      return !!getUser()?.is_admin;
+    },
+    isStaffOnly() {
+      const u = getUser();
+      return !!(u && u.is_moderator && !u.is_admin);
+    },
+    visibleTabs() {
+      if (this.isStaffOnly) return ['cheat', 'scoreboard', 'games'];
+      return this.allTabs;
+    },
+
+    posterPreviewUrl() {
+      return resolveUploadUrl(this.gameForm && this.gameForm.poster_url)
+    },
     filteredChallenges() {
       if (!this.selectedGameId) return this.challenges;
       return this.challenges.filter(c => c.game_id === parseInt(this.selectedGameId));
@@ -1216,7 +1263,7 @@ export default {
 
     async editGame(game) {
       this.editingGame = game;
-      this.gameForm = { title: game.title, start_time: game.start_time, end_time: game.end_time, is_public: game.is_public, game_type: game.game_type || 'official', enable_traffic_capture: !!game.enable_traffic_capture };
+      this.gameForm = { title: game.title, start_time: game.start_time, end_time: game.end_time, is_public: game.is_public, game_type: game.game_type || 'official', enable_traffic_capture: !!game.enable_traffic_capture, poster_url: game.poster_url || '' };
       this.showCreateGameModal = true;
     },
 
@@ -1248,6 +1295,58 @@ export default {
       } catch (e) { this.message.error(e.message || '归档失败'); }
     },
 
+    clearGamePoster() {
+      this.gameForm.poster_url = '';
+    },
+
+    async onGamePosterPick(e) {
+      const f = e.target.files && e.target.files[0];
+      e.target.value = '';
+      if (!f) return;
+      if (!String(f.type || '').startsWith('image/')) {
+        this.message.error('请选择图片文件');
+        return;
+      }
+      if (f.size > 8 * 1024 * 1024) {
+        this.message.error('海报图片请小于 8MB');
+        return;
+      }
+      this.posterUploading = true;
+      try {
+        const form = new FormData();
+        form.append('file', f);
+        form.append('purpose', 'poster');
+        form.append('entity_type', 'ctf_game');
+        if (this.editingGame && this.editingGame.id) {
+          form.append('entity_id', String(this.editingGame.id));
+        }
+        const res = await ctfAdmin.uploadImage(form);
+        const parsed = await parseJsonResponse(res);
+        if (!isApiSuccess(parsed)) {
+          this.message.error(apiErrorFromPayload(parsed.data, '上传失败'));
+          return;
+        }
+        const body = (parsed.data && parsed.data.data) || parsed.data || {};
+        const url = body.url || body.full_url || '';
+        if (!url) {
+          this.message.error('上传成功但未返回地址');
+          return;
+        }
+        let stored = url;
+        if (url.startsWith('http')) {
+          const m1 = url.match(/\/static\/uploads\/[^?#]+/);
+          const m2 = url.match(/\/api\/uploads\/serve\/[^?#]+/);
+          stored = (m1 && m1[0]) || (m2 && m2[0]) || url;
+        }
+        this.gameForm.poster_url = stored;
+        this.message.success('海报已上传，保存竞赛后生效');
+      } catch (err) {
+        this.message.error(err.message || '上传失败');
+      } finally {
+        this.posterUploading = false;
+      }
+    },
+
     async saveGame() {
       // 创建或更新比赛（主路径 /api/competitions/admin/*）
       try {
@@ -1258,6 +1357,7 @@ export default {
           is_public: !!this.gameForm.is_public,
           game_type: this.gameForm.game_type || 'official',
           enable_traffic_capture: !!this.gameForm.enable_traffic_capture,
+          poster_url: (this.gameForm.poster_url || '').trim() || null,
         };
         let res;
         if (this.editingGame && this.editingGame.id) {
@@ -1710,7 +1810,7 @@ export default {
       return map[type] || '未知类型';
     },
 
-    getEmptyGameForm() { return { title: '', start_time: '', end_time: '', is_public: true, game_type: 'official', enable_traffic_capture: false }; },
+    getEmptyGameForm() { return { title: '', start_time: '', end_time: '', is_public: true, game_type: 'official', enable_traffic_capture: false, poster_url: '' }; },
     gameTypeLabel(game) {
       const t = (game && game.game_type) || 'official';
       if (game && game.is_ephemeral) return '探针';
@@ -1738,7 +1838,8 @@ export default {
 
   mounted() {
     const qTab = this.$route?.query?.tab;
-    if (qTab && this.tabs.includes(qTab)) this.activeTab = qTab;
+    if (qTab && this.visibleTabs.includes(qTab)) this.activeTab = qTab;
+    else if (this.isStaffOnly) this.activeTab = 'cheat';
     const qGid = this.$route?.query?.game_id;
     if (qGid) this.selectedGameId = Number(qGid);
 
@@ -2113,6 +2214,25 @@ export default {
   border-color: rgba(16, 185, 129, 0.45);
   box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.15);
 }
+
+
+.poster-edit { display: flex; flex-direction: column; gap: 10px; }
+.poster-preview {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: flex-start;
+}
+.poster-preview img {
+  width: 100%;
+  max-width: 360px;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,0.12);
+  background: rgba(0,0,0,0.25);
+}
+.poster-upload-box { max-width: 360px; }
 
 .file-upload-box {
   position: relative;

@@ -67,7 +67,7 @@
         </div>
         <div class="form-group">
           <label>邮箱</label>
-          <input v-model="editForm.email" class="form-input" disabled />
+          <input v-model="editForm.email" type="email" class="form-input" :disabled="saving" placeholder="user@example.com" />
         </div>
         <div class="form-group">
           <label>姓名</label>

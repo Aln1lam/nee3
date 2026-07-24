@@ -201,8 +201,11 @@ const routes = [
   {
     path: '/admin',
     component: AdminPanel,
-    meta: { requiresAuth: true, requiresAdmin: true },
-    redirect: '/admin/dashboard',
+    meta: { requiresAuth: true, requiresStaff: true },
+    redirect: () => {
+      // 运行时由 beforeEach / AdminPanel 再校正；默认仪表盘，协管会被重定向到靶场
+      return '/admin/dashboard'
+    },
     children: [
       ...ADMIN_MENU.map(item => ({
         path: item.key,
@@ -210,7 +213,8 @@ const routes = [
         component: AdminContent,
         meta: {
           requiresAuth: true,
-          requiresAdmin: true,
+          requiresStaff: true,
+          requiresAdmin: item.access === 'admin',
           adminView: item.key,
         },
       })),
@@ -218,14 +222,14 @@ const routes = [
         path: 'content/new',
         name: 'AdminContentNew',
         component: () => import('../components/ArticleUpload.vue'),
-        meta: { requiresAuth: true, requiresAdmin: true, adminView: 'content' },
+        meta: { requiresAuth: true, requiresStaff: true, requiresAdmin: true, adminView: 'content' },
       },
       {
         path: 'content/:id/edit',
         name: 'AdminContentEdit',
         component: () => import('../components/ArticleEdit.vue'),
         props: true,
-        meta: { requiresAuth: true, requiresAdmin: true, adminView: 'content' },
+        meta: { requiresAuth: true, requiresStaff: true, requiresAdmin: true, adminView: 'content' },
       },
       { path: 'bulletin', redirect: '/admin/announcement' },
     ],
@@ -285,7 +289,15 @@ router.beforeEach(async (to, from, next) => {
     return next({ name: 'Auth', query: { redirect: to.fullPath } })
   }
 
+  if (to.meta?.requiresStaff && !(user.is_admin || user.is_moderator)) {
+    return next({ name: 'HttpError', params: { code: '403' } })
+  }
+
   if (to.meta?.requiresAdmin && !user.is_admin) {
+    // 协管误入仅管理员页 → 靶场作弊审核
+    if (user.is_moderator) {
+      return next({ path: '/admin/ctf', query: { tab: 'cheat' } })
+    }
     return next({ name: 'HttpError', params: { code: '403' } })
   }
 

@@ -54,7 +54,10 @@
         </div>
 
         <!-- 工业极客 Hero：左赛事简报 + 右沉浸 16:9 海报 -->
-        <section class="overview-hero game-overview-card">
+        <section
+          class="overview-hero game-overview-card"
+          :class="{ 'has-poster': !!(posterUrl && !posterBroken) }"
+        >
           <div class="hero-info">
             <header class="hero-head">
               <p class="hero-kicker">CTF · ARENA BRIEF</p>
@@ -663,6 +666,81 @@ export default {
   overflow: hidden;
 }
 
+/* 有海报：右栏出血贴齐卡片，去掉「框套图」 */
+.overview-hero.game-overview-card.has-poster {
+  grid-template-columns: minmax(280px, 0.95fr) minmax(0, 1.35fr);
+  gap: 0;
+  padding: 32px 0 32px 32px !important;
+}
+
+.overview-hero.game-overview-card.has-poster .hero-info {
+  padding-right: 28px;
+  z-index: 2;
+}
+
+.overview-hero.game-overview-card.has-poster .poster-wrapper {
+  /* 上下吃掉 32px padding，右侧再盖住 1px 边框，顶/底/右真正贴齐 */
+  margin: -33px -1px -33px 0;
+  align-self: start;
+  overflow: hidden;
+  display: block;
+  height: auto;
+  min-height: 0;
+}
+
+.overview-hero.game-overview-card.has-poster .poster-container {
+  width: 100%;
+  height: auto;
+  min-height: 0;
+  /* 继续用 16:9 撑开整张卡片高度；负 margin 负责出血 */
+  aspect-ratio: 16 / 9;
+  padding: 0 !important; /* 盖掉全局 button 的 8px 16px，避免「框套图」 */
+  margin: 0;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  overflow: hidden;
+  display: block;
+  flex: none;
+}
+
+.overview-hero.game-overview-card.has-poster .poster-container:hover {
+  transform: none;
+  border-color: transparent;
+  box-shadow: none;
+}
+
+.overview-hero.game-overview-card.has-poster .poster-image-bg,
+.overview-hero.game-overview-card.has-poster .poster-image {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.overview-hero.game-overview-card.has-poster .poster-container:hover .poster-image {
+  transform: scale(1.03);
+}
+
+/* 左缘羽化：海报溶进左侧文案底 */
+.overview-hero.game-overview-card.has-poster .poster-container::after {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: min(48%, 260px);
+  z-index: 2;
+  pointer-events: none;
+  background: linear-gradient(
+    90deg,
+    rgba(14, 18, 28, 0.96) 0%,
+    rgba(14, 18, 28, 0.62) 38%,
+    rgba(14, 18, 28, 0.18) 68%,
+    rgba(14, 18, 28, 0) 100%
+  );
+}
+
 .hero-info {
   /* height:0 + min-height:100%：不参与撑高 grid 行，行高由海报 16:9 决定 */
   min-width: 0;
@@ -1070,6 +1148,33 @@ export default {
     align-items: stretch;
     flex: 0 1 auto;
     margin: 0 auto;
+  }
+  .overview-hero.game-overview-card.has-poster {
+    padding: 24px !important;
+    gap: 20px;
+  }
+  .overview-hero.game-overview-card.has-poster .hero-info {
+    padding-right: 0;
+    height: auto;
+    min-height: 0;
+  }
+  .overview-hero.game-overview-card.has-poster .poster-wrapper {
+    margin: 0;
+  }
+  .overview-hero.game-overview-card.has-poster .poster-container {
+    min-height: 0;
+    aspect-ratio: 16 / 9;
+    border-radius: 12px;
+  }
+  .overview-hero.game-overview-card.has-poster .poster-container::after {
+    width: 100%;
+    height: 36%;
+    inset: auto 0 0 0;
+    background: linear-gradient(
+      0deg,
+      rgba(12, 16, 24, 0.75) 0%,
+      rgba(12, 16, 24, 0) 100%
+    );
   }
   .hero-info {
     height: auto;

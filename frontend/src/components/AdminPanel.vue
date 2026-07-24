@@ -7,9 +7,9 @@
     <aside class="admin-sidebar sidebar-rail">
       <div class="sidebar-head sidebar-rail-head">
         <div class="sidebar-head-row">
-          <router-link to="/admin/dashboard" class="sidebar-title sidebar-rail-title">运维管理</router-link>
+          <router-link :to="homePath" class="sidebar-title sidebar-rail-title">{{ panelTitle }}</router-link>
         </div>
-        <p class="sidebar-desc sidebar-rail-sub">ADMIN · OPS</p>
+        <p class="sidebar-desc sidebar-rail-sub">{{ panelSub }}</p>
       </div>
 
       <nav class="sidebar-rail-nav admin-nav">
@@ -60,9 +60,10 @@
 </template>
 
 <script>
-import { computed } from 'vue'
-import { useRoute } from 'vue-router'
-import { ADMIN_MENU } from '@/config/adminMenu'
+import { computed, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { filterAdminMenu, defaultAdminPath } from '@/config/adminMenu'
+import { getUser } from '@/services/auth'
 import { useCollapsibleSidebar } from '../composables/useCollapsibleSidebar'
 
 export default {
@@ -70,11 +71,30 @@ export default {
   components: {},
   setup() {
     const route = useRoute()
+    const router = useRouter()
     const { collapsed, toggleSidebar } = useCollapsibleSidebar('neepu_admin_sidebar_collapsed')
-    const menuItems = ADMIN_MENU
+
+    const currentUser = computed(() => getUser())
+    const menuItems = computed(() => filterAdminMenu(currentUser.value))
+    const isAdmin = computed(() => !!currentUser.value?.is_admin)
+    const panelTitle = computed(() => (isAdmin.value ? '运维管理' : '赛事协管'))
+    const panelSub = computed(() => (isAdmin.value ? 'ADMIN · OPS' : 'STAFF · REVIEW'))
+    const homePath = computed(() => defaultAdminPath(currentUser.value))
 
     const activeKey = computed(() => route.meta?.adminView || (route.path.startsWith('/admin/content') ? 'content' : route.path.split('/').pop()) || 'dashboard')
-    const currentMenu = computed(() => menuItems.find(m => m.key === activeKey.value) || menuItems[0])
+    const currentMenu = computed(() => menuItems.value.find(m => m.key === activeKey.value) || menuItems.value[0])
+
+    watch(
+      [menuItems, () => route.path],
+      ([items]) => {
+        const keys = new Set((items || []).map((m) => m.key))
+        const view = route.meta?.adminView
+        if (view && keys.size && !keys.has(view)) {
+          router.replace(defaultAdminPath(currentUser.value))
+        }
+      },
+      { immediate: true },
+    )
 
     return {
       collapsed,
@@ -82,6 +102,9 @@ export default {
       activeKey,
       currentMenu,
       toggleSidebar,
+      panelTitle,
+      panelSub,
+      homePath,
     }
   },
 }

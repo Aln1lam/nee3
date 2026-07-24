@@ -521,23 +521,23 @@ def get_cheat_record(record_id):
 
 
 @ctf_admin_bp.route('/cheat-records/<int:record_id>/review', methods=['POST'])
-@admin_required
+@staff_required
 def review_cheat_record(record_id):
-    """写入审核备注（保持/回到 pending）"""
+    """写入审核备注（保持/回到 pending）— 管理员或协管"""
     return _review_cheat(record_id, 'pending', '已更新审核备注')
 
 
 @ctf_admin_bp.route('/cheat-records/<int:record_id>/confirm', methods=['POST'])
-@admin_required
+@staff_required
 def confirm_cheat_record(record_id):
-    """确认作弊"""
+    """确认作弊 — 管理员或协管"""
     return _review_cheat(record_id, 'confirmed', '已确认作弊')
 
 
 @ctf_admin_bp.route('/cheat-records/<int:record_id>/dismiss', methods=['POST'])
-@admin_required
+@staff_required
 def dismiss_cheat_record(record_id):
-    """解除作弊标记"""
+    """解除作弊标记 — 管理员或协管"""
     return _review_cheat(record_id, 'dismissed', '已驳回标记')
 
 
@@ -574,9 +574,9 @@ def batch_delete_challenges():
 
 
 @ctf_admin_bp.route('/cheats/batch-confirm', methods=['POST'])
-@admin_required
+@staff_required
 def batch_confirm_cheats():
-    """批量确认作弊"""
+    """批量确认作弊 — 管理员或协管"""
     data = request.get_json() or {}
     cheat_ids = data.get('ids', [])
     if not cheat_ids:

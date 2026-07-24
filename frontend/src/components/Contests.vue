@@ -118,7 +118,6 @@
                 role="button"
                 tabindex="0"
                 @click="enterGame(contest)"
-                @mouseenter="setPreview(contest)"
                 @keydown.enter="enterGame(contest)"
               >
                 <div class="card-poster-container">
