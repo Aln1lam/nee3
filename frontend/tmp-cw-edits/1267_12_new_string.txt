@@ -1,2 +1,0 @@
-    const containerLoading = ref(false)
-    const isAdmin = ref(false)

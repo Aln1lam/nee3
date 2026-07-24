@@ -39,6 +39,7 @@
 
 <script>
 import { ref, watch, onMounted, onUnmounted, nextTick, computed } from 'vue'
+import { rafThrottle } from '@/utils/polling'
 import { NInput, NButton } from 'naive-ui'
 import { Terminal } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
@@ -132,9 +133,9 @@ export default {
 
     function bindResize() {
       if (!termRef.value || !fitAddon) return
-      ro = new ResizeObserver(() => {
+      ro = new ResizeObserver(rafThrottle(() => {
         try { fitAddon.fit() } catch { /* ignore */ }
-      })
+      }))
       ro.observe(termRef.value)
     }
 

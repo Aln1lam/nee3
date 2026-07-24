@@ -12,6 +12,7 @@ from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity, verify_jwt_in_request
 from datetime import datetime, timedelta
 from sqlalchemy import func
+from sqlalchemy.orm import joinedload, selectinload
 from backend.server.extensions import db
 from backend.server.db_models import (
     User, Team, CtfGame, CtfChallenge, CtfChallengeSubmission,
@@ -651,7 +652,7 @@ def submit_flag(challenge_id):
 
 @bp.route("/games/<int:game_id>/scoreboard", methods=["GET"])
 def get_scoreboard(game_id):
-    """获取完整排行榜 - Team-based"""
+    """获取完整排行榜 - Team-based（批量预加载，避免 N+1）"""
     game = CtfGame.query.get(game_id)
     if not game:
         return error_response("CtfGame not found", 404)
@@ -663,29 +664,79 @@ def get_scoreboard(game_id):
             resp = success_response(cached)
             resp[0].headers["X-Cache"] = "HIT"
             return resp
-    
-    # 从 CtfScoreboard 表直接获取排行榜数据（已按 Team 排行）
-    scoreboards = CtfScoreboard.query.filter_by(game_id=game_id).order_by(
-        CtfScoreboard.total_points.desc(),
-        CtfScoreboard.last_submission_time.asc()
-    ).all()
-    
-    # 只读：排名在内存中计算，不写库（避免高并发读排行榜时行锁竞争）
+
+    # 预加载 team + members，避免逐行 Team.query.get / len(team.users)
+    scoreboards = (
+        CtfScoreboard.query.filter_by(game_id=game_id)
+        .options(joinedload(CtfScoreboard.team).selectinload(Team.users))
+        .order_by(
+            CtfScoreboard.total_points.desc(),
+            CtfScoreboard.last_submission_time.asc(),
+        )
+        .all()
+    )
+
+    # 缺 last_submission_time 时一次 GROUP BY 补齐，避免逐队 resolve_last_submission_time
+    missing_team_ids = [
+        sb.team_id for sb in scoreboards
+        if sb.team_id and not sb.last_submission_time
+    ]
+    last_by_team = {}
+    if missing_team_ids:
+        rows = (
+            db.session.query(
+                CtfChallengeSubmission.team_id,
+                func.max(CtfChallengeSubmission.submitted_at),
+            )
+            .filter(
+                CtfChallengeSubmission.game_id == game_id,
+                CtfChallengeSubmission.is_correct.is_(True),
+                CtfChallengeSubmission.team_id.in_(missing_team_ids),
+            )
+            .group_by(CtfChallengeSubmission.team_id)
+            .all()
+        )
+        last_by_team = {tid: ts for tid, ts in rows if tid}
+
+    missing_user_ids = [
+        sb.user_id for sb in scoreboards
+        if not sb.team_id and sb.user_id and not sb.last_submission_time
+    ]
+    last_by_user = {}
+    if missing_user_ids:
+        rows = (
+            db.session.query(
+                CtfChallengeSubmission.user_id,
+                func.max(CtfChallengeSubmission.submitted_at),
+            )
+            .filter(
+                CtfChallengeSubmission.game_id == game_id,
+                CtfChallengeSubmission.is_correct.is_(True),
+                CtfChallengeSubmission.user_id.in_(missing_user_ids),
+            )
+            .group_by(CtfChallengeSubmission.user_id)
+            .all()
+        )
+        last_by_user = {uid: ts for uid, ts in rows if uid}
+
     rankings = []
     for idx, sb in enumerate(scoreboards, 1):
-        team = Team.query.get(sb.team_id)
+        team = sb.team
         last_time = sb.last_submission_time
         if not last_time:
-            last_time = ScoringService.resolve_last_submission_time(
-                game_id, sb.team_id, sb.user_id
-            )
+            if sb.team_id:
+                last_time = last_by_team.get(sb.team_id)
+            elif sb.user_id:
+                last_time = last_by_user.get(sb.user_id)
         school = None
         motto = None
+        members = []
         if team:
             school = getattr(team, 'school', None) or getattr(team, 'tag', None)
             motto = getattr(team, 'motto', None) or getattr(team, 'bio', None) or None
-            if not school and team.users:
-                for u in team.users:
+            members = list(team.users or [])
+            if not school:
+                for u in members:
                     if getattr(u, 'school', None):
                         school = u.school
                         break
@@ -698,7 +749,7 @@ def get_scoreboard(game_id):
             'total_points': sb.total_points,
             'solved_challenges': sb.solved_challenges,
             'last_submission_time': last_time.isoformat() if last_time else None,
-            'members_count': len(team.users) if team else 0,
+            'members_count': len(members),
         })
 
     payload = {

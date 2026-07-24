@@ -165,7 +165,7 @@
 </template>
 
 <script>
-import { ref, inject, onMounted, watch, computed } from 'vue'
+import { ref, inject, onMounted, watch, computed, onUnmounted} from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { NCard, NInput, NButton, NInputGroup, NTag, useMessage } from 'naive-ui'
 import { parseMarkdownSafe } from '../utils/markdown'
@@ -412,8 +412,12 @@ export default {
 
     onMounted(() => {
       loadDetail()
-      return () => {
-        if (timerIntervalId) clearInterval(timerIntervalId)
+    })
+
+    onUnmounted(() => {
+      if (timerIntervalId) {
+        clearInterval(timerIntervalId)
+        timerIntervalId = null
       }
     })
 

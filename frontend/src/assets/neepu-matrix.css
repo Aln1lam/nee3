@@ -165,6 +165,44 @@
   transform: none;
 }
 
+/* 全站卡片悬停：与 Home `.home-surface:hover` 同款薄荷绿围光 */
+.matrix-panel,
+.glass-card,
+.challenge-card,
+.panel,
+.hero-panel,
+.contest-card,
+.hero-contest-card,
+.wiki-item,
+.wiki-aside-card,
+.choose-card,
+.trend-chart-card,
+.scoreboard-table-card,
+.manage-deck {
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    background-color 0.2s ease,
+    transform 0.2s ease;
+}
+
+.matrix-panel:hover,
+.glass-card:hover,
+.challenge-card:hover,
+.panel:hover,
+.hero-panel:hover,
+.contest-card:hover,
+.hero-contest-card:hover,
+.wiki-item:hover,
+.wiki-aside-card:hover,
+.choose-card:hover,
+.trend-chart-card:hover,
+.scoreboard-table-card:hover,
+.manage-deck:hover {
+  border-color: rgba(var(--primary-rgb), 0.42) !important;
+  box-shadow: var(--gradient-card-shadow-hover) !important;
+}
+
 /* 卡片顶缘高光 */
 .article-card,
 .bulletin-item,

@@ -156,6 +156,21 @@ axios.interceptors.response.use(
 
             }
 
+        } else if (status === 403) {
+            // 不白屏：交给页面 catch；广播便于全局 toast
+            try {
+                const msg = err.response?.data?.msg || err.response?.data?.message || err.response?.data?.error
+                window.dispatchEvent(new CustomEvent('neepu_http_error', {
+                    detail: { status, msg: msg || '没有权限执行此操作' },
+                }))
+            } catch { /* ignore */ }
+        } else if (status === 429) {
+            try {
+                const msg = err.response?.data?.msg || err.response?.data?.message || err.response?.data?.error
+                window.dispatchEvent(new CustomEvent('neepu_http_error', {
+                    detail: { status, msg: msg || '操作过于频繁，请稍后再试' },
+                }))
+            } catch { /* ignore */ }
         } else if (status === 502) {
 
             if (router) router.push('/error/502')

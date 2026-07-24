@@ -455,6 +455,7 @@ export default {
 .training-grid .quick-card:hover {
   border-color: rgba(var(--primary-rgb), 0.45);
   background: rgba(var(--primary-rgb), 0.06);
+  box-shadow: var(--gradient-card-shadow-hover);
   transform: translateY(-2px);
 }
 .quick-head {
@@ -537,4 +538,9 @@ export default {
   color: var(--primary);
 }
 .row-arrow { font-size: 12px; color: var(--muted); }
+
+.training-card, .challenge-card, .train-item {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 72px;
+}
 </style>

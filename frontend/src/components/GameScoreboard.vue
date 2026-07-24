@@ -16,6 +16,10 @@
             </h3>
             <div class="trend-chart-actions">
               <button type="button" class="gsb-icon-btn" title="刷新" @click="refresh">↻</button>
+              <select v-model="chartScope" class="gsb-org-select" title="走势范围">
+                <option value="top">TOP 队伍走势</option>
+                <option value="mine" :disabled="!myTeamId">仅看本队</option>
+              </select>
               <select v-model="orgFilter" class="gsb-org-select">
                 <option value="">全部队伍 / 组织</option>
                 <option v-for="o in orgOptions" :key="o.value" :value="o.value">{{ o.label }}</option>
@@ -44,15 +48,20 @@
                 </tr>
               </thead>
               <tbody>
-                <tr v-for="(team, index) in rankList" :key="team.id || index">
+                <tr
+                  v-for="(team, index) in visibleRankList"
+                  :key="team.id || index"
+                  :class="{ 'is-mine': myTeamId && team.id === myTeamId }"
+                >
                   <td class="col-rank">
-                    <span v-if="index === 0" class="rank-badge rank-1">🥇 1</span>
-                    <span v-else-if="index === 1" class="rank-badge rank-2">🥈 2</span>
-                    <span v-else-if="index === 2" class="rank-badge rank-3">🥉 3</span>
-                    <span v-else class="rank-num">{{ index + 1 }}</span>
+                    <span v-if="team.rank === 1" class="rank-badge rank-1">🥇 1</span>
+                    <span v-else-if="team.rank === 2" class="rank-badge rank-2">🥈 2</span>
+                    <span v-else-if="team.rank === 3" class="rank-badge rank-3">🥉 3</span>
+                    <span v-else class="rank-num">{{ team.rank }}</span>
                   </td>
                   <td class="col-team">
                     <span class="team-name">{{ team.name }}</span>
+                    <span v-if="myTeamId && team.id === myTeamId" class="team-mine-tag">本队</span>
                     <span v-if="team.school" class="team-school">#{{ team.school }}</span>
                   </td>
                   <td class="col-solved">{{ team.solvedCount || 0 }} 题已解决</td>
@@ -64,6 +73,11 @@
           <div v-else class="gsb-empty compact">
             <p class="muted">{{ items.length ? '当前组织下暂无队伍' : '暂无排行数据' }}</p>
           </div>
+          <div v-if="hasMoreRanks" class="gsb-load-more">
+            <button type="button" class="gsb-refresh-btn" @click="loadMoreRanks">
+              加载更多（已显示 {{ visibleRankList.length }} / {{ rankList.length }}）
+            </button>
+          </div>
         </div>
       </template>
     </n-spin>
@@ -72,6 +86,7 @@
 
 <script>
 import { ref, watch, inject, computed, nextTick, onMounted, onUnmounted } from 'vue'
+import { createVisibilityPoll, debounce, rafThrottle, POLL_INTERVALS } from '@/utils/polling'
 import * as echarts from 'echarts/core'
 import { LineChart } from 'echarts/charts'
 import {
@@ -306,52 +321,102 @@ function buildStepTimelineData(submissions, challenges, teams) {
 }
 
 /**
- * GZCTF 纯净渲染：后端 Snapshot Replay 的 series / timeline_data 原样入图。
+ * aa26239 满意版：后端 Snapshot Replay 的 series / timeline_data 原样入图。
  * 严禁 Math.max 防降分；允许分数下降形成垂直断崖。
+ * 端点：[[game_start|first, 0], ...points, [now|end, final]]
  */
-function buildChartData(replayPayload, rankTeams, forceMock) {
-  if (forceMock) return buildMockStepChartData(rankTeams)
+function mapSeriesPoints(raw, globalStart, finalScore = null, endTs = null) {
+  const points = (Array.isArray(raw) ? raw : [])
+    .map((p) => {
+      if (Array.isArray(p)) {
+        const ts = new Date(p[0]).getTime()
+        const score = Number(p[1])
+        return [ts, Number.isFinite(score) ? score : 0]
+      }
+      const ts = new Date(p.changed_at || p.time || p[0]).getTime()
+      const score = Number(p.score ?? p.points ?? p[1])
+      return [ts, Number.isFinite(score) ? score : 0]
+    })
+    .filter((pair) => !Number.isNaN(pair[0]))
+    .sort((a, b) => a[0] - b[0])
+
+  const start = Number.isFinite(globalStart) ? globalStart : (points[0]?.[0] ?? Date.now())
+  const series = [[start, 0], ...points]
+  const lastScore = Number.isFinite(finalScore)
+    ? finalScore
+    : (points.length ? points[points.length - 1][1] : 0)
+  const tip = Number.isFinite(endTs) ? endTs : Date.now()
+  const lastTs = series[series.length - 1]?.[0] ?? start
+  if (tip > lastTs) series.push([tip, lastScore])
+  return series
+}
+
+function buildChartData(replayPayload, rankTeams, forceMock, focusTeamId = null) {
+  if (forceMock && !focusTeamId) return buildMockStepChartData(rankTeams)
 
   const backendSeries = Array.isArray(replayPayload?.series) ? replayPayload.series : []
   const timelineData = replayPayload?.timeline_data || {}
   const teamsMeta = Array.isArray(replayPayload?.teams) ? replayPayload.teams : []
+  const gameStartTs = replayPayload?.game_start
+    ? new Date(replayPayload.game_start).getTime()
+    : NaN
+  const gameEndTs = replayPayload?.game_end
+    ? new Date(replayPayload.game_end).getTime()
+    : NaN
+  const endCap = Number.isFinite(gameEndTs)
+    ? Math.min(Date.now(), gameEndTs)
+    : Date.now()
 
   let chartTeams = []
 
   if (backendSeries.length) {
-    let globalStart = Infinity
-    for (const s of backendSeries) {
-      const raw = s.points || s.data || []
-      for (const p of raw) {
-        const ts = Array.isArray(p)
-          ? new Date(p[0]).getTime()
-          : new Date(p.time || p[0]).getTime()
-        if (!Number.isNaN(ts) && ts < globalStart) globalStart = ts
+    let globalStart = Number.isFinite(gameStartTs) ? gameStartTs : Infinity
+    if (!Number.isFinite(gameStartTs)) {
+      for (const s of backendSeries) {
+        const raw = s.points || s.data || []
+        for (const p of raw) {
+          const ts = Array.isArray(p)
+            ? new Date(p[0]).getTime()
+            : new Date(p.time || p[0]).getTime()
+          if (!Number.isNaN(ts) && ts < globalStart) globalStart = ts
+        }
       }
     }
     if (!Number.isFinite(globalStart)) globalStart = Date.now() - 3600 * 1000
 
-    chartTeams = backendSeries.slice(0, 10).map((s, si) => {
+    let picked = backendSeries
+    if (focusTeamId) {
+      picked = backendSeries.filter((s) => Number(s.team_id) === Number(focusTeamId))
+      if (!picked.length) {
+        const meta = teamsMeta.find((t) => Number(t.id) === Number(focusTeamId))
+        const raw = timelineData[String(focusTeamId)] || []
+        if (meta || raw.length) {
+          picked = [{
+            team_id: focusTeamId,
+            team_name: meta?.name || '本队',
+            points: raw,
+            final_points: raw.length
+              ? Number(Array.isArray(raw[raw.length - 1]) ? raw[raw.length - 1][1] : 0)
+              : 0,
+          }]
+        }
+      }
+    } else {
+      picked = backendSeries.slice(0, 10)
+    }
+
+    chartTeams = picked.map((s, si) => {
       const name = s.team_name || s.name || 'team'
       const raw = s.points || s.data || timelineData[String(s.team_id)] || []
-      // 原样映射：不做 Math.max / 不做累加
-      const points = raw
-        .map((p) => {
-          if (Array.isArray(p)) {
-            const ts = new Date(p[0]).getTime()
-            const score = Number(p[1])
-            return [ts, Number.isFinite(score) ? score : 0]
-          }
-          const ts = new Date(p.time || p[0]).getTime()
-          const score = Number(p.points ?? p[1])
-          return [ts, Number.isFinite(score) ? score : 0]
-        })
-        .filter((pair) => !Number.isNaN(pair[0]))
-        .sort((a, b) => a[0] - b[0])
-
+      const finalPts = s.final_points != null
+        ? Number(s.final_points)
+        : (Array.isArray(raw) && raw.length
+          ? Number(Array.isArray(raw[raw.length - 1]) ? raw[raw.length - 1][1] : raw[raw.length - 1].points)
+          : 0)
       return {
         name,
-        timeSeriesData: [[globalStart, 0], ...points],
+        // 原样映射：不做 Math.max / 不做累加
+        timeSeriesData: mapSeriesPoints(raw, globalStart, finalPts, endCap),
         color: CHART_COLORS[si % CHART_COLORS.length],
       }
     })
@@ -360,30 +425,35 @@ function buildChartData(replayPayload, rankTeams, forceMock) {
     && (replayPayload?.challenges || []).length
     && teamsMeta.length
   ) {
-    // 回退：前端重演（无后端 series 时）
     const seriesMap = buildStepTimelineData(
       replayPayload.submissions,
       replayPayload.challenges,
       teamsMeta,
     )
-    const ranked = teamsMeta
+    let ranked = teamsMeta
       .map((t) => {
         const pts = seriesMap[t.id] || []
         return { id: t.id, name: t.name, final: pts.length ? pts[pts.length - 1][1] : 0 }
       })
       .sort((a, b) => b.final - a.final)
-      .slice(0, 10)
+    if (focusTeamId) {
+      ranked = ranked.filter((t) => Number(t.id) === Number(focusTeamId))
+    } else {
+      ranked = ranked.slice(0, 10)
+    }
 
-    let globalStart = Infinity
-    ranked.forEach((t) => {
-      const pts = seriesMap[t.id] || []
-      if (pts.length && pts[0][0] < globalStart) globalStart = pts[0][0]
-    })
+    let globalStart = Number.isFinite(gameStartTs) ? gameStartTs : Infinity
+    if (!Number.isFinite(gameStartTs)) {
+      ranked.forEach((t) => {
+        const pts = seriesMap[t.id] || []
+        if (pts.length && pts[0][0] < globalStart) globalStart = pts[0][0]
+      })
+    }
     if (!Number.isFinite(globalStart)) globalStart = Date.now() - 3600 * 1000
 
     chartTeams = ranked.map((t, si) => ({
       name: t.name,
-      timeSeriesData: [[globalStart, 0], ...(seriesMap[t.id] || [])],
+      timeSeriesData: mapSeriesPoints(seriesMap[t.id] || [], globalStart, t.final, endCap),
       color: CHART_COLORS[si % CHART_COLORS.length],
     }))
   }
@@ -403,7 +473,7 @@ function buildChartData(replayPayload, rankTeams, forceMock) {
   return {
     teams: chartTeams,
     isBaseline: false,
-    algorithm: replayPayload?.algorithm || 'gzctf_snapshot_replay',
+    algorithm: replayPayload?.algorithm || 'ret2shell_snapshot_replay',
   }
 }
 
@@ -415,11 +485,15 @@ export default {
     const axios = inject('axios')
     const items = ref([])
     const orgFilter = ref('')
+    const chartScope = ref('top')
+    const myTeamId = ref(null)
     const curveRef = ref(null)
     let curveChart = null
     let resizeObserver = null
     const loading = ref(false)
     const loadError = ref(false)
+    const PAGE_SIZE = 50
+    const visibleCount = ref(PAGE_SIZE)
     /** /timeline 完整 payload：submissions + challenges + teams → 前端重演 */
     const timelinePayload = ref({
       series: [],
@@ -459,9 +533,16 @@ export default {
       })),
     )
 
+    const visibleRankList = computed(() => rankList.value.slice(0, visibleCount.value))
+    const hasMoreRanks = computed(() => visibleCount.value < rankList.value.length)
+    function loadMoreRanks() {
+      visibleCount.value = Math.min(visibleCount.value + PAGE_SIZE, rankList.value.length)
+    }
+
     const chartData = computed(() => {
       const payload = { ...timelinePayload.value }
-      if (orgFilter.value) {
+      const focusId = chartScope.value === 'mine' ? myTeamId.value : null
+      if (orgFilter.value && !focusId) {
         const allowed = new Set(filtered.value.map((t) => t.team_name || t.username))
         const allowedIds = new Set(filtered.value.map((t) => t.team_id).filter(Boolean))
         // 仅过滤「画哪几队」；submissions 保留全场，N(c,T) 必须全局统计
@@ -469,29 +550,49 @@ export default {
           (t) => allowed.has(t.name || t.team_name) || allowedIds.has(t.id),
         )
         payload.series = (payload.series || []).filter(
-          (s) => allowed.has(s.team_name || s.name),
+          (s) => allowed.has(s.team_name || s.name) || allowedIds.has(s.team_id),
         )
       }
       const noRealScore = !rankList.value.length || rankList.value.every((t) => !t.score)
       const hasReplay = (payload.submissions || []).length > 0
         && (payload.challenges || []).length > 0
         && (Array.isArray(timelinePayload.value.teams) ? timelinePayload.value.teams : []).length > 0
-      return buildChartData(payload, rankList.value, noRealScore && !hasReplay)
+      return buildChartData(payload, rankList.value, noRealScore && !hasReplay && !focusId, focusId)
     })
 
-    async function load() {
+    async function loadMyTeam() {
+      myTeamId.value = null
       if (!props.gameId) return
-      loading.value = true
-      loadError.value = false
+      try {
+        const { data } = await axios.get('/api/teams/me', { params: { game_id: props.gameId } })
+        const team = data?.team || null
+        myTeamId.value = team?.id || null
+        if (!myTeamId.value && chartScope.value === 'mine') chartScope.value = 'top'
+      } catch {
+        myTeamId.value = null
+        if (chartScope.value === 'mine') chartScope.value = 'top'
+      }
+    }
+
+    async function load(opts = {}) {
+      if (!props.gameId) return
+      const silent = !!opts.silent
+      if (!silent) {
+        loading.value = true
+        loadError.value = false
+      }
       try {
         const { data } = await axios.get(`/api/ctf/games/${props.gameId}/scoreboard`)
         items.value = data.data?.rankings || data?.rankings || []
+        if (!silent) loadError.value = false
       } catch (e) {
         console.error('Failed to load scoreboard:', e)
-        items.value = []
-        loadError.value = true
+        if (!silent) {
+          items.value = []
+          loadError.value = true
+        }
       } finally {
-        loading.value = false
+        if (!silent) loading.value = false
       }
     }
 
@@ -506,6 +607,8 @@ export default {
           challenges: Array.isArray(payload.challenges) ? payload.challenges : [],
           teams: Array.isArray(payload.teams) ? payload.teams : [],
           algorithm: payload.algorithm,
+          game_start: payload.game_start || null,
+          game_end: payload.game_end || null,
         }
       } catch {
         timelinePayload.value = { series: [], submissions: [], challenges: [], teams: [] }
@@ -519,9 +622,9 @@ export default {
       if (!curveChart) {
         curveChart = echarts.init(el, 'dark')
         if (typeof ResizeObserver !== 'undefined') {
-          resizeObserver = new ResizeObserver(() => {
+          resizeObserver = new ResizeObserver(rafThrottle(() => {
             try { curveChart?.resize() } catch { /* ignore */ }
-          })
+          }))
           resizeObserver.observe(el)
         }
         window.addEventListener('resize', onResize)
@@ -531,15 +634,21 @@ export default {
 
     function buildOption(data) {
       const isBaseline = !!data.isBaseline
+      // 对齐 ret2shell scoreboard Chart option
       return {
         backgroundColor: 'transparent',
         color: CHART_COLORS,
+        animation: false,
         tooltip: {
           trigger: 'axis',
-          backgroundColor: 'rgba(18, 24, 27, 0.9)',
-          borderColor: 'rgba(16, 185, 129, 0.3)',
-          textStyle: { color: '#e5e7eb' },
-          // GZCTF：同刻全员重算时按队名去重，只保留最新得分
+          backgroundColor: 'rgba(18, 24, 27, 0.92)',
+          borderColor: 'transparent',
+          textStyle: { color: '#e5e7eb', fontSize: 12 },
+          axisPointer: {
+            type: 'line',
+            snap: true,
+            label: { precision: 0 },
+          },
           formatter(params) {
             const list = Array.isArray(params) ? params : [params]
             if (!list.length) return ''
@@ -560,67 +669,34 @@ export default {
             return lines.join('<br/>')
           },
         },
-        legend: {
-          top: '2%',
-          type: 'scroll',
-          textStyle: { color: '#9ca3af', fontSize: 11 },
-          icon: 'circle',
-          pageTextStyle: { color: '#9ca3af' },
-        },
+        legend: { show: false },
+        toolbox: {},
         grid: {
-          left: '3%',
-          right: '4%',
-          top: '12%',
-          bottom: '14%',
-          containLabel: true,
+          left: 72,
+          right: 24,
+          top: 48,
+          bottom: 80,
         },
         xAxis: {
           type: 'time',
-          boundaryGap: false,
-          axisLine: { lineStyle: { color: '#374151' } },
-          axisLabel: {
-            color: '#9ca3af',
-            fontSize: 10,
-            hideOverlap: true,
-            formatter: '{HH}:{mm}',
-          },
-          axisTick: { show: false },
-          splitLine: { show: false },
         },
         yAxis: {
           type: 'value',
-          name: 'pts',
-          scale: true, // 微小下挫不被大盘压扁
           min: 0,
-          nameTextStyle: { color: '#9ca3af', fontSize: 10 },
-          splitLine: { lineStyle: { color: 'rgba(255, 255, 255, 0.05)' } },
-          axisLabel: { color: '#9ca3af' },
-          axisLine: { show: false },
-          minInterval: 1,
+          max: (value) => {
+            if (!value || value.max < 100) return 100
+            return Math.ceil(value.max + value.max * 0.1)
+          },
+          axisLabel: {
+            fontFamily: 'Reverier Mono, JetBrains Mono, monospace',
+          },
         },
         dataZoom: [
-          { type: 'inside', start: 0, end: 100 },
+          { type: 'inside', filterMode: 'none', start: 0, end: 100 },
           {
             type: 'slider',
-            bottom: '2%',
-            height: 18,
-            borderColor: 'transparent',
-            backgroundColor: 'rgba(255,255,255,0.03)',
-            fillerColor: 'rgba(16, 185, 129, 0.2)',
-            handleStyle: {
-              color: '#10b981',
-              borderColor: 'rgba(16, 185, 129, 0.5)',
-            },
-            moveHandleStyle: { color: 'rgba(16, 185, 129, 0.45)' },
-            textStyle: { color: '#9ca3af' },
-            dataBackground: {
-              lineStyle: { color: 'rgba(16, 185, 129, 0.25)' },
-              areaStyle: { color: 'rgba(16, 185, 129, 0.08)' },
-            },
-            selectedDataBackground: {
-              lineStyle: { color: 'rgba(16, 185, 129, 0.55)' },
-              areaStyle: { color: 'rgba(16, 185, 129, 0.15)' },
-            },
+            filterMode: 'none',
+            show: !isBaseline,
           },
         ],
         series: (data.teams || []).map((team, i) => {
@@ -628,34 +704,21 @@ export default {
           return {
             name: team.name,
             type: 'line',
-            // ret2shell scoreboard：阶梯线（源码 step: 'end'）→ 直角断崖
+            // aa26239 / ret2shell：阶梯线 → 直角断崖；密衰减远看像斜锯齿
             step: 'end',
             symbol: 'circle',
             symbolSize: isBaseline ? 0 : 5,
             showSymbol: !isBaseline,
             smooth: false,
             connectNulls: false,
+            data: team.timeSeriesData || [],
             lineStyle: {
-              width: isBaseline ? 1.5 : 2.5,
+              width: isBaseline ? 1.25 : 2,
               type: isBaseline ? 'dashed' : 'solid',
               color,
               opacity: isBaseline ? 0.55 : 1,
-              shadowColor: isBaseline ? 'transparent' : (color + '80'),
-              shadowBlur: isBaseline ? 0 : 6,
-              shadowOffsetY: 0,
             },
             itemStyle: { color },
-            emphasis: {
-              focus: 'series',
-              scale: true,
-              itemStyle: {
-                borderColor: '#fff',
-                borderWidth: 1,
-                shadowBlur: 10,
-                shadowColor: color,
-              },
-            },
-            data: team.timeSeriesData || [],
           }
         }),
       }
@@ -670,9 +733,16 @@ export default {
       try { chart.resize() } catch { /* ignore */ }
     }
 
-    function onResize() {
+    const debouncedRenderChart = debounce(() => { renderChart() }, 150)
+
+    const scoreboardPoll = createVisibilityPoll(() => {
+      if (loading.value) return
+      return load({ silent: true }).then(() => loadTimeline())
+    }, POLL_INTERVALS.scoreboard)
+
+    const onResize = rafThrottle(() => {
       try { curveChart?.resize() } catch { /* ignore */ }
-    }
+    })
 
     function refresh() {
       load().then(() => loadTimeline())
@@ -681,14 +751,19 @@ export default {
     onMounted(() => {
       // DOM 就绪后尝试挂载（数据随后由 watch 灌入）
       nextTick(() => renderChart())
+      scoreboardPoll.start()
     })
 
     watch(() => props.gameId, () => {
       orgFilter.value = ''
-      load().then(() => loadTimeline())
+      chartScope.value = 'top'
+      visibleCount.value = PAGE_SIZE
+      loadMyTeam().then(() => load().then(() => loadTimeline()))
     }, { immediate: true })
 
-    watch([orgFilter, chartData], () => { renderChart() })
+    watch(orgFilter, () => { visibleCount.value = PAGE_SIZE })
+    watch(chartScope, () => { debouncedRenderChart() })
+    watch([orgFilter, chartData], () => { debouncedRenderChart() })
     watch(loading, async (v) => {
       if (!v && !loadError.value) {
         await nextTick()
@@ -697,6 +772,9 @@ export default {
     })
 
     onUnmounted(() => {
+      scoreboardPoll.stop()
+      debouncedRenderChart.cancel()
+      onResize.cancel?.()
       window.removeEventListener('resize', onResize)
       try { resizeObserver?.disconnect() } catch { /* ignore */ }
       resizeObserver = null
@@ -711,8 +789,13 @@ export default {
       refresh,
       curveRef,
       orgFilter,
+      chartScope,
+      myTeamId,
       orgOptions,
       rankList,
+      visibleRankList,
+      hasMoreRanks,
+      loadMoreRanks,
     }
   },
 }
@@ -724,7 +807,8 @@ export default {
   max-height: 100%;
   overflow-x: hidden;
   overflow-y: auto !important;
-  padding: 24px;
+  /* 默认密度对齐「浏览器 80% 缩放」观感，100% 即可一眼看完走势+排名 */
+  padding: 16px 18px;
   box-sizing: border-box;
   width: 100%;
 }
@@ -736,6 +820,11 @@ export default {
 }
 .gsb-empty.compact {
   padding: var(--fib-21, 21px);
+}
+.gsb-load-more {
+  display: flex;
+  justify-content: center;
+  padding: 16px 0 8px;
 }
 
 .gsb-refresh-btn,
@@ -752,9 +841,9 @@ export default {
   font-size: 13px;
 }
 .gsb-icon-btn {
-  width: 32px;
-  height: 32px;
-  font-size: 16px;
+  width: 28px;
+  height: 28px;
+  font-size: 14px;
   line-height: 1;
 }
 .gsb-icon-btn:hover,
@@ -767,13 +856,20 @@ export default {
 .scoreboard-table-card {
   background: rgba(18, 24, 27, 0.8);
   border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 12px;
-  padding: 24px;
+  border-radius: 10px;
+  padding: 14px 16px;
   box-sizing: border-box;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.trend-chart-card:hover,
+.scoreboard-table-card:hover {
+  border-color: rgba(var(--primary-rgb), 0.42);
+  box-shadow: var(--gradient-card-shadow-hover);
 }
 
 .trend-chart-card {
-  margin-bottom: 24px;
+  margin-bottom: 14px;
 }
 
 .trend-chart-head,
@@ -781,8 +877,8 @@ export default {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 16px;
+  gap: 10px;
+  margin-bottom: 10px;
 }
 
 .trend-chart-title,
@@ -790,8 +886,8 @@ export default {
   margin: 0;
   display: flex;
   align-items: center;
-  gap: 8px;
-  font-size: 15px;
+  gap: 6px;
+  font-size: 13px;
   font-weight: 700;
   color: #e5e7eb;
 }
@@ -803,14 +899,14 @@ export default {
 }
 
 .gsb-org-select {
-  min-width: 160px;
-  height: 32px;
-  padding: 0 12px;
-  border-radius: 8px;
+  min-width: 140px;
+  height: 28px;
+  padding: 0 10px;
+  border-radius: 6px;
   border: 1px solid rgba(94, 217, 168, 0.35);
   background: rgba(0, 0, 0, 0.4);
   color: #d1d5db;
-  font-size: 12px;
+  font-size: 11px;
   outline: none;
 }
 .gsb-org-select:focus {
@@ -819,8 +915,11 @@ export default {
 
 .chart-container {
   width: 100%;
-  height: 440px;
-  min-height: 440px;
+  /* ret2shell: aspect-video；略收高度以兼顾排名表 */
+  aspect-ratio: 16 / 9;
+  height: auto;
+  min-height: 240px;
+  max-height: 380px;
 }
 
 .table-scroll {
@@ -843,7 +942,7 @@ export default {
 }
 
 .gsb-table th {
-  padding: 12px 16px;
+  padding: 8px 12px;
   font-weight: 600;
 }
 
@@ -851,12 +950,28 @@ export default {
   border-bottom: 1px solid rgba(255, 255, 255, 0.05);
   transition: background 0.15s ease;
 }
+.gsb-table tbody tr.is-mine {
+  background: rgba(16, 185, 129, 0.08);
+}
+.team-mine-tag {
+  display: inline-flex;
+  margin-left: 6px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: #a7f3d0;
+  background: rgba(16, 185, 129, 0.14);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  vertical-align: middle;
+}
 .gsb-table tbody tr:hover {
   background: rgba(255, 255, 255, 0.05);
 }
 
 .gsb-table td {
-  padding: 14px 16px;
+  padding: 9px 12px;
   vertical-align: middle;
 }
 
@@ -927,11 +1042,11 @@ export default {
 
 @media (max-width: 720px) {
   .game-scoreboard-page {
-    padding: 16px;
+    padding: 12px;
   }
   .trend-chart-card,
   .scoreboard-table-card {
-    padding: 16px;
+    padding: 12px;
   }
   .trend-chart-head {
     flex-direction: column;
@@ -941,8 +1056,9 @@ export default {
     width: 100%;
   }
   .chart-container {
-    height: 360px;
-    min-height: 360px;
+    aspect-ratio: 16 / 10;
+    min-height: 200px;
+    max-height: 280px;
   }
 }
 </style>

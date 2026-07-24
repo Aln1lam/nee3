@@ -1,6 +1,7 @@
 """
 CTF 竞赛/游戏相关的API路由
 """
+import secrets
 from flask import Blueprint, request, jsonify, send_file, Response
 from flask_jwt_extended import jwt_required, get_jwt_identity, verify_jwt_in_request, verify_jwt_in_request
 from datetime import datetime
@@ -14,6 +15,7 @@ from backend.server.db_models import (
 from backend.server.game_filters import is_ephemeral_test_game
 from backend.services.traffic_capture_service import TrafficCaptureService
 from backend.services.team_service import ensure_user_has_team, user_joined_game
+from backend.services.game_delete_service import purge_game
 
 bp = Blueprint("competitions", __name__)
 
@@ -67,6 +69,85 @@ def _can_view_game(game, user_id=None):
     return False
 
 
+def _gen_unique_invite_code(length=16):
+    """生成全局唯一的分组邀请码（默认 16 位）。"""
+    alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
+    for _ in range(12):
+        code = "".join(secrets.choice(alphabet) for _ in range(length))
+        if not CtfDivision.query.filter_by(invite_code=code).first():
+            return code
+    return secrets.token_hex(8).upper()  # 16 hex chars fallback
+
+
+def _ensure_campus_invite_division(game):
+    """非公开赛：保证至少有一个带邀请码的分组，供学生端报名使用。"""
+    if not game or game.is_public:
+        return None
+
+    with_code = (
+        CtfDivision.query.filter_by(game_id=game.id)
+        .filter(CtfDivision.invite_code.isnot(None))
+        .filter(CtfDivision.invite_code != "")
+        .order_by(CtfDivision.id.asc())
+        .first()
+    )
+    if with_code:
+        return with_code
+
+    bare = (
+        CtfDivision.query.filter_by(game_id=game.id)
+        .order_by(CtfDivision.id.asc())
+        .first()
+    )
+    if bare:
+        bare.invite_code = _gen_unique_invite_code()
+        if not (bare.name or "").strip():
+            bare.name = "校内赛道"
+        db.session.flush()
+        return bare
+
+    div = CtfDivision(
+        game_id=game.id,
+        name="校内赛道",
+        invite_code=_gen_unique_invite_code(),
+        description="校内赛报名邀请码（创建非公开赛时自动生成）",
+        sort_order=0,
+    )
+    db.session.add(div)
+    db.session.flush()
+    return div
+
+
+def _campus_invite_payload(game):
+    """管理员可见：非公开赛的邀请码列表。"""
+    if not game or game.is_public:
+        return [], None
+    rows = (
+        CtfDivision.query.filter_by(game_id=game.id)
+        .order_by(CtfDivision.sort_order.asc(), CtfDivision.id.asc())
+        .all()
+    )
+    codes = []
+    for d in rows:
+        code = (d.invite_code or "").strip()
+        if not code:
+            continue
+        codes.append({
+            "division_id": d.id,
+            "name": d.name,
+            "invite_code": code,
+        })
+    primary = codes[0]["invite_code"] if codes else None
+    return codes, primary
+
+
+def _attach_admin_invite_fields(game_dict, game):
+    codes, primary = _campus_invite_payload(game)
+    game_dict["campus_invite_codes"] = codes
+    game_dict["primary_invite_code"] = primary
+    return game_dict
+
+
 @bp.route("/", methods=["GET"])
 def get_games():
     """获取所有竞赛（包括公开和非公开）
@@ -99,6 +180,10 @@ def get_games():
 
         games = query.order_by(CtfGame.start_time.desc()).all()
         user_id = _current_user_id()
+        is_admin = False
+        if user_id:
+            admin_user = User.query.get(user_id)
+            is_admin = bool(admin_user and admin_user.is_admin)
         if not include_ephemeral:
             games = [g for g in games if not is_ephemeral_test_game(g)]
 
@@ -130,6 +215,9 @@ def get_games():
             game_dict = game.to_dict()
             game_dict['challenge_count'] = int(challenge_counts.get(game.id, 0))
             game_dict['participation_count'] = int(participation_counts.get(game.id, 0))
+            # 管理端需要直接看到校内邀请码（非公开赛）
+            if is_admin and not game.is_public:
+                _attach_admin_invite_fields(game_dict, game)
             data.append(game_dict)
 
         return jsonify({
@@ -614,12 +702,25 @@ def create_game():
         )
 
         db.session.add(game)
+        db.session.flush()
+
+        # 非公开赛自动生成校内邀请码分组，避免管理员建完赛却拿不到码
+        invite_div = _ensure_campus_invite_division(game)
         db.session.commit()
+
+        payload = game.to_dict()
+        if not game.is_public:
+            _attach_admin_invite_fields(payload, game)
+            if invite_div and invite_div.invite_code:
+                payload["primary_invite_code"] = invite_div.invite_code
 
         return jsonify({
             "code": 200,
-            "msg": "竞赛创建成功",
-            "data": game.to_dict()
+            "msg": "竞赛创建成功" + (
+                f"（校内邀请码：{payload.get('primary_invite_code')}）"
+                if payload.get("primary_invite_code") else ""
+            ),
+            "data": payload
         }), 200
     except Exception as e:
         db.session.rollback()
@@ -669,12 +770,20 @@ def update_game(game_id):
         if "enable_traffic_capture" in data:
             game.enable_traffic_capture = bool(data["enable_traffic_capture"])
 
+        # 改为非公开时，自动补齐邀请码
+        invite_div = _ensure_campus_invite_division(game)
         db.session.commit()
+
+        payload = game.to_dict()
+        if not game.is_public:
+            _attach_admin_invite_fields(payload, game)
+            if invite_div and invite_div.invite_code:
+                payload["primary_invite_code"] = invite_div.invite_code
 
         return jsonify({
             "code": 200,
             "msg": "竞赛更新成功",
-            "data": game.to_dict()
+            "data": payload
         }), 200
     except Exception as e:
         db.session.rollback()
@@ -682,6 +791,38 @@ def update_game(game_id):
             "code": 500,
             "msg": str(e)
         }), 500
+
+
+@bp.route("/admin/<int:game_id>/ensure-campus-invite", methods=["POST"])
+@jwt_required()
+def ensure_campus_invite(game_id):
+    """为已有非公开赛补生成校内邀请码（若尚无）。"""
+    try:
+        user, err = _require_admin_user()
+        if err:
+            return err
+
+        game = CtfGame.query.get(game_id)
+        if not game:
+            return jsonify({"code": 404, "msg": "竞赛不存在"}), 404
+        if game.is_public:
+            return jsonify({"code": 400, "msg": "公开竞赛无需邀请码"}), 400
+
+        div = _ensure_campus_invite_division(game)
+        db.session.commit()
+        payload = game.to_dict()
+        _attach_admin_invite_fields(payload, game)
+        if div and div.invite_code:
+            payload["primary_invite_code"] = div.invite_code
+
+        return jsonify({
+            "code": 200,
+            "msg": f"校内邀请码：{payload.get('primary_invite_code') or '未生成'}",
+            "data": payload
+        }), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"code": 500, "msg": str(e)}), 500
 
 
 @bp.route("/admin/<int:game_id>/archive", methods=["POST"])
@@ -727,13 +868,8 @@ def delete_game(game_id):
         if not game:
             return jsonify({"code": 404, "msg": "竞赛不存在"}), 404
 
-        # 删除相关数据
-        CtfChallenge.query.filter_by(game_id=game_id).delete()
-        CtfParticipation.query.filter_by(game_id=game_id).delete()
-        CtfScoreboard.query.filter_by(game_id=game_id).delete()
-        CtfDivision.query.filter_by(game_id=game_id).delete()
-
-        db.session.delete(game)
+        # 按外键依赖顺序清理参赛/提交/题目等，再删竞赛本身
+        purge_game(game_id)
         db.session.commit()
 
         return jsonify({

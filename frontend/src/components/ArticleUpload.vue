@@ -195,7 +195,7 @@ export default {
               stats.value.lines = lines
               stats.value.cursor = cursor
             } catch (e) {}
-          }, 600)
+          }, 2000)
         }
       })
     })

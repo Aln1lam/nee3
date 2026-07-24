@@ -17,7 +17,8 @@
 </template>
 
 <script>
-import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
+import { ref, watch, onMounted, onUnmounted } from 'vue'
+import { rafThrottle } from '@/utils/polling'
 
 export default {
   name: 'UiSplitter',
@@ -33,37 +34,56 @@ export default {
     const localRatio = ref(props.ratio)
     const dragging = ref(false)
 
+    let moveHandler = null
+    let upHandler = null
+
     function paneStyle(index) {
       const r = localRatio.value
       const size = index === 0 ? `${r * 100}%` : `${(1 - r) * 100}%`
+      // flex-basis 避免反复改 height/width 触发整页 reflow 链
       return props.direction === 'vertical'
-        ? { height: size, width: '100%' }
-        : { width: size, height: '100%' }
+        ? { flexBasis: size, height: size, width: '100%' }
+        : { flexBasis: size, width: size, height: '100%' }
+    }
+
+    function unbindDrag() {
+      if (moveHandler) {
+        window.removeEventListener('mousemove', moveHandler)
+        moveHandler = null
+      }
+      if (upHandler) {
+        window.removeEventListener('mouseup', upHandler)
+        upHandler = null
+      }
+      dragging.value = false
     }
 
     function onDragStart(e) {
+      unbindDrag()
       dragging.value = true
       const rect = rootRef.value.getBoundingClientRect()
-      const move = (ev) => {
+      moveHandler = rafThrottle((ev) => {
         const pos = props.direction === 'vertical'
           ? (ev.clientY - rect.top) / rect.height
           : (ev.clientX - rect.left) / rect.width
         localRatio.value = Math.min(props.maxRatio, Math.max(props.minRatio, pos))
         emit('update:ratio', localRatio.value)
+      })
+      upHandler = () => {
+        moveHandler?.cancel?.()
+        unbindDrag()
       }
-      const up = () => {
-        dragging.value = false
-        window.removeEventListener('mousemove', move)
-        window.removeEventListener('mouseup', up)
-      }
-      window.addEventListener('mousemove', move)
-      window.addEventListener('mouseup', up)
+      window.addEventListener('mousemove', moveHandler)
+      window.addEventListener('mouseup', upHandler)
       e.preventDefault()
     }
 
     onMounted(() => { localRatio.value = props.ratio })
     watch(() => props.ratio, (v) => { localRatio.value = v })
-    onUnmounted(() => { dragging.value = false })
+    onUnmounted(() => {
+      moveHandler?.cancel?.()
+      unbindDrag()
+    })
 
     return { rootRef, dragging, paneStyle, onDragStart }
   },
@@ -77,6 +97,7 @@ export default {
   height: 100%;
   min-height: 120px;
   overflow: hidden;
+  contain: layout;
 }
 .ui-splitter--vertical { flex-direction: column; }
 .ui-splitter--horizontal { flex-direction: row; }

@@ -83,7 +83,8 @@ export default {
   flex-direction: column;
   padding: 0 !important;
 }
-.game-layout :deep(.matrix-page-head) {
+/* 只藏 MatrixShell 自带页头，勿伤业务页内部 .matrix-page-head */
+.game-layout :deep(.matrix-main > .matrix-page-head) {
   display: none;
 }
 .game-layout :deep(.matrix-page),
@@ -119,12 +120,17 @@ export default {
   flex-direction: column;
   overflow: hidden;
 }
-.game-layout--overview :deep(.sidebar-rail-footer) {
+.game-layout :deep(.matrix-sidebar.sidebar-rail),
+.game-layout :deep(.sidebar-rail) {
+  display: flex;
+  flex-direction: column;
+}
+.game-layout :deep(.sidebar-rail-footer) {
   margin-top: auto;
   flex-shrink: 0;
   padding: 12px 14px 16px;
 }
-.game-layout--overview :deep(.game-layout-back) {
+.game-layout :deep(.game-layout-back) {
   width: 100%;
 }
 

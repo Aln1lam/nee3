@@ -13,7 +13,7 @@ from backend.server.db_models import CtfGameInstance, CtfChallenge, User, Team, 
 import os
 from backend.services.flag_generator import ContainerFlagService, ensure_team_hash_salt
 from backend.server.container_access import build_connection_url
-from backend.server.container_ports import allocate_host_port
+from backend.server.container_ports import allocate_host_port, release_host_port
 from backend.services.container_traffic import maybe_start_traffic_capture
 
 logger = logging.getLogger(__name__)
@@ -86,6 +86,8 @@ class ContainerService:
         if not ok_quota:
             return False, None, quota_msg
 
+        host_port = None
+        container = None
         try:
             # 生成唯一的容器名称
             container_name = f"ctf-{challenge.id}-{user.id}-{uuid.uuid4().hex[:8]}"
@@ -171,10 +173,7 @@ class ContainerService:
             
             if challenge.network_mode != "Isolated":
                 mapped_port = host_port
-                if not capture_enabled:
-                    connection_url = build_connection_url(mapped_port, challenge=challenge)
-                else:
-                    connection_url = build_connection_url(mapped_port, challenge=challenge)
+                connection_url = build_connection_url(mapped_port, challenge=challenge)
             else:
                 # 隔离网络模式下使用容器内部地址
                 connection_url = f"http://{container_name}:{challenge.docker_port}"
@@ -205,6 +204,21 @@ class ContainerService:
         
         except Exception as e:
             logger.error(f"Failed to create container: {e}")
+            try:
+                db.session.rollback()
+            except Exception:
+                pass
+            # Docker 已创建但 DB 失败：立即回收，避免幽灵容器 + 端口泄漏
+            if container is not None:
+                try:
+                    container.remove(force=True)
+                    logger.info(
+                        "Rolled back orphan docker container %s after create failure",
+                        (getattr(container, "id", "") or "")[:12],
+                    )
+                except Exception as cleanup_err:
+                    logger.warning("Failed to remove orphan container after create error: %s", cleanup_err)
+            release_host_port(host_port)
             return False, None, f"Failed to create container: {str(e)}"
 
     @staticmethod
@@ -259,21 +273,27 @@ class ContainerService:
                 if not self._is_missing_container_error(remove_err):
                     logger.warning(f"Remove container {cid} failed: {remove_err}")
 
+            port = instance.port
             self._mark_instance_stopped(instance)
+            release_host_port(port)
             logger.info(f"Container destroyed: {cid}")
             return True, "Container destroyed successfully"
 
         except Exception as e:
             # 容器已在 Docker 中消失：清库即可，不要当失败反复刷日志
             if self._is_missing_container_error(e):
+                port = instance.port
                 self._mark_instance_stopped(instance)
+                release_host_port(port)
                 logger.info(f"Container already gone, marked stopped: {cid}")
                 return True, "Container already removed; instance marked stopped"
 
             # 其它 Docker 错误：仍标记停止，避免选手卡在「幽灵运行中」
             logger.error(f"Failed to destroy container {cid}: {e}")
             try:
+                port = instance.port
                 self._mark_instance_stopped(instance)
+                release_host_port(port)
             except Exception:
                 pass
             return True, f"Instance marked stopped (docker error: {e})"

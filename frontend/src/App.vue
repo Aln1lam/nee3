@@ -3,7 +3,7 @@
     <n-global-style />
     <n-message-provider>
       <n-dialog-provider>
-        <CircuitBackground />
+        <CircuitBackground v-if="showDecorBg" />
         <div class="gradient-page-bg" aria-hidden="true" />
         <div
           class="bg-overlay"
@@ -70,7 +70,7 @@
 </template>
 
 <script>
-import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
+import { ref, shallowRef, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import {
   NConfigProvider, NGlobalStyle, NMessageProvider, NDialogProvider,
@@ -93,7 +93,7 @@ export default {
     const router = useRouter()
     const route = useRoute()
     const toast = useToast()
-    const user = ref(null)
+    const user = shallowRef(null)
     const { initTheme } = useThemeStore()
 
     const footerOrg = ref('东北电力大学')
@@ -120,6 +120,8 @@ export default {
     const isFullHeightRoute = computed(() => (
       !isLandingRoute.value && !isAdminRoute.value
     ))
+    // 装饰电路背景：非运维后台显示（赛场 immersive 也保留氛围层）
+    const showDecorBg = computed(() => !isAdminRoute.value)
     // 版权收纳进侧栏底部；全屏 HUD 不再挂割裂大 Footer
     const showFooter = computed(() => false)
     watch(isFullHeightRoute, (v) => {
@@ -187,6 +189,20 @@ export default {
       toast.warning(msg, 8000)
     }
 
+    /** 403/429 等：toast 提示，绝不整页跳死/白屏 */
+    let lastHttpToastAt = 0
+    function onHttpError(e) {
+      const status = e?.detail?.status
+      const msg = e?.detail?.msg
+      if (!msg) return
+      const now = Date.now()
+      if (now - lastHttpToastAt < 1200) return
+      lastHttpToastAt = now
+      if (status === 429) toast.warning(msg, 4000)
+      else if (status === 403) toast.error(msg, 4000)
+      else if (status === 401) toast.warning(msg, 4000)
+    }
+
     function syncFooterFromPlatform(info) {
       if (!info?.footer) return
       footerOrg.value = info.footer.org_name || footerOrg.value
@@ -216,6 +232,7 @@ export default {
       window.addEventListener('neepu_user_refreshed', onUserRefreshed)
       window.addEventListener('neepu_auth_expired', onAuthExpired)
       window.addEventListener('neepu_maintenance', onMaintenance)
+      window.addEventListener('neepu_http_error', onHttpError)
       window.addEventListener('neepu_platform_updated', onPlatformUpdated)
       checkUser()
 
@@ -247,9 +264,14 @@ export default {
     })
 
     onUnmounted(() => {
+      if (authCheckTimer) {
+        clearTimeout(authCheckTimer)
+        authCheckTimer = null
+      }
       window.removeEventListener('neepu_user_refreshed', onUserRefreshed)
       window.removeEventListener('neepu_auth_expired', onAuthExpired)
       window.removeEventListener('neepu_maintenance', onMaintenance)
+      window.removeEventListener('neepu_http_error', onHttpError)
       window.removeEventListener('neepu_platform_updated', onPlatformUpdated)
     })
 
@@ -307,7 +329,7 @@ export default {
     }))
 
     return {
-      user, themeOverrides, isAdminRoute, isLandingRoute, isImmersiveRoute, isFullHeightRoute, showFooter,
+      user, themeOverrides, showDecorBg, isAdminRoute, isLandingRoute, isImmersiveRoute, isFullHeightRoute, showFooter,
       footerOrg, footerUrl, footerYears, footerIcp, footerIcpUrl,
       showMaintenanceOverlay, maintenanceMessage, router, showEmailVerifyBanner, resendVerification, dismissEmailBanner, resendingVerify,
       onLogged, logout,

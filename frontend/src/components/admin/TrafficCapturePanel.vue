@@ -19,11 +19,20 @@
         @update:value="loadCaptures"
       />
       <n-button :loading="loading" :disabled="!gameId" @click="loadCaptures">刷新</n-button>
+      <n-button
+        type="primary"
+        :loading="toggling"
+        :disabled="!gameId || toggling"
+        @click="toggleCapture"
+      >
+        {{ meta && meta.enable ? '关闭捕获' : '开启捕获' }}
+      </n-button>
     </div>
 
     <n-alert v-if="meta" type="info" :bordered="false" class="pcap-alert">
       共 {{ meta.total || 0 }} 条
-      <span v-if="meta.enable === false"> · 本赛事未开启流量捕获</span>
+      <span v-if="meta.enable === false"> · 本赛事未开启流量捕获（点「开启捕获」或编辑竞赛勾选）</span>
+      <span v-else> · 已开启：动态容器启动后经代理写 PCAP</span>
       <span v-if="meta.storage_dir"> · {{ meta.storage_dir }}</span>
     </n-alert>
 
@@ -59,10 +68,14 @@ export default {
     const gameId = ref(props.gameIdProp ? Number(props.gameIdProp) : null)
     const rows = ref([])
     const loading = ref(false)
+    const toggling = ref(false)
     const meta = ref(null)
 
     const gameOptions = computed(() =>
-      games.value.map(g => ({ label: `${g.title} (#${g.id})`, value: g.id })),
+      games.value.map(g => ({
+        label: `${g.enable_traffic_capture ? '[CAP] ' : ''}${g.title} (#${g.id})`,
+        value: g.id,
+      })),
     )
 
     function formatTime(t) {
@@ -117,7 +130,9 @@ export default {
         }
         games.value = list.filter(g => !g.is_ephemeral)
         if (!gameId.value && games.value.length) {
-          const withCapture = games.value.find(g => g.id === 1) || games.value.find(g => (g.challenge_count || 0) > 0) || games.value[0]
+          const withCapture = games.value.find(g => g.enable_traffic_capture)
+            || games.value.find(g => (g.challenge_count || 0) > 0)
+            || games.value[0]
           gameId.value = withCapture?.id || null
         }
         if (gameId.value) await loadCaptures()
@@ -197,6 +212,28 @@ export default {
       }
     }
 
+    async function toggleCapture() {
+      if (!gameId.value) return
+      const next = !(meta.value && meta.value.enable)
+      toggling.value = true
+      try {
+        const res = await ctfAdmin.updateGame(gameId.value, { enable_traffic_capture: next })
+        const { data: body, ok } = await parseJsonResponse(res)
+        if (!ok) {
+          message.error(body?.msg || '更新失败')
+          return
+        }
+        const g = games.value.find(x => x.id === gameId.value)
+        if (g) g.enable_traffic_capture = next
+        message.success(next ? '已开启本赛事流量捕获' : '已关闭本赛事流量捕获')
+        await loadCaptures()
+      } catch (e) {
+        message.error(apiErrorMessage(e, '更新失败'))
+      } finally {
+        toggling.value = false
+      }
+    }
+
     watch(() => props.gameIdProp, (v) => {
       if (v) {
         gameId.value = Number(v)
@@ -212,9 +249,11 @@ export default {
       gamesLoading,
       rows,
       loading,
+      toggling,
       meta,
       columns,
       loadCaptures,
+      toggleCapture,
     }
   },
 }

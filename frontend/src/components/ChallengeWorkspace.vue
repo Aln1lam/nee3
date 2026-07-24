@@ -40,26 +40,11 @@
               :class="{
                 active: selectedChallenge?.id === ch.id,
                 solved: isSolved(ch.id),
-                disabled: adminActive && ch.is_enabled === false,
               }"
               @click="selectChallenge(ch)"
             >
               <span class="tree-item-title">{{ ch.title }}</span>
               <span v-if="isSolved(ch.id)" class="tree-item-mark" title="已解出">✓</span>
-              <UiPopover v-if="adminActive" trigger="click">
-                <template #trigger>
-                  <button class="tree-item-menu" type="button" @click.stop aria-label="题目上下架">⋯</button>
-                </template>
-                <div class="admin-popover">
-                  <p class="admin-popover__hint">{{ ch.is_enabled === false ? '已下架' : '已上架' }}</p>
-                  <UiButton
-                    size="small"
-                    :variant="ch.is_enabled === false ? 'primary' : 'secondary'"
-                    :loading="!!ch._toggling"
-                    @click="toggleChallengeEnabled(ch)"
-                  >{{ ch.is_enabled === false ? '上架' : '下架' }}</UiButton>
-                </div>
-              </UiPopover>
             </li>
           </ul>
         </div>
@@ -97,16 +82,9 @@
 
     <div
       class="challenge-workspace workspace-dock"
-      :class="[`mode-${mode}`, { 'admin-tools-on': adminActive }]"
+      :class="[`mode-${mode}`]"
     >
     <section class="workspace-stage">
-      <div v-if="isAdmin && mode !== 'training'" class="stage-admin-bar">
-        <n-tag v-if="adminActive" size="small" type="warning" round>管理视图</n-tag>
-        <n-button size="tiny" :type="showAdminTools ? 'warning' : 'default'" @click="toggleAdminTools">
-          {{ showAdminTools ? '选手视图' : '管理视图' }}
-        </n-button>
-      </div>
-
       <template v-if="selectedChallenge">
         <div class="stage-content">
           <div class="stage-brief">
@@ -248,13 +226,12 @@
 <script>
 import { ref, computed, watch, inject, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { NTag, NButton, useMessage } from 'naive-ui'
-import { UiLoadingTips, UiPopover, UiButton } from '@/components/ui'
+import { NTag, useMessage } from 'naive-ui'
+import { UiLoadingTips } from '@/components/ui'
 import { Article, MatrixShell } from '@/components/shared'
 import { ctfAdmin } from '@/services/admin'
-import { parseJsonResponse } from '@/utils/http'
 import { unwrapList } from '../utils/unwrap'
-import { fetchSession, isLoggedIn, isAdmin as checkIsAdmin } from '../services/auth'
+import { fetchSession, isLoggedIn } from '../services/auth'
 import { getCategoryStyle } from '../utils/categoryStyle'
 import {
   getContainerStatus as apiGetContainerStatus,
@@ -279,7 +256,7 @@ function categoryChipStyle(cat) {
 
 export default {
   name: 'ChallengeWorkspace',
-  components: { NTag, NButton, UiLoadingTips, UiPopover, UiButton, Article, MatrixShell },
+  components: { NTag, UiLoadingTips, Article, MatrixShell },
   props: {
     gameId: { type: [Number, String], required: true },
     mode: { type: String, default: 'competition' },
@@ -361,20 +338,6 @@ export default {
     const destroying = ref(false)
     const remainingSeconds = ref(0)
     let remainingTimer = null
-    const isAdmin = ref(false)
-    const showAdminTools = ref(false)
-
-    const adminActive = computed(() => isAdmin.value && showAdminTools.value)
-
-    const ADMIN_ONLY_TABS = new Set(['stats', 'attachments', 'instances', 'checker', 'settings', 'manage'])
-    const LEGACY_ADMIN_TAB_MAP = {
-      stats: 'manage',
-      attachments: 'manage',
-      instances: 'manage',
-      checker: 'manage',
-      settings: 'manage',
-    }
-
     const gameStatusType = computed(() => {
       if (props.gameStatus === '进行中') return 'success'
       if (props.gameStatus === '报名中') return 'warning'
@@ -566,15 +529,8 @@ export default {
       challengesLoading.value = true
       challengesLoadError.value = false
       try {
-        if (adminActive.value) {
-          const res = await ctfAdmin.listAdminChallenges(props.gameId)
-          const { ok, data } = await parseJsonResponse(res)
-          challenges.value = ok ? unwrapList(data) : []
-          if (!ok) challengesLoadError.value = true
-        } else {
-          const res = await axios.get(`/api/challenges/games/${props.gameId}/challenges`)
-          challenges.value = unwrapList(res.data)
-        }
+        const res = await axios.get(`/api/challenges/games/${props.gameId}/challenges`)
+        challenges.value = unwrapList(res.data)
         await loadSolvedStatus()
         if (props.mode !== 'training') await checkHammerUnread()
       } catch (e) {
@@ -588,56 +544,24 @@ export default {
 
     function sanitizeChallengeDetail(ch, detail) {
       if (!detail) return { ...ch }
-      if (adminActive.value) return { ...ch, ...detail }
       const { flag_template, flag, expected_flag, ...safe } = detail
       return { ...ch, ...safe }
     }
 
-    function toggleAdminTools() {
-      setAdminTools(!showAdminTools.value)
-    }
-
-    function setAdminTools(on) {
-      showAdminTools.value = on
+    /** 清除历史「管理视图」query（?admin=1 / tab=manage） */
+    function stripLegacyAdminQuery() {
       const q = { ...route.query }
-      if (on) q.admin = '1'
-      else delete q.admin
-      if (!on && ADMIN_ONLY_TABS.has(activeTab.value)) {
+      let dirty = false
+      if (q.admin != null) {
+        delete q.admin
+        dirty = true
+      }
+      if (q.tab === 'manage' || ['stats', 'attachments', 'instances', 'checker', 'settings'].includes(q.tab)) {
+        delete q.tab
+        dirty = true
         activeTab.value = 'terminal'
-        q.tab = 'terminal'
-      } else if (on && route.query.tab && LEGACY_ADMIN_TAB_MAP[route.query.tab]) {
-        activeTab.value = LEGACY_ADMIN_TAB_MAP[route.query.tab]
-        q.tab = 'manage'
       }
-      router.replace({ query: q }).catch(() => {})
-      loadChallenges().then(syncFromRoute)
-    }
-
-    function applyAdminQueryFromRoute() {
-      if (route.query.admin === '1' && isAdmin.value) {
-        showAdminTools.value = true
-      }
-    }
-
-    async function toggleChallengeEnabled(ch) {
-      if (!ch?.id || !adminActive.value) return
-      ch._toggling = true
-      const nextEnabled = ch.is_enabled === false
-      try {
-        const res = await ctfAdmin.updateChallenge(props.gameId, ch.id, { is_enabled: nextEnabled })
-        const { ok, data } = await parseJsonResponse(res)
-        if (!ok) throw new Error(data?.msg || data?.message || '操作失败')
-        ch.is_enabled = nextEnabled
-        message.success(nextEnabled ? '题目已上架' : '题目已下架')
-      } catch (e) {
-        message.error(e.message || '操作失败')
-      } finally {
-        ch._toggling = false
-      }
-    }
-
-    function goAdminChallenge() {
-      router.push({ path: '/admin/ctf', query: { game_id: String(props.gameId), tab: 'challenges' } })
+      if (dirty) router.replace({ query: q }).catch(() => {})
     }
 
     async function checkHammerUnread() {
@@ -1202,32 +1126,15 @@ export default {
     function syncFromRoute() {
       const chId = route.query.challenge
       const tab = route.query.tab
-      const allowed = [
-        'terminal', 'hints', 'hammer', 'blood', 'writeup', 'manage',
-      ]
-      if (tab && LEGACY_ADMIN_TAB_MAP[tab]) {
-        activeTab.value = adminActive.value ? LEGACY_ADMIN_TAB_MAP[tab] : 'terminal'
-      } else if (tab && allowed.includes(tab)) {
-        if (tab === 'manage' && !adminActive.value) {
-          activeTab.value = 'terminal'
-        } else {
-          activeTab.value = tab
-        }
+      const allowed = ['terminal', 'hints', 'hammer', 'blood', 'writeup']
+      if (tab && allowed.includes(tab)) {
+        activeTab.value = tab
+      } else if (tab) {
+        activeTab.value = 'terminal'
       }
       if (chId && challenges.value.length) {
         const ch = challenges.value.find(c => c.id === parseInt(chId, 10))
         if (ch && selectedChallenge.value?.id !== ch.id) selectChallenge(ch)
-      }
-    }
-
-    function refreshAdminState() {
-      const wasAdmin = isAdmin.value
-      isAdmin.value = checkIsAdmin()
-      if (!isAdmin.value) {
-        if (showAdminTools.value) setAdminTools(false)
-        showAdminTools.value = false
-      } else if (!wasAdmin) {
-        applyAdminQueryFromRoute()
       }
     }
 
@@ -1251,19 +1158,10 @@ export default {
 
     watch(() => route.query.challenge, syncFromRoute)
 
-    watch(showAdminTools, (on, prev) => {
-      if (on === prev) return
-      if (!on && ADMIN_ONLY_TABS.has(activeTab.value)) {
-        activeTab.value = 'terminal'
-      }
-    })
-
     onMounted(async () => {
       beginRequestScope()
       await fetchSession()
-      refreshAdminState()
-      applyAdminQueryFromRoute()
-      window.addEventListener('neepu_user_refreshed', refreshAdminState)
+      stripLegacyAdminQuery()
       await ensureTrainingAccess()
       await loadGameMeta()
       await loadChallenges()
@@ -1278,7 +1176,6 @@ export default {
       clearRemainingTimer()
       bloodPoll.stop()
       containerPoll.stop()
-      window.removeEventListener('neepu_user_refreshed', refreshAdminState)
     })
 
 
@@ -1304,13 +1201,13 @@ export default {
       containerLoading, queueStatus, instanceLogs, logsLoading,
       extending, destroying, containerBusy, remainingLabel,
       gameStatusType, descriptionContent, writeupContent,
-      hasContainer, supportsContainer, isContainerChallenge, isAttachmentChallenge, showAttachmentBar, isTcpConn, endpointDisplay, instanceId, attachmentUrl, isAdmin, showAdminTools, adminActive,
-      challengeTypeLabel, toggleAdminTools, challengePoints, solveCount,
+      hasContainer, supportsContainer, isContainerChallenge, isAttachmentChallenge, showAttachmentBar, isTcpConn, endpointDisplay, instanceId, attachmentUrl,
+      challengeTypeLabel, challengePoints, solveCount,
       isCategoryExpanded, toggleCategory, closeChallenge,
       isSolved, bloodRecords, bloodLevelName, bloodLevelShort, currentBloodRecords,
       selectChallenge, submitFlag, startContainer, extendContainer, destroyContainer, openEnvironment, loadChallenges,
-      loadInstanceLogs, copyConn, selectConnText, onTabChange, loadHints, unlockHint, toggleChallengeEnabled,
-      goAdminChallenge, formatStatTime, categoryStyle, categoryChipStyle,
+      loadInstanceLogs, copyConn, selectConnText, onTabChange, loadHints, unlockHint,
+      formatStatTime, categoryStyle, categoryChipStyle,
     }
   },
 }
@@ -1328,11 +1225,6 @@ export default {
   overflow: hidden;
   background: var(--gradient-card-bg, var(--card-bg));
   box-shadow: var(--dock-shadow, none);
-}
-
-.challenge-workspace.admin-tools-on {
-  outline: 1px solid rgba(217, 119, 6, 0.35);
-  outline-offset: 2px;
 }
 
 /* ── 左栏：题目树 ── */
@@ -1502,7 +1394,6 @@ export default {
 }
 
 .tree-item.solved .tree-item-title { color: var(--success, #16A34A); }
-.tree-item.disabled { opacity: 0.5; }
 
 .tree-item-title {
   flex: 1;
@@ -1517,16 +1408,6 @@ export default {
   flex-shrink: 0;
   font-size: var(--text-xs);
   color: var(--success);
-}
-
-.tree-item-menu {
-  flex-shrink: 0;
-  background: transparent;
-  border: none;
-  color: var(--muted);
-  cursor: pointer;
-  padding: 0 2px;
-  font-size: var(--text-sm);
 }
 
 .tree-footer {
@@ -1544,14 +1425,6 @@ export default {
   height: 100%;
   width: 100%;
   background: var(--gradient-card-bg, var(--card-bg));
-}
-
-.stage-admin-bar {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 8px;
-  padding: 8px 16px 0;
 }
 
 .stage-content {
@@ -1888,43 +1761,6 @@ export default {
 }
 .blood-time { margin-left: auto; font-size: var(--text-xs); }
 
-.admin-manage-hint {
-  margin: 0 0 12px;
-  padding: 8px 10px;
-  font-size: var(--text-xs);
-  color: var(--warning, #D97706);
-  background: rgba(217, 119, 6, 0.08);
-  border-radius: var(--radius-sm);
-}
-
-.manage-section {
-  margin-bottom: 16px;
-  padding-bottom: 12px;
-  border-bottom: 1px solid var(--border);
-}
-.manage-section:last-child { border-bottom: none; margin-bottom: 0; }
-.manage-section-title {
-  margin: 0 0 8px;
-  font-size: var(--text-xs);
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: var(--muted);
-}
-.manage-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
-
-.admin-popover { display: flex; flex-direction: column; gap: 8px; min-width: 120px; }
-.admin-popover__hint { margin: 0; font-size: var(--text-sm); color: var(--muted); }
-
-.admin-panel { display: flex; flex-direction: column; gap: 10px; font-size: var(--text-sm); }
-.admin-link { color: var(--primary); font-size: var(--text-sm); }
-.admin-panel .stat-row {
-  display: flex;
-  justify-content: space-between;
-  padding: 8px 0;
-  border-bottom: 1px solid var(--border);
-}
-.admin-panel .stat-row:last-child { border-bottom: none; }
 .mono { font-family: monospace; font-size: var(--text-xs); word-break: break-all; }
 .muted { color: var(--muted); }
 
@@ -2392,5 +2228,11 @@ export default {
   height: 100%;
   max-height: 100%;
   overflow: hidden;
+}
+
+/* 长题目列表：跳过屏外布局/绘制 */
+.tree-item {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 40px;
 }
 </style>

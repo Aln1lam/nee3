@@ -14,6 +14,7 @@ export { default as UiTimeProgress } from './UiTimeProgress.vue'
 export { default as UiLoadingTips } from './UiLoadingTips.vue'
 export { default as UiPicture } from './UiPicture.vue'
 export { default as UiChart } from './UiChart.vue'
+export { default as UiVirtualList } from './UiVirtualList.vue'
 export { default as UiThemeBox } from './UiThemeBox.vue'
 export { default as UiNotificationBox } from './UiNotificationBox.vue'
 

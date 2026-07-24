@@ -19,7 +19,7 @@
       <n-alert v-if="error" type="error" style="margin-bottom: 12px" :bordered="false">{{ error }}</n-alert>
       <n-empty v-else-if="!loading && searched && !data.length" description="暂无提交记录" />
       <div v-else class="table-wrapper">
-        <n-data-table :columns="columns" :data="data" :bordered="false" :single-line="false" :loading="loading" />
+        <n-data-table :columns="columns" :data="data" :bordered="false" :single-line="false" :loading="loading" :pagination="pagination" :max-height="520" virtual-scroll />
       </div>
     </div>
   </MatrixShell>
@@ -46,6 +46,7 @@ export default {
     const searched = ref(false)
     const error = ref('')
     const navItems = [{ code: 'SUB', label: '提交审计', active: true }]
+    const pagination = { pageSize: 50, showSizePicker: true, pageSizes: [20, 50, 100] }
 
     const columns = [
       { title: 'Time', key: 'created_at', width: 200 },
@@ -89,7 +90,7 @@ export default {
       if (cid.value) load()
     })
 
-    return { cid, data, columns, load, navItems, loading, searched, error, axios }
+    return { cid, data, columns, load, navItems, loading, searched, error, axios, pagination }
   },
 }
 </script>

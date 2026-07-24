@@ -1,0 +1,145 @@
+/* 校内赛邀请码弹窗 — 对齐 Auth 玻璃卡 + 审美画像 */
+
+.invite-join-modal-root.n-modal,
+.n-modal.invite-join-modal-root {
+  padding: 16px;
+}
+
+.invite-join-card {
+  width: min(420px, calc(100vw - 32px));
+  box-sizing: border-box;
+  padding: 32px 28px;
+  border-radius: var(--card-radius, 10px);
+  background: rgba(15, 21, 28, 0.88);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(94, 217, 168, 0.2);
+  box-shadow:
+    0 20px 50px rgba(0, 0, 0, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  color: #e5e7eb;
+  font-family: var(--font-ui, "M PLUS Rounded 1c", "Noto Sans SC", sans-serif);
+  -webkit-font-smoothing: antialiased;
+}
+
+.invite-join-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 0 10px;
+}
+
+.invite-join-head h3 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  color: #e5e7eb;
+}
+
+.invite-join-card .link-code,
+.invite-join-card .chip-cut {
+  flex-shrink: 0;
+}
+
+.invite-join-desc {
+  margin: 0 0 18px;
+  font-size: 13px;
+  line-height: 1.55;
+  color: #9ca3af;
+}
+
+.invite-join-label {
+  display: block;
+  margin: 0 0 8px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: #9ca3af;
+}
+
+.invite-join-card .n-input.invite-join-input,
+.invite-join-card .invite-join-input.n-input {
+  --n-height: 44px !important;
+  --n-font-size: 14px !important;
+  --n-padding-left: 14px !important;
+  --n-padding-right: 14px !important;
+  --n-color: rgba(255, 255, 255, 0.04) !important;
+  --n-color-focus: rgba(255, 255, 255, 0.05) !important;
+  --n-text-color: #ffffff !important;
+  --n-placeholder-color: rgba(156, 163, 175, 0.8) !important;
+  --n-border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  --n-border-hover: 1px solid rgba(16, 185, 129, 0.4) !important;
+  --n-border-focus: 1px solid rgba(16, 185, 129, 0.55) !important;
+  --n-box-shadow-focus: 0 0 0 2px rgba(16, 185, 129, 0.14) !important;
+  --n-caret-color: #10b981 !important;
+  background: rgba(255, 255, 255, 0.04) !important;
+  border-radius: 8px !important;
+  width: 100%;
+}
+
+.invite-join-card .invite-join-input .n-input__input-el,
+.invite-join-card .invite-join-input input {
+  font-family: var(--font-mono), "JetBrains Mono", "Fira Code", ui-monospace, monospace !important;
+  font-size: 15px !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.08em;
+  color: #ffffff !important;
+  -webkit-font-smoothing: antialiased;
+  font-variant-ligatures: none;
+}
+
+.invite-join-card input:-webkit-autofill,
+.invite-join-card input:-webkit-autofill:hover,
+.invite-join-card input:-webkit-autofill:focus {
+  -webkit-box-shadow: 0 0 0 1000px #0f151c inset !important;
+  box-shadow: 0 0 0 1000px #0f151c inset !important;
+  -webkit-text-fill-color: #ffffff !important;
+  caret-color: #10b981 !important;
+  transition: background-color 5000s ease-in-out 0s;
+}
+
+.invite-join-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 22px;
+}
+
+.invite-join-btn {
+  min-height: 42px;
+  padding: 0 18px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, box-shadow 0.15s, color 0.15s;
+}
+
+.invite-join-btn:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.invite-join-btn--ghost {
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.03);
+  color: #9ca3af;
+}
+
+.invite-join-btn--ghost:hover:not(:disabled) {
+  border-color: rgba(255, 255, 255, 0.2);
+  color: #e5e7eb;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.invite-join-btn--primary {
+  border: 1px solid rgba(16, 185, 129, 0.45);
+  background: #10b981;
+  color: #0a0f14;
+}
+
+.invite-join-btn--primary:hover:not(:disabled) {
+  box-shadow: 0 0 20px rgba(16, 185, 129, 0.3);
+  filter: brightness(1.05);
+}

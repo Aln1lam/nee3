@@ -1,9 +1,9 @@
-import { ref, readonly } from 'vue'
+import { shallowRef, readonly } from 'vue'
 import { fetchPlatformInfo, clearPlatformCache, PLATFORM_FALLBACK, applyPlatformMeta } from '@/services/platform'
 
-const platform = ref({ ...PLATFORM_FALLBACK })
-const loaded = ref(false)
-const loading = ref(false)
+const platform = shallowRef({ ...PLATFORM_FALLBACK })
+const loaded = shallowRef(false)
+const loading = shallowRef(false)
 
 export async function loadPlatform(options = {}) {
   if (loading.value && !options.force) return platform.value

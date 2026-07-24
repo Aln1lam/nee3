@@ -48,6 +48,8 @@
             <tr>
               <th>ID</th>
               <th>竞赛名称</th>
+              <th>可见性</th>
+              <th>校内邀请码</th>
               <th>类型</th>
               <th>开始时间</th>
               <th>结束时间</th>
@@ -62,6 +64,25 @@
             <tr>
               <td>{{ game.id }}</td>
               <td>{{ game.title }}</td>
+              <td>
+                <span v-if="game.is_public" class="badge badge-green">公开赛</span>
+                <span v-else class="badge badge-blue">校内 / 需邀请码</span>
+              </td>
+              <td>
+                <template v-if="!game.is_public">
+                  <div v-if="game.primary_invite_code" class="invite-code-cell">
+                    <code class="code-pill">{{ game.primary_invite_code }}</code>
+                    <button type="button" class="btn-small btn-info" @click="copyToClipboard(game.primary_invite_code)">复制</button>
+                  </div>
+                  <button
+                    v-else
+                    type="button"
+                    class="btn-small btn-warning"
+                    @click="ensureCampusInvite(game)"
+                  >生成邀请码</button>
+                </template>
+                <span v-else class="text-muted">—</span>
+              </td>
               <td>
                 <span class="badge" :class="gameTypeBadgeClass(game)">{{ gameTypeLabel(game) }}</span>
               </td>
@@ -87,7 +108,7 @@
               </td>
             </tr>
             <tr v-if="expandedGameId === game.id">
-              <td colspan="9">
+              <td colspan="11">
                 <div class="game-divisions-section">
                   <div class="divisions-header">
                     <div class="divisions-title">分组 / 邀请码</div>
@@ -96,7 +117,16 @@
 
                   <div v-if="loadingDivisions[game.id]" class="text-muted">加载中...</div>
                   <div v-else>
-                    <div v-if="!gameDivisions[game.id] || gameDivisions[game.id].length === 0" class="empty-state">暂无分组</div>
+                    <div v-if="!gameDivisions[game.id] || gameDivisions[game.id].length === 0" class="empty-state">
+                      <div>暂无分组</div>
+                      <button
+                        v-if="!game.is_public"
+                        type="button"
+                        class="btn-small btn-warning"
+                        style="margin-top: 8px;"
+                        @click="ensureCampusInvite(game)"
+                      >一键生成校内邀请码</button>
+                    </div>
                     <div v-for="division in (gameDivisions[game.id] || [])" :key="division.id" class="division-item">
                       <div class="division-meta">
                         <div class="division-name">{{ division.name }}</div>
@@ -153,8 +183,18 @@
             <div class="form-group">
               <label>
                 <input v-model="gameForm.is_public" type="checkbox">
-                公开竞赛
+                公开竞赛（勾选=校外公开赛，免邀请码；取消勾选=校内赛，保存后自动生成邀请码）
               </label>
+              <p v-if="!gameForm.is_public" class="form-hint">
+                校内赛报名需要邀请码。保存后会在列表「校内邀请码」列展示，也可在「显示分组」里查看/复制。
+              </p>
+            </div>
+            <div class="form-group">
+              <label>
+                <input v-model="gameForm.enable_traffic_capture" type="checkbox">
+                启用流量捕获（动态容器经代理写 PCAP，选手须使用 connection_url）
+              </label>
+              <p class="form-hint">开启后，本赛事动态容器题启动时自动抓包，可在「流量捕获」页下载。</p>
             </div>
           </div>
           <div class="modal-footer">
@@ -416,7 +456,7 @@
               <div class="form-group">
                 <label>
                   <input v-model="challengeForm.enable_traffic_capture" type="checkbox">
-                  启用流量捕获（选手须使用 connection_url）
+                  本题标记流量捕获（实际以赛事「启用流量捕获」为准）
                 </label>
               </div>
             </div>
@@ -628,10 +668,14 @@
 
     <div v-show="activeTab === 'teams'" class="tab-content">
       <div class="card">
-        <div class="card-header" style="align-items:center; gap:12px;">
-          <h3 style="margin:0;">管理端：战队列表</h3>
+        <div class="card-header" style="align-items:center; gap:12px; flex-wrap:wrap;">
+          <h3 style="margin:0;">赛内队伍名单 / 成员干预</h3>
 
-          <div style="margin-left:12px; flex:1; display:flex; gap:12px; align-items:center;">
+          <div style="margin-left:12px; flex:1; display:flex; gap:12px; align-items:center; flex-wrap:wrap;">
+            <select v-model="selectedGameId" class="form-input" style="width:220px;" @change="loadAdminTeams">
+              <option value="">全部队伍（跨赛）</option>
+              <option v-for="g in games" :key="g.id" :value="g.id">{{ g.title }} (#{{ g.id }})</option>
+            </select>
             <input v-model="searchQuery" placeholder="搜索队名、邀请码或成员" class="form-input" style="max-width:360px;" />
             <select v-model.number="pageSize" @change="setPageSize(pageSize)" class="form-input" style="width:120px;">
               <option v-for="s in pageSizes" :key="s" :value="s">每页 {{ s }}</option>
@@ -644,31 +688,61 @@
           </div>
         </div>
 
+        <p class="form-hint" style="margin: 8px 0 12px;">
+          本页是运维后台的赛内管理名单（选手端不可见）。请先选择比赛，再展开队伍处理进错队：踢出 / 转队 / 取消本赛报名。
+        </p>
+
         <table class="data-table">
           <thead>
             <tr>
               <th>ID</th>
               <th>队伍名</th>
+              <th>组织</th>
               <th>邀请码</th>
-              <th>成员数</th>
-              <th>成员列表</th>
+              <th>成员</th>
               <th>操作</th>
             </tr>
           </thead>
           <tbody>
-            <tr v-for="t in adminTeams" :key="t.id">
-              <td>{{ t.id }}</td>
-              <td>{{ t.name }}</td>
-              <td>{{ t.invite_code }}</td>
-              <td>{{ t.members.length }}</td>
-              <td>
-                <div v-for="m in t.members" :key="m.id">{{ m.nickname || m.email }}</div>
-              </td>
-              <td>
-                <button class="btn-small btn-danger" @click="deleteAdminTeam(t.id)">删除</button>
-              </td>
-            </tr>
-            <tr v-if="adminTeams.length === 0">
+            <template v-for="t in paginatedAdminTeams()" :key="t.id">
+              <tr>
+                <td>{{ t.id }}</td>
+                <td>{{ t.name }}</td>
+                <td>{{ t.school || '无组织' }}</td>
+                <td><code class="code-pill">{{ t.invite_code || '-' }}</code></td>
+                <td>{{ (t.members || []).length }} 人</td>
+                <td>
+                  <button class="btn-small btn-info" @click="toggleTeamMembers(t.id)">
+                    {{ expandedTeamId === t.id ? '收起成员' : '展开成员' }}
+                  </button>
+                  <button class="btn-small btn-danger" @click="deleteAdminTeam(t.id)">解散队伍</button>
+                </td>
+              </tr>
+              <tr v-if="expandedTeamId === t.id">
+                <td colspan="6">
+                  <div class="game-divisions-section">
+                    <div class="divisions-title">成员干预</div>
+                    <div v-if="!(t.members || []).length" class="empty-state">暂无成员</div>
+                    <div v-for="m in (t.members || [])" :key="m.id" class="division-item">
+                      <div class="division-meta">
+                        <div class="division-name">{{ m.nickname || m.username || m.email || ('用户#' + m.id) }}</div>
+                        <div class="division-sub">UID {{ m.id }} · {{ m.email || '-' }}</div>
+                      </div>
+                      <div class="division-actions">
+                        <button class="btn-small btn-warning" @click="transferAdminMember(m, t)">转到其他队</button>
+                        <button class="btn-small btn-danger" @click="kickAdminMember(m, t, false)">踢出队伍</button>
+                        <button
+                          v-if="selectedGameId"
+                          class="btn-small"
+                          @click="kickAdminMember(m, t, true)"
+                        >取消本赛报名</button>
+                      </div>
+                    </div>
+                  </div>
+                </td>
+              </tr>
+            </template>
+            <tr v-if="paginatedAdminTeams().length === 0">
               <td colspan="6" class="empty-state">暂无队伍</td>
             </tr>
           </tbody>
@@ -749,6 +823,7 @@ export default {
       loading: false,
 
       adminTeams: [],
+      expandedTeamId: null,
       searchQuery: '',
       page: 1,
       pageSize: 10,
@@ -766,6 +841,8 @@ export default {
   watch: {
     activeTab() { this.onActiveTabChanged(); },
     selectedGameId(newVal) {
+      if (this.activeTab === 'teams') this.loadAdminTeams();
+
       if (!newVal) {
         this.challenges = [];
         return;
@@ -817,8 +894,9 @@ export default {
 
     async loadAdminTeams() {
       try {
-        // JWT 仅在 HttpOnly Cookie；必须 credentials:include（ctfAdmin/authFetch）
-        const res = await ctfAdmin.listTeams()
+        const opts = {}
+        if (this.selectedGameId) opts.game_id = this.selectedGameId
+        const res = await ctfAdmin.listTeams(opts)
         let data = null
         try {
           data = await res.json()
@@ -829,7 +907,63 @@ export default {
         }
         this.adminTeams = data.teams || data.data?.teams || []
         this.page = 1
+        this.expandedTeamId = null
       } catch (e) { console.error('加载管理员队伍失败', e); this.adminTeams = []; }
+    },
+
+    toggleTeamMembers(teamId) {
+      this.expandedTeamId = this.expandedTeamId === teamId ? null : teamId
+    },
+
+    async kickAdminMember(member, team, onlyGame) {
+      const label = member.nickname || member.username || member.email || member.id
+      const tip = onlyGame
+        ? `确认取消「${label}」在本场比赛的报名？（仍留在队伍 ${team.name}）`
+        : `确认将「${label}」踢出队伍「${team.name}」？`
+      if (!confirm(tip)) return
+      try {
+        const payload = {}
+        if (onlyGame && this.selectedGameId) payload.game_id = Number(this.selectedGameId)
+        const res = await ctfAdmin.kickTeamMember(member.id, payload)
+        const parsed = await parseJsonResponse(res)
+        if (isApiSuccess(parsed)) {
+          this.message.success(parsed.data?.msg || '已处理')
+          await this.loadAdminTeams()
+        } else {
+          this.message.error(apiErrorFromPayload(parsed.data, '操作失败'))
+        }
+      } catch (e) {
+        this.message.error(e.message || '操作失败')
+      }
+    },
+
+    async transferAdminMember(member, fromTeam) {
+      const label = member.nickname || member.username || member.email || member.id
+      const raw = prompt(
+        `把「${label}」从「${fromTeam.name}」转到哪支队伍？\n请输入目标队伍 ID，或粘贴目标队邀请码：`,
+      )
+      if (raw == null) return
+      const value = String(raw).trim()
+      if (!value) {
+        this.message.warning('未输入目标队伍')
+        return
+      }
+      const payload = {}
+      if (/^\d+$/.test(value)) payload.team_id = Number(value)
+      else payload.invite_code = value
+      if (this.selectedGameId) payload.game_id = Number(this.selectedGameId)
+      try {
+        const res = await ctfAdmin.transferTeamMember(member.id, payload)
+        const parsed = await parseJsonResponse(res)
+        if (isApiSuccess(parsed)) {
+          this.message.success(parsed.data?.msg || '已转移')
+          await this.loadAdminTeams()
+        } else {
+          this.message.error(apiErrorFromPayload(parsed.data, '转移失败'))
+        }
+      } catch (e) {
+        this.message.error(e.message || '转移失败')
+      }
     },
 
     async deleteAdminTeam(teamId) {
@@ -1082,7 +1216,7 @@ export default {
 
     async editGame(game) {
       this.editingGame = game;
-      this.gameForm = { title: game.title, start_time: game.start_time, end_time: game.end_time, is_public: game.is_public, game_type: game.game_type || 'official' };
+      this.gameForm = { title: game.title, start_time: game.start_time, end_time: game.end_time, is_public: game.is_public, game_type: game.game_type || 'official', enable_traffic_capture: !!game.enable_traffic_capture };
       this.showCreateGameModal = true;
     },
 
@@ -1122,7 +1256,8 @@ export default {
           start_time: this.gameForm.start_time,
           end_time: this.gameForm.end_time,
           is_public: !!this.gameForm.is_public,
-          game_type: this.gameForm.game_type || 'official'
+          game_type: this.gameForm.game_type || 'official',
+          enable_traffic_capture: !!this.gameForm.enable_traffic_capture,
         };
         let res;
         if (this.editingGame && this.editingGame.id) {
@@ -1132,16 +1267,43 @@ export default {
         }
         const parsed = await parseJsonResponse(res);
         if (isApiSuccess(parsed)) {
+          const saved = (parsed.data && parsed.data.data) || parsed.data || {};
+          const code = saved.primary_invite_code;
           this.showCreateGameModal = false;
           this.editingGame = null;
           this.gameForm = this.getEmptyGameForm();
           await this.loadGames();
-          this.message.success('已保存');
+          if (code) {
+            this.message.success(`已保存。校内邀请码：${code}（可在列表中复制）`);
+          } else {
+            this.message.success('已保存');
+          }
         } else {
           this.message.error(apiErrorFromPayload(parsed.data, '保存失败'));
         }
       } catch (e) {
         this.message.error(e.message || '保存失败');
+      }
+    },
+
+    async ensureCampusInvite(game) {
+      if (!game || !game.id) return;
+      try {
+        const res = await ctfAdmin.ensureCampusInvite(game.id);
+        const parsed = await parseJsonResponse(res);
+        if (isApiSuccess(parsed)) {
+          const saved = (parsed.data && parsed.data.data) || parsed.data || {};
+          const code = saved.primary_invite_code;
+          await this.loadGames();
+          if (this.expandedGameId === game.id) {
+            await this.loadGameDivisions(game.id);
+          }
+          this.message.success(code ? `校内邀请码：${code}` : '已处理');
+        } else {
+          this.message.error(apiErrorFromPayload(parsed.data, '生成失败'));
+        }
+      } catch (e) {
+        this.message.error(e.message || '生成失败');
       }
     },
 
@@ -1548,7 +1710,7 @@ export default {
       return map[type] || '未知类型';
     },
 
-    getEmptyGameForm() { return { title: '', start_time: '', end_time: '', is_public: true, game_type: 'official' }; },
+    getEmptyGameForm() { return { title: '', start_time: '', end_time: '', is_public: true, game_type: 'official', enable_traffic_capture: false }; },
     gameTypeLabel(game) {
       const t = (game && game.game_type) || 'official';
       if (game && game.is_ephemeral) return '探针';
@@ -2247,6 +2409,18 @@ export default {
   padding: var(--fib-21);
 }
 
+.invite-code-cell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.form-hint {
+  margin: 8px 0 0;
+  font-size: 12px;
+  color: var(--muted, #9ca3af);
+  line-height: 1.5;
+}
 .game-divisions-section {
   background: rgba(255, 255, 255, 0.03);
   border: 1px solid rgba(255, 255, 255, 0.08);

@@ -11,7 +11,7 @@
         <div ref="listRef" class="hammer-messages">
           <div v-if="!messages.length && !loading" class="empty">暂无消息，有问题请在此提</div>
           <div
-            v-for="msg in messages"
+            v-for="msg in visibleMessages"
             :key="msg.id"
             class="hammer-msg"
             :class="{ staff: msg.is_staff, mine: msg.user_id === currentUserId }"
@@ -43,7 +43,7 @@
 </template>
 
 <script>
-import { ref, watch, onMounted, onUnmounted, nextTick } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import { NInput, NButton, NSpin, useMessage } from 'naive-ui'
 import { getHammer, postHammer } from '@/services/challenges'
 import { apiErrorMessage } from '@/utils/apiError'
@@ -70,6 +70,11 @@ export default {
     const listRef = ref(null)
     const currentUserId = ref(null)
     const poll = createVisibilityPoll(() => load(true), POLL_INTERVALS.hammer)
+    // 长会话只渲染最近 120 条，避免消息 DOM 无限膨胀
+    const visibleMessages = computed(() => {
+      const list = messages.value || []
+      return list.length > 120 ? list.slice(-120) : list
+    })
 
     function getUserId() {
       const u = getUser() || {}
@@ -163,7 +168,7 @@ export default {
     onUnmounted(() => poll.stop())
 
     return {
-      messages, loading, sending, draft, listRef, currentUserId,
+      messages, visibleMessages, loading, sending, draft, listRef, currentUserId,
       formatTime, send,
     }
   },

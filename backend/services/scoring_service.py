@@ -124,37 +124,38 @@ class ScoringService:
         blood_level: int = 0
     ) -> Tuple[int, float]:
         """
-        计算血液奖励
-        
-        血液奖励格式（64bit）：(一血 << 20) | (二血 << 10) | 三血
-        每个值范围：0-1023（千分比）
-        默认值：一血5%、二血3%、三血1%
-        
-        Args:
-            base_score: 基础分数
-            blood_bonus_config: 血液奖励配置
-            blood_level: 血液等级 (0=一血, 1=二血, 2=三血)
-            
-        Returns:
-            (加成后分数, 血液倍数)
-            
-        Examples:
-            >>> ScoringService.calculate_blood_bonus(1000, (50 << 20) | (30 << 10) | 10, 0)
-            (1050, 1.05)  # 一血 +5%
+        兼容旧接口：返回「加成后总分」= base + 额外血奖。
+
+        对齐 ret2shell：血奖是基于 initial 的固定额外分（extra），
+        不随动态分衰减而缩放；本题动态分全队共享。
+        """
+        extra, multiplier = ScoringService.calculate_blood_extra(
+            base_score, blood_bonus_config=blood_bonus_config, blood_level=blood_level
+        )
+        return int(base_score) + int(extra), multiplier
+
+    @staticmethod
+    def calculate_blood_extra(
+        initial_or_base: int,
+        blood_bonus_config: int = (50 << 20) | (30 << 10) | 10,
+        blood_level: int = 0,
+    ) -> Tuple[int, float]:
+        """
+        ret2shell 血奖：extra = initial * award_rate / 1000（千分比配置）。
+
+        blood_level: 0=一血, 1=二血, 2=三血
+        返回 (额外分, 1+rate) —— 额外分不随当前动态分变化。
         """
         if blood_level > 2:
-            return base_score, 1.0
+            return 0, 1.0
 
-        # 解析血液奖励配置
         first_blood = (blood_bonus_config >> 20) & 0x3FF
         second_blood = (blood_bonus_config >> 10) & 0x3FF
         third_blood = blood_bonus_config & 0x3FF
-
         blood_values = [first_blood, second_blood, third_blood]
         bonus_rate = blood_values[blood_level] / 1000.0
-        multiplier = 1.0 + bonus_rate
-
-        return int(base_score * multiplier), multiplier
+        extra = int(round(int(initial_or_base or 0) * bonus_rate))
+        return extra, 1.0 + bonus_rate
 
     @staticmethod
     def record_first_solve(
@@ -268,7 +269,11 @@ class ScoringService:
         team_id: Optional[int] = None,
         user_id: Optional[int] = None,
     ) -> int:
-        """基础动态分 + 该队/用户的血奖励（若有）。"""
+        """
+        ret2shell 计分：本题当前动态分（全队共享）+ 固定血奖额外分。
+
+        血奖基于 original_points（initial），不随衰减缩小 —— 与 ret2shell extra 表一致。
+        """
         base = ScoringService.challenge_base_dynamic_score(challenge, accepted_count)
         if getattr(challenge, "disable_blood_bonus", False):
             return base
@@ -280,10 +285,11 @@ class ScoringService:
             blood = q.filter_by(user_id=user_id).first()
         if blood is None:
             return base
-        bonus, _ = ScoringService.calculate_blood_bonus(
-            base, blood_level=int(blood.blood_level or 0)
+        initial = int(getattr(challenge, "original_points", None) or base or 0)
+        extra, _ = ScoringService.calculate_blood_extra(
+            initial, blood_level=int(blood.blood_level or 0)
         )
-        return bonus
+        return int(base) + int(extra)
 
     @staticmethod
     def recalculate_challenge_scores(challenge_id: int) -> int:
@@ -304,15 +310,34 @@ class ScoringService:
             is_correct=True,
         ).all()
 
+        # 预加载血榜，避免 score_with_blood_for_solver 的 N+1
+        blood_by_team: Dict[int, int] = {}
+        blood_by_user: Dict[int, int] = {}
+        if not getattr(challenge, "disable_blood_bonus", False):
+            for b in CtfSolves.query.filter_by(challenge_id=challenge_id).all():
+                if b.blood_level is None:
+                    continue
+                level = int(b.blood_level)
+                if b.team_id is not None:
+                    blood_by_team[int(b.team_id)] = level
+                elif b.user_id is not None:
+                    blood_by_user[int(b.user_id)] = level
+
+        initial = int(getattr(challenge, "original_points", None) or base or 0)
         affected: List[Tuple[int, int, Optional[int]]] = []
         seen_keys = set()
         for sub in submissions:
-            sub.points_earned = ScoringService.score_with_blood_for_solver(
-                challenge,
-                accepted,
-                team_id=sub.team_id,
-                user_id=sub.user_id,
-            )
+            pts = int(base)
+            if not getattr(challenge, "disable_blood_bonus", False):
+                level = None
+                if sub.team_id is not None:
+                    level = blood_by_team.get(int(sub.team_id))
+                elif sub.user_id is not None:
+                    level = blood_by_user.get(int(sub.user_id))
+                if level is not None:
+                    extra, _ = ScoringService.calculate_blood_extra(initial, blood_level=level)
+                    pts = int(base) + int(extra)
+            sub.points_earned = pts
             key = (challenge.game_id, sub.team_id or 0, sub.user_id or 0)
             if key in seen_keys:
                 continue
@@ -339,79 +364,98 @@ class ScoringService:
     ) -> None:
         """
         更新排分表：按队（或用户）已解题目汇总当前 points_earned（含衰减与血）。
+        使用 Redis 队锁 + DB FOR UPDATE，防止同队并发解两题时丢分覆盖。
+        缓存失效交给 after_commit hooks（按 game_id），勿在事务内提前 invalidate。
         """
+        from backend.services.submit_lock import redis_scoreboard_lock
+
         game = CtfGame.query.get(game_id)
         if not game:
             return
 
-        q = (
-            CtfChallengeSubmission.query.filter_by(is_correct=True)
-            .join(CtfChallenge)
-            .filter(CtfChallenge.game_id == game_id)
-        )
-        if team_id:
-            q = q.filter(CtfChallengeSubmission.team_id == team_id)
-        else:
-            q = q.filter(CtfChallengeSubmission.user_id == user_id)
+        from sqlalchemy.exc import IntegrityError
 
-        submissions = q.order_by(CtfChallengeSubmission.submitted_at.asc()).all()
-
-        # 同题只计一次（取该队/用户该题最新正确提交的 points_earned）
-        by_challenge: Dict[int, int] = {}
-        for sub in submissions:
-            by_challenge[sub.challenge_id] = int(sub.points_earned or 0)
-
-        total_points = sum(by_challenge.values())
-        solved_count = len(by_challenge)
-
-        if team_id:
-            scoreboard = CtfScoreboard.query.filter_by(
-                game_id=game_id, team_id=team_id
-            ).first()
-        else:
-            scoreboard = CtfScoreboard.query.filter_by(
-                game_id=game_id, user_id=user_id
-            ).first()
-
-        if scoreboard:
-            scoreboard.total_points = total_points
-            scoreboard.solved_challenges = solved_count
-            scoreboard.user_id = user_id or scoreboard.user_id
-            scoreboard.team_id = team_id if team_id is not None else scoreboard.team_id
-            scoreboard.updated_at = datetime.utcnow()
-        else:
-            scoreboard = CtfScoreboard(
-                game_id=game_id,
-                user_id=user_id,
-                team_id=team_id,
-                total_points=total_points,
-                solved_challenges=solved_count,
+        owner = f"t{team_id}" if team_id else f"u{user_id}"
+        with redis_scoreboard_lock(game_id, owner):
+            q = (
+                CtfChallengeSubmission.query.filter_by(is_correct=True)
+                .join(CtfChallenge)
+                .filter(CtfChallenge.game_id == game_id)
             )
-            db.session.add(scoreboard)
+            if team_id:
+                q = q.filter(CtfChallengeSubmission.team_id == team_id)
+            else:
+                q = q.filter(CtfChallengeSubmission.user_id == user_id)
 
-        last_time = ScoringService.resolve_last_submission_time(game_id, team_id, user_id)
-        if last_time:
-            scoreboard.last_submission_time = last_time
+            submissions = q.order_by(CtfChallengeSubmission.submitted_at.asc()).all()
 
-        db.session.flush()
+            # 同题只计一次（取该队/用户该题最新正确提交的 points_earned）
+            by_challenge: Dict[int, int] = {}
+            for sub in submissions:
+                by_challenge[sub.challenge_id] = int(sub.points_earned or 0)
 
-        try:
-            from backend.services.redis_service import get_redis, ScoreboardCache
-            rs = get_redis()
-            if rs and rs.is_available():
-                ScoreboardCache.invalidate_scoreboard(rs, game_id)
-        except Exception:
-            pass
+            total_points = sum(by_challenge.values())
+            solved_count = len(by_challenge)
+
+            def _load_sb():
+                if team_id:
+                    return (
+                        CtfScoreboard.query.filter_by(game_id=game_id, team_id=team_id)
+                        .with_for_update()
+                        .first()
+                    )
+                return (
+                    CtfScoreboard.query.filter_by(game_id=game_id, user_id=user_id)
+                    .with_for_update()
+                    .first()
+                )
+
+            def _apply(sb):
+                sb.total_points = total_points
+                sb.solved_challenges = solved_count
+                sb.user_id = user_id or sb.user_id
+                sb.team_id = team_id if team_id is not None else sb.team_id
+                sb.updated_at = datetime.utcnow()
+                last_time = ScoringService.resolve_last_submission_time(game_id, team_id, user_id)
+                if last_time:
+                    sb.last_submission_time = last_time
+
+            scoreboard = _load_sb()
+            try:
+                # SAVEPOINT：唯一约束冲突时不毁掉外层提交事务
+                with db.session.begin_nested():
+                    if scoreboard:
+                        _apply(scoreboard)
+                    else:
+                        scoreboard = CtfScoreboard(
+                            game_id=game_id,
+                            user_id=user_id,
+                            team_id=team_id,
+                            total_points=total_points,
+                            solved_challenges=solved_count,
+                        )
+                        db.session.add(scoreboard)
+                        _apply(scoreboard)
+                    db.session.flush()
+            except IntegrityError:
+                scoreboard = _load_sb()
+                if not scoreboard:
+                    raise
+                _apply(scoreboard)
+                db.session.flush()
 
     @staticmethod
     def generate_gzctf_style_timeline(game_id: int, top_n: int = 10) -> Dict:
         """
-        ret2shell 式 ScoreTimeLine：基于事件的快照重演（Snapshot Replay）。
+        全场快照重演（aa26239 满意版）+ 固定血奖 extra。
 
         每个正确提交事件 T：
           1) 统计截至 T 每题唯一解题队数 N
-          2) 用 ret2shell 余弦衰减算 Score(c,T)
-          3) TotalScore_team,T = Σ Score(c,T)（允许相对 T-1 下挫）
+          2) 余弦动态分 Score_dyn(c,T)
+          3) 若该队该题有血：+ fixed_blood_extra(initial, blood_level)
+          4) TotalScore_team,T = Σ (Score_dyn + extra)（允许相对 T-1 下挫）
+
+        与昨天 18:08 版相同：每事件对全场已上场队伍重算绝对总分并写点。
         """
         from collections import defaultdict
 
@@ -428,67 +472,101 @@ class ScoringService:
             .all()
         )
 
-        team_names: Dict[int, str] = {}
-        for sb in CtfScoreboard.query.filter_by(game_id=game_id).all():
-            if not sb.team_id:
+        # 题×队 → blood_level（0/1/2）；血奖基于 initial，不随衰减缩小
+        blood_by_pair: Dict[Tuple[int, int], int] = {}
+        for b in CtfSolves.query.filter_by(game_id=game_id).all():
+            if b.team_id is None or b.blood_level is None:
                 continue
-            t = Team.query.get(sb.team_id)
-            team_names[sb.team_id] = t.name if t else f"Team #{sb.team_id}"
+            if int(b.blood_level) > 2:
+                continue
+            blood_by_pair[(int(b.challenge_id), int(b.team_id))] = int(b.blood_level)
+
+        team_ids = {sb.team_id for sb in CtfScoreboard.query.filter_by(game_id=game_id).all() if sb.team_id}
+        team_ids.update(r.team_id for r in rows if r.team_id)
+        team_names: Dict[int, str] = {}
+        if team_ids:
+            for t in Team.query.filter(Team.id.in_(team_ids)).all():
+                team_names[t.id] = t.name
+            for tid in team_ids:
+                team_names.setdefault(tid, f"Team #{tid}")
 
         solve_counts: Dict[int, int] = {cid: 0 for cid in challenges}
         team_solved: Dict[int, set] = defaultdict(set)
         # timeline_data[team_id] = [[iso, score], ...]
         timeline_data: Dict[int, List] = defaultdict(list)
         prev_score: Dict[int, int] = {}
+        current_dyn: Dict[int, int] = {}
         event_count = 0
         dip_events = 0
 
-        def challenge_score_now(cid: int, count: int) -> int:
-            """ret2shell 余弦衰减：与 challenge_base_dynamic_score 一致。"""
+        def challenge_dyn_score(cid: int, count: int) -> int:
+            """共享余弦动态分（与 challenge_base_dynamic_score 一致）。"""
             ch = challenges.get(cid)
             if not ch or count <= 0:
                 return 0
             return ScoringService.challenge_base_dynamic_score(ch, count)
 
+        def blood_extra_for(team_id: int, solved_cid: int) -> int:
+            ch = challenges.get(solved_cid)
+            if not ch or getattr(ch, "disable_blood_bonus", False):
+                return 0
+            level = blood_by_pair.get((solved_cid, team_id))
+            if level is None:
+                return 0
+            initial = int(getattr(ch, "original_points", None) or 0)
+            extra, _ = ScoringService.calculate_blood_extra(initial, blood_level=level)
+            return int(extra)
+
+        def append_point(team_id: int, timestamp: Optional[str], total_score: int) -> None:
+            nonlocal dip_events
+            prev = prev_score.get(team_id)
+            if prev is not None and total_score < prev:
+                dip_events += 1
+            hist = timeline_data[team_id]
+            if hist and hist[-1][0] == timestamp and hist[-1][1] == total_score:
+                prev_score[team_id] = int(total_score)
+                return
+            hist.append([timestamp, int(total_score)])
+            prev_score[team_id] = int(total_score)
+
+        # 预去重：只保留每队每题最早 AC，减少全表扫描后的空转
+        deduped_rows = []
+        seen_ac = set()
         for sub in rows:
             tid = sub.team_id
             cid = sub.challenge_id
             if not tid or cid not in challenges:
                 continue
-            if tid not in team_names:
-                t = Team.query.get(tid)
-                team_names[tid] = t.name if t else f"Team #{tid}"
-
-            # 同队同题重复 AC：不推进
-            if cid in team_solved[tid]:
+            key = (int(tid), int(cid))
+            if key in seen_ac:
                 continue
+            seen_ac.add(key)
+            deduped_rows.append(sub)
 
+        for sub in deduped_rows:
+            tid = int(sub.team_id)
+            cid = int(sub.challenge_id)
+            team_names.setdefault(tid, f"Team #{tid}")
+
+            # 增量重演：仅更新受本题动态分变化影响的队伍，避免 O(事件×队伍×已解)
+            already = {t for t, solved in team_solved.items() if cid in solved}
+            old_val = int(current_dyn.get(cid, 0))
             team_solved[tid].add(cid)
-            solvers = {t for t, solved in team_solved.items() if cid in solved}
-            solve_counts[cid] = len(solvers)
+            solve_counts[cid] = len(already) + 1
+            new_val = int(challenge_dyn_score(cid, solve_counts[cid]))
+            current_dyn[cid] = new_val
+            delta = new_val - old_val
             event_count += 1
-
             timestamp = sub.submitted_at.isoformat() if sub.submitted_at else None
 
-            current_challenge_scores: Dict[int, int] = {}
-            for solved_cid, count in solve_counts.items():
-                if count <= 0:
-                    continue
-                current_challenge_scores[solved_cid] = challenge_score_now(solved_cid, count)
+            for other_tid in already:
+                total_score = int(prev_score.get(other_tid, 0)) + delta
+                append_point(other_tid, timestamp, total_score)
 
-            # 结算全场已上场队伍绝对总分（允许下挫，禁止 Math.max 防降）
-            for team_id, solved_set in team_solved.items():
-                total_score = sum(
-                    current_challenge_scores.get(c, 0) for c in solved_set
-                )
-                prev = prev_score.get(team_id)
-                if prev is not None and total_score < prev:
-                    dip_events += 1
-                hist = timeline_data[team_id]
-                if hist and hist[-1][0] == timestamp and hist[-1][1] == total_score:
-                    continue
-                hist.append([timestamp, int(total_score)])
-                prev_score[team_id] = int(total_score)
+            solver_total = (
+                int(prev_score.get(tid, 0)) + new_val + blood_extra_for(tid, cid)
+            )
+            append_point(tid, timestamp, solver_total)
 
         # TopN：按重演峰值优先（露出早解断崖），终局分次之
         peak_score = {
@@ -542,9 +620,9 @@ class ScoringService:
             for tid in sorted(team_names.keys())
         ]
 
-        # 全量 timeline_data 供队伍页 / 前端重演；series 仍只取 TopN 画图
         timeline_map = {str(tid): pts for tid, pts in timeline_data.items()}
 
+        game = CtfGame.query.get(game_id)
         return {
             "series": series,
             "timeline_data": timeline_map,
@@ -552,15 +630,17 @@ class ScoringService:
             "team_count": len(team_solved),
             "challenges": challenges_payload,
             "submissions": submissions_payload,
+            "game_start": game.start_time.isoformat() if game and game.start_time else None,
+            "game_end": game.end_time.isoformat() if game and game.end_time else None,
             "algorithm": "ret2shell_snapshot_replay",
             "events": event_count,
             "dip_events": dip_events,
-            "score_formula": "ret2shell_cosine",
+            "score_formula": "ret2shell_cosine+fixed_blood_extra",
         }
 
     @staticmethod
     def build_decay_timeline(game_id: int, top_n: int = 10) -> Dict:
-        """兼容别名 → GZCTF Snapshot Replay。"""
+        """兼容别名 → Snapshot Replay。"""
         return ScoringService.generate_gzctf_style_timeline(game_id, top_n=top_n)
 
     @staticmethod
@@ -571,7 +651,13 @@ class ScoringService:
             rs = get_redis()
             if rs and rs.is_available():
                 cached = ScoreboardCache.get_cached_timeline(rs, game_id)
-                if cached and isinstance(cached, dict) and cached.get("series") is not None:
+                if (
+                    cached
+                    and isinstance(cached, dict)
+                    and cached.get("series") is not None
+                    and cached.get("algorithm") == "ret2shell_snapshot_replay"
+                    and cached.get("score_formula") == "ret2shell_cosine+fixed_blood_extra"
+                ):
                     out = dict(cached)
                     out["from_cache"] = True
                     return out
@@ -625,63 +711,132 @@ class ScoringService:
     @staticmethod
     def calculate_rankings(game_id: int) -> List[Dict]:
         """
-        计算排名
-        
+        计算排名（批量查询，避免 N+1）
+
         排序规则：
         1. 总分（降序）
         2. 最后一次正确提交时间（升序）
         3. 提交次数（升序）
         """
+        from sqlalchemy import func
+
         scoreboards = CtfScoreboard.query.filter_by(game_id=game_id).all()
+        if not scoreboards:
+            return []
+
+        user_ids = {sb.user_id for sb in scoreboards if sb.user_id}
+        team_ids = {sb.team_id for sb in scoreboards if sb.team_id}
+
+        users = {
+            u.id: u for u in User.query.filter(User.id.in_(user_ids)).all()
+        } if user_ids else {}
+        teams = {
+            t.id: t for t in Team.query.filter(Team.id.in_(team_ids)).all()
+        } if team_ids else {}
+
+        # 正确提交：最后时间 + 总提交次数 批量聚合
+        last_correct_by_team = {}
+        last_correct_by_user = {}
+        count_by_team = {}
+        count_by_user = {}
+
+        if team_ids:
+            last_rows = (
+                db.session.query(
+                    CtfChallengeSubmission.team_id,
+                    func.max(CtfChallengeSubmission.submitted_at),
+                )
+                .filter(
+                    CtfChallengeSubmission.game_id == game_id,
+                    CtfChallengeSubmission.is_correct.is_(True),
+                    CtfChallengeSubmission.team_id.in_(team_ids),
+                )
+                .group_by(CtfChallengeSubmission.team_id)
+                .all()
+            )
+            last_correct_by_team = {tid: ts for tid, ts in last_rows if tid}
+
+            cnt_rows = (
+                db.session.query(
+                    CtfChallengeSubmission.team_id,
+                    func.count(CtfChallengeSubmission.id),
+                )
+                .filter(
+                    CtfChallengeSubmission.game_id == game_id,
+                    CtfChallengeSubmission.team_id.in_(team_ids),
+                )
+                .group_by(CtfChallengeSubmission.team_id)
+                .all()
+            )
+            count_by_team = {tid: int(n or 0) for tid, n in cnt_rows if tid}
+
+        if user_ids:
+            last_rows = (
+                db.session.query(
+                    CtfChallengeSubmission.user_id,
+                    func.max(CtfChallengeSubmission.submitted_at),
+                )
+                .filter(
+                    CtfChallengeSubmission.game_id == game_id,
+                    CtfChallengeSubmission.is_correct.is_(True),
+                    CtfChallengeSubmission.user_id.in_(user_ids),
+                )
+                .group_by(CtfChallengeSubmission.user_id)
+                .all()
+            )
+            last_correct_by_user = {uid: ts for uid, ts in last_rows if uid}
+
+            cnt_rows = (
+                db.session.query(
+                    CtfChallengeSubmission.user_id,
+                    func.count(CtfChallengeSubmission.id),
+                )
+                .filter(
+                    CtfChallengeSubmission.game_id == game_id,
+                    CtfChallengeSubmission.user_id.in_(user_ids),
+                )
+                .group_by(CtfChallengeSubmission.user_id)
+                .all()
+            )
+            count_by_user = {uid: int(n or 0) for uid, n in cnt_rows if uid}
 
         rankings = []
         for sb in scoreboards:
             if sb.user_id:
-                user = User.query.get(sb.user_id)
+                user = users.get(sb.user_id)
                 username = user.username if user else 'Unknown'
-                last_submission = CtfChallengeSubmission.query.filter_by(
-                    user_id=sb.user_id,
-                    is_correct=True,
-                ).order_by(CtfChallengeSubmission.submitted_at.desc()).first()
-                submission_count = CtfChallengeSubmission.query.filter_by(
-                    user_id=sb.user_id,
-                ).count()
+                last_submission = last_correct_by_user.get(sb.user_id) or sb.last_submission_time
+                submission_count = count_by_user.get(sb.user_id, 0)
             else:
-                team = Team.query.get(sb.team_id) if sb.team_id else None
+                team = teams.get(sb.team_id) if sb.team_id else None
                 username = team.name if team else f'Team #{sb.team_id}'
-                last_submission = CtfChallengeSubmission.query.filter_by(
-                    team_id=sb.team_id,
-                    is_correct=True,
-                ).join(CtfChallenge).filter_by(game_id=game_id).order_by(
-                    CtfChallengeSubmission.submitted_at.desc()
-                ).first()
-                submission_count = CtfChallengeSubmission.query.filter_by(
-                    team_id=sb.team_id,
-                ).join(CtfChallenge).filter_by(game_id=game_id).count()
+                last_submission = (
+                    last_correct_by_team.get(sb.team_id)
+                    or sb.last_submission_time
+                )
+                submission_count = count_by_team.get(sb.team_id, 0) if sb.team_id else 0
 
             rankings.append({
                 'user_id': sb.user_id,
                 'username': username,
                 'total_points': sb.total_points,
                 'solved_challenges': sb.solved_challenges,
-                'last_submission_time': last_submission.submitted_at if last_submission else None,
+                'last_submission_time': last_submission,
                 'submission_count': submission_count,
                 'team_id': sb.team_id
             })
 
-        # 按排序规则排序
         rankings.sort(
             key=lambda x: (
-                -x['total_points'],  # 降序
-                x['last_submission_time'] or datetime.max,  # 升序
-                x['submission_count']  # 升序
+                -(x['total_points'] or 0),
+                x['last_submission_time'] or datetime.max,
+                x['submission_count'] or 0,
             )
         )
-
-        # 添加排名
-        for rank, item in enumerate(rankings, 1):
-            item['rank'] = rank
-
+        for idx, row in enumerate(rankings, 1):
+            row['rank'] = idx
+            if row['last_submission_time'] and hasattr(row['last_submission_time'], 'isoformat'):
+                row['last_submission_time'] = row['last_submission_time'].isoformat()
         return rankings
 
 

@@ -247,8 +247,8 @@ class ScoreboardCache:
     """排行榜缓存（含 GZCTF 式 Timeline 快照）"""
     
     CACHE_KEY_PREFIX = "scoreboard"
-    CACHE_EXPIRATION = 300  # 5分钟
-    TIMELINE_EXPIRATION = 120  # Timeline 提交后更快失效/刷新
+    CACHE_EXPIRATION = 60  # 1 分钟：配合前端 30s 可见性轮询；提交仍走 invalidate
+    TIMELINE_EXPIRATION = 90  # Timeline 重算更重，略长于排行榜
     
     @staticmethod
     def get_cache_key(game_id: int, team_id: Optional[int] = None) -> str:

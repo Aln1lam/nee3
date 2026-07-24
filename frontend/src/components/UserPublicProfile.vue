@@ -90,7 +90,16 @@ import { useRoute } from 'vue-router'
 import { parseMarkdownSafe } from '../utils/markdown'
 import { NAvatar, NTag, NSelect } from 'naive-ui'
 import { MatrixShell } from '@/components/shared'
-import * as echarts from 'echarts'
+import { rafThrottle } from '@/utils/polling'
+import * as echarts from 'echarts/core'
+import { LineChart, PieChart } from 'echarts/charts'
+import {
+  GridComponent,
+  TooltipComponent,
+  LegendComponent,
+} from 'echarts/components'
+import { CanvasRenderer } from 'echarts/renderers'
+echarts.use([LineChart, PieChart, GridComponent, TooltipComponent, LegendComponent, CanvasRenderer])
 
 export default {
   name: 'UserPublicProfile',
@@ -184,10 +193,10 @@ export default {
       }
     }
 
-    function onResize() {
+    const onResize = rafThrottle(() => {
       categoryChart?.resize()
       timelineChart?.resize()
-    }
+    })
 
     async function load() {
       if (!userId.value) return
@@ -209,9 +218,12 @@ export default {
       window.addEventListener('resize', onResize)
     })
     onUnmounted(() => {
+      onResize.cancel?.()
       window.removeEventListener('resize', onResize)
-      categoryChart?.dispose()
-      timelineChart?.dispose()
+      try { categoryChart?.dispose() } catch { /* ignore */ }
+      try { timelineChart?.dispose() } catch { /* ignore */ }
+      categoryChart = null
+      timelineChart = null
     })
     watch(userId, load)
 

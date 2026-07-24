@@ -188,12 +188,27 @@ def register_error_handlers(app) -> None:
     
     @app.errorhandler(500)
     def internal_server_error(error):
-        """处理 500 Internal Server Error"""
+        """处理 500 Internal Server Error — 永不向客户端回传 traceback"""
         body, code = ErrorHandler.create_error_response(
             500,
             'An unexpected error occurred'
         )
         ErrorHandler.log_error(500, error)
+        return jsonify(body), code
+
+    @app.errorhandler(Exception)
+    def unhandled_exception(error):
+        """兜底：生产环境绝对不把栈 / SQL 细节写进响应体。"""
+        from werkzeug.exceptions import HTTPException
+
+        if isinstance(error, HTTPException):
+            # 保留 Flask/Werkzeug 的标准 HTTP 错误
+            return error
+        ErrorHandler.log_error(500, error)
+        body, code = ErrorHandler.create_error_response(
+            500,
+            'An unexpected error occurred'
+        )
         return jsonify(body), code
     
     logger.info("Error handlers registered")

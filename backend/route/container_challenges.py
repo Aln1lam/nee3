@@ -307,7 +307,7 @@ def start_container(challenge_id):
     except Exception as e:
         db.session.rollback()
         logger.error(f"启动容器异常: {str(e)}")
-        return jsonify({"success": False, "message": str(e)}), 500
+        return jsonify({"success": False, "message": "服务器内部错误"}), 500
 
 
 # ======================== 容器停止 ========================
@@ -393,7 +393,7 @@ def stop_container(instance_id):
     except Exception as e:
         db.session.rollback()
         logger.error(f"停止容器异常: {str(e)}")
-        return jsonify({"success": False, "message": str(e)}), 500
+        return jsonify({"success": False, "message": "服务器内部错误"}), 500
 
 
 # ======================== 获取容器状态 ========================
@@ -502,7 +502,7 @@ def get_container_status(challenge_id):
 
     except Exception as e:
         logger.error(f"获取容器状态异常: {str(e)}")
-        return jsonify({"success": False, "message": str(e)}), 500
+        return jsonify({"success": False, "message": "服务器内部错误"}), 500
 
 
 # ======================== 获取容器实例 ========================
@@ -568,7 +568,7 @@ def get_container_instance(challenge_id):
 
     except Exception as e:
         logger.error(f"获取容器实例异常: {str(e)}")
-        return jsonify({"success": False, "message": str(e)}), 500
+        return jsonify({"success": False, "message": "服务器内部错误"}), 500
 
 
 # ======================== 容器时间扩展 ========================
@@ -629,7 +629,7 @@ def extend_container(instance_id):
     except Exception as e:
         db.session.rollback()
         logger.error(f"扩展容器异常: {str(e)}")
-        return jsonify({"success": False, "message": str(e)}), 500
+        return jsonify({"success": False, "message": "服务器内部错误"}), 500
 
 
 # ======================== 容器Flag提交 ========================
@@ -712,7 +712,8 @@ def debug_instance(instance_id):
                 result["container_status"] = "not_found"
                 result["error"] = "Container not found in Docker"
             except Exception as e:
-                result["container_error"] = str(e)
+                logger.warning("debug container inspect failed: %s", e)
+                result["container_error"] = "inspect_failed"
 
         challenge = CtfChallenge.query.get(instance.challenge_id)
         if challenge:
@@ -729,12 +730,10 @@ def debug_instance(instance_id):
         }), 200
         
     except Exception as e:
-        logger.error(f"调试实例异常: {str(e)}")
-        import traceback
-        traceback.print_exc()
+        logger.exception("调试实例异常: %s", e)
         return jsonify({
             "success": False,
-            "message": str(e)
+            "message": "调试失败"
         }), 500
 
 

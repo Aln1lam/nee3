@@ -25,7 +25,7 @@
 
 /* ========== 统一按钮样式规范 ========== */
 /* 标准按钮尺寸 */
-button:not(.icon-btn):not(.month-header):not(.carousel-dots button):not(.pagination button):not(.sidebar-item):not(.sidebar-nav-row):not(.game-list-item):not(.sidebar-collapse-trigger):not(.sidebar-toggle) {
+button:not(.icon-btn):not(.month-header):not(.carousel-dots button):not(.pagination button):not(.sidebar-item):not(.sidebar-nav-row):not(.game-list-item):not(.sidebar-collapse-trigger):not(.sidebar-toggle):not(.choose-card):not(.form-back):not(.teams-banner-cta):not(.sidebar-link):not(.game-layout-back) {
   padding: 8px 16px;
   font-size: 14px;
   border-radius: var(--card-radius);

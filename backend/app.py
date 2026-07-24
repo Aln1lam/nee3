@@ -246,6 +246,8 @@ def create_app():
             ("participation", "updated_at", "ALTER TABLE participation ADD COLUMN updated_at DATETIME NULL"),
             ("ctf_game_instance", "dynamic_flag", "ALTER TABLE ctf_game_instance ADD COLUMN dynamic_flag VARCHAR(512) NULL"),
             ("ctf_game", "team_hash_salt", "ALTER TABLE ctf_game ADD COLUMN team_hash_salt VARCHAR(128) NULL"),
+            ("team", "school", "ALTER TABLE team ADD COLUMN school VARCHAR(128) NULL"),
+            ("team", "tag", "ALTER TABLE team ADD COLUMN tag VARCHAR(64) NULL"),
             ("ctf_game", "description", "ALTER TABLE ctf_game ADD COLUMN description TEXT NULL"),
             ("ctf_game", "game_type", "ALTER TABLE ctf_game ADD COLUMN game_type VARCHAR(32) DEFAULT 'official'"),
             ("ctf_game", "archived_at", "ALTER TABLE ctf_game ADD COLUMN archived_at DATETIME NULL"),
@@ -456,6 +458,98 @@ def create_app():
                 app.logger.warning(f"correct submit unique index ensure failed: {e}")
 
         _ensure_correct_submit_unique()
+
+        def _ensure_scoreboard_unique():
+            """清理重复榜行后加 UNIQUE(game_id, team_id)，堵住并发双行。"""
+            try:
+                q = text(
+                    "SELECT COUNT(*) FROM information_schema.STATISTICS "
+                    "WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'ctf_scoreboard' "
+                    "AND INDEX_NAME = 'uq_sb_game_team'"
+                )
+                exists = bool(extensions.db.session.execute(q).scalar())
+                if exists:
+                    return
+                # 同赛同队保留 total_points 最高、其次 id 最小的一行
+                extensions.db.session.execute(text("""
+                    DELETE s FROM ctf_scoreboard s
+                    INNER JOIN ctf_scoreboard s2
+                      ON s.game_id = s2.game_id
+                     AND s.team_id = s2.team_id
+                     AND s.team_id IS NOT NULL
+                     AND (
+                          s.total_points < s2.total_points
+                       OR (s.total_points = s2.total_points AND s.id > s2.id)
+                     )
+                """))
+                extensions.db.session.execute(text(
+                    "CREATE UNIQUE INDEX uq_sb_game_team "
+                    "ON ctf_scoreboard (game_id, team_id)"
+                ))
+                extensions.db.session.commit()
+                app.logger.info("Created unique index uq_sb_game_team on ctf_scoreboard")
+            except Exception as e:
+                extensions.db.session.rollback()
+                app.logger.warning(f"scoreboard unique index ensure failed: {e}")
+
+        _ensure_scoreboard_unique()
+
+        def _ensure_perf_indexes():
+            """高频查询索引：submissions / scoreboard，避免全表扫描。"""
+            indexes = [
+                (
+                    "ctf_challenge_submission",
+                    "idx_sub_game_correct_time",
+                    "(game_id, is_correct, submitted_at)",
+                ),
+                (
+                    "ctf_challenge_submission",
+                    "idx_sub_game_team",
+                    "(game_id, team_id)",
+                ),
+                (
+                    "ctf_challenge_submission",
+                    "idx_sub_challenge_correct",
+                    "(challenge_id, is_correct)",
+                ),
+                (
+                    "ctf_challenge_submission",
+                    "idx_sub_team_correct_time",
+                    "(team_id, is_correct, submitted_at)",
+                ),
+                (
+                    "ctf_scoreboard",
+                    "idx_sb_game_points_time",
+                    "(game_id, total_points, last_submission_time)",
+                ),
+                (
+                    "ctf_scoreboard",
+                    "idx_sb_game_team",
+                    "(game_id, team_id)",
+                ),
+            ]
+            for table, name, cols in indexes:
+                try:
+                    q = text(
+                        "SELECT COUNT(*) FROM information_schema.STATISTICS "
+                        "WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = :t "
+                        "AND INDEX_NAME = :n"
+                    )
+                    exists = bool(
+                        extensions.db.session.execute(q, {"t": table, "n": name}).scalar()
+                    )
+                    if exists:
+                        continue
+                    extensions.db.session.execute(
+                        text(f"CREATE INDEX {name} ON {table} {cols}")
+                    )
+                    extensions.db.session.commit()
+                    app.logger.info(f"Created index {name} on {table}")
+                except Exception as e:
+                    extensions.db.session.rollback()
+                    app.logger.debug(f"perf index {name} ensure skipped: {e}")
+
+        _ensure_perf_indexes()
 
     try:
         with app.app_context():

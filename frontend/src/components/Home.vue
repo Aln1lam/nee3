@@ -219,6 +219,7 @@
 
 <script>
 import { ref, onMounted, onUnmounted, inject, computed, nextTick } from 'vue'
+import { createVisibilityPoll } from '@/utils/polling'
 import { useRouter } from 'vue-router'
 import { fetchSession, getUser } from '@/services/auth'
 import { useCollapsibleSidebar } from '../composables/useCollapsibleSidebar'
@@ -275,11 +276,11 @@ export default {
       } catch (e) {
         fetchExternalEvents()
       }
-      countdownTimer = setInterval(tickHeroCountdown, 1000)
+      countdownPoll.start()
       window.addEventListener('neepu_user_refreshed', refreshUserData)
     })
     onUnmounted(() => {
-      if (countdownTimer) { clearInterval(countdownTimer); countdownTimer = null }
+      countdownPoll.stop()
       window.removeEventListener('neepu_user_refreshed', refreshUserData)
     })
     
@@ -311,7 +312,6 @@ export default {
 
     const featuredGame = ref(null)
     const heroCountdown = ref('')
-    let countdownTimer = null
 
     function formatCountdown(ms) {
       if (ms <= 0) return '00:00:00'
@@ -346,6 +346,9 @@ export default {
         heroCountdown.value = g.summary || g.description || '点击查看赛事详情'
       }
     }
+
+    const countdownPoll = createVisibilityPoll(() => { tickHeroCountdown() }, 1000)
+
 
     const platformGames = ref([])
 
@@ -915,9 +918,7 @@ html .home-page .home-surface {
 }
 .home-page .home-surface:hover {
   border-color: rgba(var(--primary-rgb), 0.42);
-  box-shadow:
-    var(--gradient-card-shadow),
-    0 0 0 1px rgba(var(--primary-rgb), 0.2);
+  box-shadow: var(--gradient-card-shadow-hover);
 }
 
 /* 主面板顶栏亮条 + 块面阴影（避开全局 [class*=card]） */

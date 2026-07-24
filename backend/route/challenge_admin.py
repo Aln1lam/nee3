@@ -140,10 +140,9 @@ def create_challenge(game_id):
         }), 200
     except Exception as e:
         db.session.rollback()
-        import traceback
-        error_msg = f"{str(e)}\n{traceback.format_exc()}"
-        print(f"Error creating challenge: {error_msg}")
-        return jsonify({"code": 500, "msg": str(e), "error": error_msg}), 500
+        import logging
+        logging.getLogger(__name__).exception("create challenge failed: %s", e)
+        return jsonify({"code": 500, "msg": "题目创建失败"}), 500
 
 
 @bp.route("/games/<int:game_id>/challenges/<int:challenge_id>", methods=["GET"])
@@ -363,10 +362,9 @@ def get_admin_challenges(game_id):
             "data": data
         }), 200
     except Exception as e:
-        import traceback
-        error_msg = f"{str(e)}\n{traceback.format_exc()}"
-        print(f"Error in get_admin_challenges: {error_msg}")
-        return jsonify({"code": 500, "msg": str(e), "error": error_msg}), 500
+        import logging
+        logging.getLogger(__name__).exception("get_admin_challenges failed: %s", e)
+        return jsonify({"code": 500, "msg": "获取题目列表失败"}), 500
 
 
 @bp.route("/games/<int:game_id>/challenges-stats", methods=["GET"])

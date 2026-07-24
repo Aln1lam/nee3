@@ -71,3 +71,46 @@ def correct_submission_dedupe_key(challenge_id: int, user) -> Optional[str]:
     if getattr(user, "team_id", None):
         return f"c{challenge_id}:t{user.team_id}"
     return f"c{challenge_id}:u{getattr(user, 'id', 0)}"
+
+
+@contextmanager
+def redis_scoreboard_lock(game_id: int, owner_key: str, ttl: int = 20) -> Iterator[bool]:
+    """
+    跨题并发正确提交时，串行化同一 game+队伍/用户的积分榜回写，避免丢分覆盖。
+    fail-open：无 Redis 时退回仅依赖 DB 行锁。
+    """
+    lock_key = f"neepu:scoreboard:lock:{game_id}:{owner_key}"
+    redis = None
+    token = None
+    try:
+        from backend.services.redis_service import get_redis
+        import uuid
+        import time
+
+        svc = get_redis()
+        if svc and svc.is_available():
+            redis = svc.redis
+            token = uuid.uuid4().hex
+            deadline = time.time() + min(ttl, 8)
+            while time.time() < deadline:
+                ok = redis.set(lock_key, token, nx=True, ex=ttl)
+                if ok:
+                    yield True
+                    return
+                time.sleep(0.05)
+            # 等锁超时仍继续（DB FOR UPDATE 兜底），避免提交成功却不写榜
+            logger.warning("scoreboard lock busy game=%s owner=%s, proceed with DB lock", game_id, owner_key)
+            yield True
+            return
+        yield True
+    except Exception as exc:
+        logger.warning("redis scoreboard lock failed open: %s", exc)
+        yield True
+    finally:
+        if redis and token:
+            try:
+                current = redis.get(lock_key)
+                if current and (current.decode() if isinstance(current, bytes) else current) == token:
+                    redis.delete(lock_key)
+            except Exception:
+                pass

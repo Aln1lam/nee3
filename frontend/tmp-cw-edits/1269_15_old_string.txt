@@ -1,5 +1,0 @@
-    const DEFAULT_CATEGORIES = [
-      '安全杂项', '从此开始', '二进制漏洞审计', '密码学', '逆向工程', 'Web安全与渗透测试',
-    ]
-
-    const challengeTypeLabel = computed(() => {

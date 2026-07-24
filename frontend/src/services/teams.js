@@ -1,9 +1,7 @@
 /**
  * 队伍 API — 与 /api/teams/* 对齐
  */
-import axios from 'axios'
-
-const http = axios.create({ withCredentials: true })
+import http from './http'
 
 export async function getMyTeam(gameId) {
   const { data } = await http.get('/api/teams/me', {

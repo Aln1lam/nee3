@@ -649,74 +649,73 @@ class TCPTrafficProxy:
             self.stop()
     
     def _handle_connection(self, client_sock, client_addr):
-        """处理单个客户端连接"""
+        """处理单个客户端连接（半关闭，避免双向线程互相强关导致 Reset）"""
         target_sock = None
         try:
-            # 连接到目标服务器
             target_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            target_sock.settimeout(30)
+            client_sock.settimeout(30)
             target_sock.connect((self.target_host, self.target_port))
-            
-            # 双向转发（后台线程处理反向流量）
+
             reverse_thread = threading.Thread(
                 target=self._forward_traffic,
                 args=(target_sock, client_sock, (self.target_host, self.target_port), client_addr),
-                daemon=True
+                daemon=True,
             )
             reverse_thread.start()
-            
-            # 主线程处理正向流量
-            self._forward_traffic(client_sock, target_sock, client_addr, (self.target_host, self.target_port))
-            
+
+            self._forward_traffic(
+                client_sock, target_sock, client_addr, (self.target_host, self.target_port)
+            )
+            reverse_thread.join(timeout=10)
         except Exception as e:
             logger.error(f"Connection error from {client_addr}: {e}")
         finally:
-            try:
-                client_sock.close()
-            except:
-                pass
-            if target_sock:
+            for sock in (client_sock, target_sock):
+                if not sock:
+                    continue
                 try:
-                    target_sock.close()
-                except:
+                    sock.shutdown(socket.SHUT_RDWR)
+                except Exception:
                     pass
-    
+                try:
+                    sock.close()
+                except Exception:
+                    pass
+
     def _forward_traffic(self, src_sock, dst_sock, src_addr, dst_addr):
-        """
-        转发流量并记录到PCAP
-        
-        Args:
-            src_sock: 源socket
-            dst_sock: 目标socket
-            src_addr: 源地址 (host, port)
-            dst_addr: 目标地址 (host, port)
-        """
+        """转发流量并记录到 PCAP；读到 EOF 时只 shutdown 写端。"""
         try:
             while self.running:
-                data = src_sock.recv(4096)
+                try:
+                    data = src_sock.recv(4096)
+                except socket.timeout:
+                    continue
+                except OSError:
+                    break
                 if not data:
                     break
-                
-                # 记录数据包到PCAP（以太网/IPv4/TCP，Wireshark 可解析 HTTP）
+
                 try:
                     self.pcap_writer.write_packet(
                         src_addr[0], src_addr[1],
                         dst_addr[0], dst_addr[1],
-                        data
+                        data,
                     )
+                    self.pcap_writer.flush()
                 except Exception as e:
                     logger.error(f"Failed to write PCAP: {e}")
-                
-                # 转发数据
+
                 try:
                     dst_sock.sendall(data)
-                except:
+                except OSError:
                     break
         except Exception as e:
             logger.error(f"Forward error: {e}")
         finally:
             try:
-                dst_sock.close()
-            except:
+                dst_sock.shutdown(socket.SHUT_WR)
+            except Exception:
                 pass
     
     def stop(self):

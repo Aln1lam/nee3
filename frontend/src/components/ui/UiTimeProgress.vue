@@ -2,7 +2,10 @@
   <div class="ui-time-progress" :class="{ permanent }">
     <span class="ui-tp__label">{{ label }}</span>
     <div class="ui-tp__bar">
-      <div class="ui-tp__fill" :style="{ width: fillWidth + '%' }"></div>
+      <div
+        class="ui-tp__fill"
+        :style="{ transform: `scaleX(${fillRatio})` }"
+      />
     </div>
   </div>
 </template>
@@ -34,15 +37,15 @@ export default {
       return '已结束'
     })
 
-    const fillWidth = computed(() => {
-      if (props.permanent) return 100
+    const fillRatio = computed(() => {
+      if (props.permanent) return 1
       if (!props.startTime || !props.endTime) return 0
       const start = new Date(props.startTime).getTime()
       const end = new Date(props.endTime).getTime()
       const total = end - start
       if (total <= 0) return 0
       const elapsed = now.value - start
-      return Math.min(100, Math.max(0, (elapsed / total) * 100))
+      return Math.min(1, Math.max(0, elapsed / total))
     })
 
     onMounted(() => {
@@ -51,7 +54,7 @@ export default {
     onUnmounted(() => { if (timer) clearInterval(timer) })
     watch(() => [props.startTime, props.endTime], () => { now.value = Date.now() })
 
-    return { label, fillWidth }
+    return { label, fillRatio }
   },
 }
 </script>
@@ -74,8 +77,11 @@ export default {
 }
 .ui-tp__fill {
   height: 100%;
+  width: 100%;
   background: var(--primary);
-  transition: width 1s linear;
+  transform-origin: left center;
+  will-change: transform;
+  transition: transform 1s linear;
 }
 .ui-time-progress.permanent .ui-tp__fill { background: var(--success, #51cf66); }
 .ui-time-progress.permanent .ui-tp__label { color: var(--success, #51cf66); }

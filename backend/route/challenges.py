@@ -91,8 +91,9 @@ def _attach_container_meta(data, challenge):
         data["challenge_type"] = int(getattr(challenge, "challenge_type", 0) or 0)
     except (TypeError, ValueError):
         data["challenge_type"] = 0
-    if getattr(challenge, "docker_image", None):
-        data["docker_image"] = challenge.docker_image
+    # 不向选手暴露 docker_image / docker_port（内部编排信息）
+    data.pop("docker_image", None)
+    data.pop("docker_port", None)
     return data
 
 
@@ -176,7 +177,8 @@ def get_game_challenges(game_id):
             "data": payload
         }), 200
     except Exception as e:
-        return jsonify({"code": 500, "msg": str(e)}), 500
+        logger.exception("challenges route error")
+        return jsonify({"code": 500, "msg": "服务器内部错误"}), 500
 
 
 @bp.route("/<int:challenge_id>", methods=["GET"])
@@ -220,8 +222,13 @@ def get_challenge_detail(challenge_id):
             data['flag'] = challenge.flag
             data['flag_template'] = challenge.flag_template
         include_answer = bool(user and user.is_admin)
+        from backend.services.flag_redact import sanitize_submission_dict
         data['submissions'] = [
-            s.to_dict() if include_answer else {k: v for k, v in s.to_dict().items() if k != 'answer'}
+            sanitize_submission_dict(
+                s.to_dict(),
+                include_answer=include_answer,
+                include_client_ip=include_answer,
+            )
             for s in submissions
         ]
         data['submission_count'] = len(submissions)
@@ -238,7 +245,8 @@ def get_challenge_detail(challenge_id):
             "data": data
         }), 200
     except Exception as e:
-        return jsonify({"code": 500, "msg": str(e)}), 500
+        logger.exception("challenges route error")
+        return jsonify({"code": 500, "msg": "服务器内部错误"}), 500
 
 
 @bp.route("/<int:challenge_id>/submissions", methods=["GET"])
@@ -281,7 +289,8 @@ def my_submissions(challenge_id):
             },
         }), 200
     except Exception as e:
-        return jsonify({"code": 500, "msg": str(e)}), 500
+        logger.exception("challenges route error")
+        return jsonify({"code": 500, "msg": "服务器内部错误"}), 500
 
 
 # ======================== 提交Flag ========================
@@ -576,7 +585,8 @@ def submit_flag(challenge_id):
 
     except Exception as e:
         db.session.rollback()
-        return jsonify({"code": 500, "msg": str(e)}), 500
+        logger.exception("challenges route error")
+        return jsonify({"code": 500, "msg": "服务器内部错误"}), 500
 
 
 # ======================== 排分相关API ========================
@@ -597,7 +607,8 @@ def get_scoreboard(game_id):
             "data": rankings
         }), 200
     except Exception as e:
-        return jsonify({"code": 500, "msg": str(e)}), 500
+        logger.exception("challenges route error")
+        return jsonify({"code": 500, "msg": "服务器内部错误"}), 500
 
 
 @bp.route("/games/<int:game_id>/first-solves", methods=["GET"])
@@ -631,7 +642,8 @@ def get_first_solves(game_id):
             "data": data
         }), 200
     except Exception as e:
-        return jsonify({"code": 500, "msg": str(e)}), 500
+        logger.exception("challenges route error")
+        return jsonify({"code": 500, "msg": "服务器内部错误"}), 500
 
 
 # ======================== 提示系统 ========================
@@ -662,7 +674,8 @@ def get_hints(challenge_id):
             "data": hints_data
         }), 200
     except Exception as e:
-        return jsonify({"code": 500, "msg": str(e)}), 500
+        logger.exception("challenges route error")
+        return jsonify({"code": 500, "msg": "服务器内部错误"}), 500
 
 
 @bp.route("/<int:hint_id>/access-hint", methods=["POST"])
@@ -698,7 +711,8 @@ def access_hint(hint_id):
         }), 200
     except Exception as e:
         db.session.rollback()
-        return jsonify({"code": 500, "msg": str(e)}), 500
+        logger.exception("challenges route error")
+        return jsonify({"code": 500, "msg": "服务器内部错误"}), 500
 
 
 # ======================== 作弊检测 ========================
@@ -722,7 +736,8 @@ def get_cheat_info(game_id):
             "data": [ci.to_dict() for ci in cheat_infos]
         }), 200
     except Exception as e:
-        return jsonify({"code": 500, "msg": str(e)}), 500
+        logger.exception("challenges route error")
+        return jsonify({"code": 500, "msg": "服务器内部错误"}), 500
 
 
 # ======================== 容器相关 ========================
@@ -889,7 +904,8 @@ def get_container_status(challenge_id):
             }
         }), 200
     except Exception as e:
-        return jsonify({"code": 500, "msg": str(e)}), 500
+        logger.exception("challenges route error")
+        return jsonify({"code": 500, "msg": "服务器内部错误"}), 500
 
 
 @bp.route("/<int:challenge_id>/start-container", methods=["POST"])
@@ -1035,19 +1051,30 @@ def start_container(challenge_id):
             }
         }), 200
     except Exception as e:
-        return jsonify({"code": 500, "msg": str(e)}), 500
+        logger.exception("challenges route error")
+        return jsonify({"code": 500, "msg": "服务器内部错误"}), 500
 
 
 @bp.route("/container-jobs/<job_id>", methods=["GET"])
 @jwt_required()
 def get_container_job(job_id):
-    """查询异步启容器任务进度"""
+    """查询异步启容器任务进度（仅本人或管理员）"""
     from backend.services.container_start_queue import get_job_status
-    st = get_job_status(job_id)
-    code = 200
+    try:
+        uid = int(get_jwt_identity())
+    except (TypeError, ValueError):
+        return jsonify({"code": 401, "msg": "未登录"}), 401
+    user = User.query.get(uid)
+    st = get_job_status(
+        job_id,
+        requester_id=uid,
+        is_admin=bool(user and user.is_admin),
+    )
+    if st.get("status") == "forbidden":
+        return jsonify({"code": 403, "msg": st.get("msg") or "无权查看", "data": None}), 403
     if st.get("status") == "unknown":
-        code = 404
-    return jsonify({"code": code if code != 404 else 404, "msg": st.get("msg") or "ok", "data": st}), (404 if code == 404 else 200)
+        return jsonify({"code": 404, "msg": st.get("msg") or "任务不存在", "data": st}), 404
+    return jsonify({"code": 200, "msg": st.get("msg") or "ok", "data": st}), 200
 
 
 @bp.route("/instances/<int:instance_id>/logs", methods=["GET"])
@@ -1081,7 +1108,8 @@ def get_instance_logs(instance_id):
         lines = sanitize_log_lines(text.splitlines()[-tail:])
         return jsonify({"code": 200, "msg": "ok", "data": {"logs": "\n".join(lines), "lines": lines}}), 200
     except Exception as e:
-        return jsonify({"code": 500, "msg": str(e)}), 500
+        logger.exception("challenges route error")
+        return jsonify({"code": 500, "msg": "服务器内部错误"}), 500
 
 
 # ======================== 动态题目容器管理 ========================
@@ -1145,7 +1173,8 @@ def stop_instance(instance_id):
         }), 200
     except Exception as e:
         db.session.rollback()
-        return jsonify({"code": 500, "msg": str(e)}), 500
+        logger.exception("challenges route error")
+        return jsonify({"code": 500, "msg": "服务器内部错误"}), 500
 
 
 @bp.route("/instances/<int:instance_id>/extend", methods=["POST"])
@@ -1199,7 +1228,8 @@ def extend_instance(instance_id):
         }), 200
     except Exception as e:
         db.session.rollback()
-        return jsonify({"code": 500, "msg": str(e)}), 500
+        logger.exception("challenges route error")
+        return jsonify({"code": 500, "msg": "服务器内部错误"}), 500
 
 
 @bp.route("/instances/<int:instance_id>/status", methods=["GET"])
@@ -1263,7 +1293,8 @@ def get_instance_status(instance_id):
             }
         }), 200
     except Exception as e:
-        return jsonify({"code": 500, "msg": str(e)}), 500
+        logger.exception("challenges route error")
+        return jsonify({"code": 500, "msg": "服务器内部错误"}), 500
 
 
 # ======================== 题目统计 ========================
@@ -1338,7 +1369,8 @@ def get_challenge_stats(challenge_id):
             }
         }), 200
     except Exception as e:
-        return jsonify({"code": 500, "msg": str(e)}), 500
+        logger.exception("challenges route error")
+        return jsonify({"code": 500, "msg": "服务器内部错误"}), 500
 
 
 # ======================== 锤子反馈 ========================
@@ -1371,7 +1403,8 @@ def get_hammer_messages(challenge_id):
         )
         return jsonify({"code": 200, "data": [r.to_dict() for r in rows]}), 200
     except Exception as e:
-        return jsonify({"code": 500, "msg": str(e)}), 500
+        logger.exception("challenges route error")
+        return jsonify({"code": 500, "msg": "服务器内部错误"}), 500
 
 
 @bp.route("/<int:challenge_id>/hammer", methods=["POST"])
@@ -1415,4 +1448,5 @@ def post_hammer_message(challenge_id):
         return jsonify({"code": 200, "msg": "已发送", "data": row.to_dict()}), 200
     except Exception as e:
         db.session.rollback()
-        return jsonify({"code": 500, "msg": str(e)}), 500
+        logger.exception("challenges route error")
+        return jsonify({"code": 500, "msg": "服务器内部错误"}), 500

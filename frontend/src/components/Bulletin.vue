@@ -132,8 +132,9 @@ export default {
   box-sizing: border-box;
 }
 .bulletin-item:hover {
-  border-color: rgba(94, 217, 168, 0.28);
+  border-color: rgba(var(--primary-rgb), 0.42);
   background: rgba(20, 26, 33, 0.82);
+  box-shadow: var(--gradient-card-shadow-hover);
 }
 .item-head {
   display: flex;

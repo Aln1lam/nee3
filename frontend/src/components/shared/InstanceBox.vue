@@ -56,6 +56,7 @@ import { NPopover, NSpin, NButton, useMessage } from 'naive-ui'
 import { fetchSession } from '@/services/auth'
 import { listMyInstances, extendContainer, stopContainer } from '@/services/instances'
 import { apiErrorMessage } from '@/utils/apiError'
+import { createVisibilityPoll, POLL_INTERVALS } from '@/utils/polling'
 import DockerWhaleIcon from '@/components/icons/DockerWhaleIcon.vue'
 
 export default {
@@ -71,7 +72,7 @@ export default {
 
     const runningCount = computed(() => instances.value.filter(i => i.is_running).length)
     const hasActiveContainer = computed(() => runningCount.value > 0)
-    let pollTimer = null
+    const poll = createVisibilityPoll(() => load({ silent: true }), POLL_INTERVALS.container)
 
     function statusLabel(inst) {
       if (inst.is_running) return '运行中'
@@ -153,10 +154,10 @@ export default {
 
     onMounted(() => {
       load({ silent: true })
-      pollTimer = setInterval(() => { load({ silent: true }) }, 30000)
+      poll.start()
     })
     onUnmounted(() => {
-      if (pollTimer) clearInterval(pollTimer)
+      poll.stop()
     })
 
     return {

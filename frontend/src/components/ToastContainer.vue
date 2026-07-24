@@ -86,6 +86,9 @@ export default {
   padding: 0 2px;
   line-height: 1;
 }
-.toast-enter-active, .toast-leave-active { transition: all 0.25s ease; }
-.toast-enter-from, .toast-leave-to { opacity: 0; transform: translateX(20px); }
+.toast-enter-active, .toast-leave-active {
+  transition: opacity 0.25s ease, transform 0.25s ease;
+}
+.toast-enter-from, .toast-leave-to { opacity: 0; transform: translate3d(20px, 0, 0); }
+.toast-move { transition: transform 0.25s ease; }
 </style>

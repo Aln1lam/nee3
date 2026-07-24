@@ -34,6 +34,35 @@ def _bind_many(model, *kinds: str):
     event.listen(model, "after_delete", _listener)
 
 
+def _bind_scoreboard_scoped(model):
+    """积分相关变更：按 game_id 定向失效，避免清掉其它比赛缓存。"""
+
+    def _listener(mapper, connection, target):
+        gid = getattr(target, "game_id", None)
+        if gid is not None:
+            mark_cache_dirty(db.session, "scoreboard", game_id=int(gid))
+        else:
+            mark_cache_dirty(db.session, "scoreboard")
+
+    event.listen(model, "after_insert", _listener)
+    event.listen(model, "after_update", _listener)
+    event.listen(model, "after_delete", _listener)
+
+
+def _bind_challenge_scoped(model):
+    def _listener(mapper, connection, target):
+        mark_cache_dirty(db.session, "challenge")
+        gid = getattr(target, "game_id", None)
+        if gid is not None:
+            mark_cache_dirty(db.session, "scoreboard", game_id=int(gid))
+        else:
+            mark_cache_dirty(db.session, "scoreboard")
+
+    event.listen(model, "after_insert", _listener)
+    event.listen(model, "after_update", _listener)
+    event.listen(model, "after_delete", _listener)
+
+
 _hooks_registered = False
 
 
@@ -47,10 +76,10 @@ def register_cache_hooks():
     _bind(CarouselSlide, "carousel")
     _bind(MainAnnouncement, "announcements")
     _bind(SystemConfig, "platform")
-    _bind_many(CtfChallenge, "challenge", "scoreboard")
+    _bind_challenge_scoped(CtfChallenge)
     _bind(CtfGame, "games")
     for model in (CtfChallengeSubmission, CtfSolves):
-        _bind(model, "scoreboard")
+        _bind_scoreboard_scoped(model)
 
     @event.listens_for(db.session.__class__, "after_commit")
     def _after_commit(session):

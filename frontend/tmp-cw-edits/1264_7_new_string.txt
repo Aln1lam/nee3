@@ -1,7 +1,0 @@
-    async function selectChallenge(ch) {
-      selectedChallenge.value = ch
-      if (ch.category) {
-        const next = new Set(collapsedCategories.value)
-        next.delete(ch.category)
-        collapsedCategories.value = next
-      }

@@ -4,9 +4,7 @@
  *
  * 主路径：/api/challenges/* · 兼容回退：/api/container/*（将弃用）
  */
-import axios from 'axios'
-
-const http = axios.create({ withCredentials: true })
+import http from './http'
 
 /** 从 status / start 响应中取出运行中的实例；无实例则返回 null */
 export function pickRunningInstance(payload) {

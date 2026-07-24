@@ -87,6 +87,9 @@ class Team(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(128), unique=True, nullable=False)
     invite_code = db.Column(db.String(32), unique=True, nullable=True)
+    # 队伍自行填写的所属组织 / 排行榜标签（自由文本，非下拉枚举）
+    school = db.Column(db.String(128), nullable=True)
+    tag = db.Column(db.String(64), nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     users = db.relationship("User", backref="team", lazy=True)
     
@@ -94,6 +97,8 @@ class Team(db.Model):
         data = {
             'id': self.id,
             'name': self.name,
+            'school': self.school or '无组织',
+            'tag': self.tag or '',
             'members_count': len(self.users),
             'created_at': self.created_at.isoformat() if self.created_at else None,
         }
@@ -644,10 +649,19 @@ class CtfChallenge(db.Model):
         }
 
     def to_public_dict(self):
-        """返回面向选手的题目信息，不包含 flag 与模板"""
+        """返回面向选手的题目信息，不包含 flag / 镜像 / 内部端口等敏感字段"""
         data = self.to_dict()
-        data.pop('flag', None)
-        data.pop('flag_template', None)
+        for k in (
+            'flag',
+            'flag_template',
+            'docker_image',
+            'docker_port',
+            'memory_limit',
+            'cpu_count',
+            'storage_limit',
+            'network_mode',
+        ):
+            data.pop(k, None)
         return data
 
     @property
@@ -658,6 +672,12 @@ class CtfChallenge(db.Model):
 class CtfChallengeSubmission(db.Model):
     """用户提交的答案/flag"""
     __tablename__ = 'ctf_challenge_submission'
+    __table_args__ = (
+        db.Index('idx_sub_game_correct_time', 'game_id', 'is_correct', 'submitted_at'),
+        db.Index('idx_sub_game_team', 'game_id', 'team_id'),
+        db.Index('idx_sub_challenge_correct', 'challenge_id', 'is_correct'),
+        db.Index('idx_sub_team_correct_time', 'team_id', 'is_correct', 'submitted_at'),
+    )
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
     team_id = db.Column(db.Integer, db.ForeignKey("team.id"), nullable=True)
@@ -714,15 +734,14 @@ class CtfGameInstance(db.Model):
     expires_at = db.Column(db.DateTime, nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
-    def to_dict(self):
-        return {
+    def to_dict(self, *, include_internal: bool = False):
+        """选手默认不回传完整 container_id / 镜像名，避免内部信息外带。"""
+        data = {
             'id': self.id,
             'instance_id': self.id,  # 前端期望的字段名
             'challenge_id': self.challenge_id,
             'team_id': self.team_id,
             'user_id': self.user_id,
-            'container_id': self.container_id,
-            'container_image': self.container_image,
             'port': self.port,
             'connection_url': self.connection_url,
             'is_running': self.is_running,
@@ -730,6 +749,12 @@ class CtfGameInstance(db.Model):
             'expires_at': self.expires_at.isoformat() if self.expires_at else None,
             'created_at': self.created_at.isoformat() if self.created_at else None,
         }
+        if include_internal:
+            data['container_id'] = self.container_id
+            data['container_image'] = self.container_image
+        elif self.container_id:
+            data['container_id_short'] = (self.container_id or '')[:12]
+        return data
 
 
 class CtfChallengeCategory(db.Model):
@@ -762,6 +787,12 @@ class CtfChallengeCategory(db.Model):
 class CtfScoreboard(db.Model):
     """实时排行榜数据 - Team-based scoreboard"""
     __tablename__ = 'ctf_scoreboard'
+    __table_args__ = (
+        db.Index('idx_sb_game_points_time', 'game_id', 'total_points', 'last_submission_time'),
+        db.Index('idx_sb_game_team', 'game_id', 'team_id'),
+        # 防止并发写榜插出双行（MySQL 允许多个 NULL team_id；solo 靠 Redis/DB 行锁）
+        db.UniqueConstraint('game_id', 'team_id', name='uq_sb_game_team'),
+    )
     id = db.Column(db.Integer, primary_key=True)
     game_id = db.Column(db.Integer, db.ForeignKey("ctf_game.id"), nullable=False)
     division_id = db.Column(db.Integer, db.ForeignKey("ctf_division.id"), nullable=True)  # 新增：赛道

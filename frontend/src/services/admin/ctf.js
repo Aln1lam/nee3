@@ -18,10 +18,10 @@
  * 统计 / 导出主路径：/api/competitions/admin/{id}/stats 与 export-scoreboard
  */
 import { authFetch } from '@/utils/http'
-import axios from 'axios'
+import http from '@/services/http'
 
-/** 需上传进度等 axios 特性的管理请求 */
-const adminAxios = axios.create({ withCredentials: true })
+/** 需上传进度等 axios 特性的管理请求（复用 CSRF / 401/429 拦截） */
+const adminAxios = http
 
 function jsonBody(body) {
   return {
@@ -41,9 +41,18 @@ function competitionsListUrl(opts = {}) {
 
 export const ctfAdmin = {
   // —— 队伍 ——
-  listTeams: () => authFetch('/api/teams/admin'),
+  listTeams: (opts = {}) => {
+    const params = new URLSearchParams()
+    if (opts.game_id) params.set('game_id', String(opts.game_id))
+    const qs = params.toString()
+    return authFetch(qs ? `/api/teams/admin?${qs}` : '/api/teams/admin')
+  },
   deleteTeam: (teamId) => authFetch(`/api/teams/admin/${teamId}`, { method: 'DELETE' }),
   deleteAllTeams: () => authFetch('/api/teams/admin', { method: 'DELETE' }),
+  kickTeamMember: (userId, payload = {}) =>
+    authFetch(`/api/teams/admin/members/${userId}/kick`, { method: 'POST', ...jsonBody(payload) }),
+  transferTeamMember: (userId, payload = {}) =>
+    authFetch(`/api/teams/admin/members/${userId}/transfer`, { method: 'POST', ...jsonBody(payload) }),
 
   // —— 比赛（读）——
   /** @param {number} [_perPage] 保留参数兼容旧调用；competitions 一次返回全量 */
@@ -60,6 +69,8 @@ export const ctfAdmin = {
   updateGame: (gameId, payload) => authFetch(`/api/competitions/admin/${gameId}/update`, { method: 'PUT', ...jsonBody(payload) }),
   deleteGame: (gameId) => authFetch(`/api/competitions/admin/${gameId}/delete`, { method: 'DELETE' }),
   archiveGame: (gameId, payload = {}) => authFetch(`/api/competitions/admin/${gameId}/archive`, { method: 'POST', ...jsonBody(payload) }),
+  ensureCampusInvite: (gameId) =>
+    authFetch(`/api/competitions/admin/${gameId}/ensure-campus-invite`, { method: 'POST', ...jsonBody({}) }),
 
   // —— 分组 ——
   listDivisions: (gameId) => authFetch(`/api/competitions/${gameId}/divisions`),

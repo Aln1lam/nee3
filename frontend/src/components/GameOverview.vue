@@ -128,6 +128,36 @@
         <UiButton @click="$router.push('/contests')">返回赛事列表</UiButton>
       </div>
 
+      <n-modal
+        v-model:show="showInviteModal"
+        :mask-closable="false"
+        transform-origin="center"
+        class="invite-join-modal-root"
+      >
+        <div class="invite-join-card" role="dialog" aria-modal="true" aria-labelledby="invite-join-title-ov">
+          <header class="invite-join-head">
+            <span class="link-code chip-cut">KEY</span>
+            <h3 id="invite-join-title-ov">校内赛邀请码</h3>
+          </header>
+          <p class="invite-join-desc">本场为校内赛，需邀请码才能报名。请向主办方索取后填写（与队伍密钥不同）。</p>
+          <label class="invite-join-label" for="invite-code-input-ov">邀请码</label>
+          <n-input
+            id="invite-code-input-ov"
+            v-model:value="inviteCodeInput"
+            class="invite-join-input"
+            placeholder="粘贴或输入邀请码"
+            maxlength="64"
+            @keydown.enter.prevent="confirmInviteJoin"
+          />
+          <div class="invite-join-actions">
+            <button type="button" class="invite-join-btn invite-join-btn--ghost" :disabled="joining" @click="showInviteModal = false">取消</button>
+            <button type="button" class="invite-join-btn invite-join-btn--primary" :disabled="joining" @click="confirmInviteJoin">
+              {{ joining ? '校验中…' : '确认报名' }}
+            </button>
+          </div>
+        </div>
+      </n-modal>
+
       <div v-if="banned" class="banned-overlay">
         <div class="banned-box">
           <h2>队伍已被封禁</h2>
@@ -142,7 +172,7 @@
 <script>
 import { ref, computed, inject, onMounted, onUnmounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { useMessage } from 'naive-ui'
+import { NModal, NInput, useMessage } from 'naive-ui'
 import GameLayout from './GameLayout.vue'
 import { Article } from '@/components/shared'
 import { UiButton, UiLoadingTips } from '@/components/ui'
@@ -151,6 +181,8 @@ import { isAdmin as checkIsAdmin, hasSession } from '../services/auth'
 import { unwrapTeamResponse } from '../utils/team'
 import { resolveUploadUrl } from '../utils/uploadUrl'
 import { filterPublicGames } from '../utils/gameFilters'
+import { gameNeedsInvite, CAMPUS_ORG } from '../utils/competitionJoin'
+import '../assets/invite-join-modal.css'
 import {
   getGameEmoji,
   getGameCoverTheme,
@@ -163,7 +195,7 @@ import {
 
 export default {
   name: 'GameOverview',
-  components: { GameLayout, Article, UiButton, UiLoadingTips },
+  components: { GameLayout, Article, UiButton, UiLoadingTips, NModal, NInput },
   props: { id: { type: [String, Number], default: null } },
   setup(props) {
     const axios = inject('axios')
@@ -182,6 +214,11 @@ export default {
     const editing = ref(false)
     const editContent = ref('')
     const saving = ref(false)
+    const showInviteModal = ref(false)
+    const inviteCodeInput = ref('')
+    const pendingAfterJoin = ref(null) // 'challenges' | 'stay'
+
+    const needsInvite = computed(() => gameNeedsInvite(game.value))
 
     const gameId = computed(() => props.id || route.params.id)
 
@@ -252,7 +289,7 @@ export default {
       const start = game.value.start_time ? new Date(game.value.start_time).getTime() : 0
       const end = game.value.end_time ? new Date(game.value.end_time).getTime() : Infinity
       if (game.value.status === 'archived') return '本场赛事已归档，可转入训练模式复习'
-      if (!loggedIn.value) return '登录后即可报名参赛'
+      if (!loggedIn.value) return needsInvite.value ? '登录后凭邀请码报名校内赛' : '登录后即可报名参赛'
       if (!hasTeam.value && !isAdmin.value) return '需先加入或创建战队才能参赛'
       if (now < start && joined.value) return '已预约，开赛后可直接进入'
       if (now < start) return '赛事尚未开始，可先预约报名'
@@ -375,6 +412,8 @@ export default {
 
     async function checkBanned() {
       if (!(await hasSession()) || !gameId.value) return
+      // 校内赛未报名时勿空 body 探测，会误报「需要邀请码」
+      if (needsInvite.value && !joined.value) return
       try {
         await axios.post(`/api/competitions/${gameId.value}/join`, {})
       } catch (e) {
@@ -416,6 +455,64 @@ export default {
       }
     }
 
+    async function ensureCampusOrg() {
+      if (!needsInvite.value) return
+      try {
+        const { data } = await axios.get('/api/teams/me', {
+          params: { game_id: gameId.value },
+          _skipAuthClear: true,
+        })
+        const team = unwrapTeamResponse(data)
+        if (!team?.id) return
+        if ((team.school || '').trim() === CAMPUS_ORG) return
+        await axios.patch(`/api/teams/${team.id}`, { school: CAMPUS_ORG })
+      } catch { /* ignore */ }
+    }
+
+    async function postJoin(inviteCode) {
+      const body = {}
+      if (inviteCode) body.invite_code = inviteCode
+      await axios.post(`/api/competitions/${gameId.value}/join`, body)
+      joined.value = true
+      await ensureCampusOrg()
+    }
+
+    function openInviteModal(after) {
+      pendingAfterJoin.value = after || 'challenges'
+      inviteCodeInput.value = ''
+      showInviteModal.value = true
+    }
+
+    async function confirmInviteJoin() {
+      const code = inviteCodeInput.value.trim()
+      if (!code) {
+        message.warning('请输入邀请码')
+        return
+      }
+      joining.value = true
+      try {
+        await postJoin(code)
+        showInviteModal.value = false
+        message.success('报名成功')
+        const after = pendingAfterJoin.value
+        pendingAfterJoin.value = null
+        const now = Date.now()
+        const start = game.value?.start_time ? new Date(game.value.start_time).getTime() : 0
+        if (after === 'challenges' && now >= start) {
+          router.push(`/games/${gameId.value}/challenges`)
+        }
+      } catch (e) {
+        if (e.response?.status === 403 && /封禁|ban/i.test(e.response?.data?.msg || '')) {
+          banned.value = true
+          showInviteModal.value = false
+        } else {
+          message.error(e.response?.data?.msg || '邀请码无效')
+        }
+      } finally {
+        joining.value = false
+      }
+    }
+
     async function enterGame() {
       if (joining.value) return
       if (!(await hasSession())) {
@@ -433,18 +530,21 @@ export default {
       const start = game.value?.start_time ? new Date(game.value.start_time).getTime() : 0
       const end = game.value?.end_time ? new Date(game.value.end_time).getTime() : Infinity
 
+      if (!isAdmin.value && now >= end) {
+        router.push(`/games/${gameId.value}/challenges`)
+        return
+      }
+
+      if (!joined.value && needsInvite.value) {
+        openInviteModal(now < start ? 'stay' : 'challenges')
+        return
+      }
+
       joining.value = true
       try {
-        // 已结束也进入题目列表（只读复习）；积分榜走顶部 Tab
-        if (!isAdmin.value && now >= end) {
-          router.push(`/games/${gameId.value}/challenges`)
-          return
-        }
-
         if (!isAdmin.value && now < start) {
           if (!joined.value) {
-            await axios.post(`/api/competitions/${gameId.value}/join`, {})
-            joined.value = true
+            await postJoin()
             message.success('预约成功，开赛后可直接进入')
           } else {
             message.info('你已预约本场赛事')
@@ -453,8 +553,7 @@ export default {
         }
 
         if (!joined.value) {
-          await axios.post(`/api/competitions/${gameId.value}/join`, {})
-          joined.value = true
+          await postJoin()
           message.success('报名成功')
         }
         router.push(`/games/${gameId.value}/challenges`)
@@ -462,7 +561,9 @@ export default {
         if (e.response?.status === 403) banned.value = true
         else {
           const msg = e.response?.data?.msg || '操作失败'
-          if (/队伍|战队|team/i.test(msg)) {
+          if (/邀请码/.test(msg)) {
+            openInviteModal(now < start ? 'stay' : 'challenges')
+          } else if (/队伍|战队|team/i.test(msg)) {
             message.warning('请先加入或创建战队')
             goTeams()
           } else {
@@ -498,6 +599,7 @@ export default {
     return {
       game, gameId, loading, joining, banned,
       editing, editContent, saving, canEdit,
+      showInviteModal, inviteCodeInput, confirmInviteJoin,
       articleContent, coverTheme, gameEmoji, posterUrl, posterBroken,
       statusLabel, statusTagType, timeRange,
       contestList, contestListLoading,
@@ -831,10 +933,8 @@ export default {
 }
 .poster-container:hover {
   transform: scale(1.02);
-  border-color: rgba(94, 217, 168, 0.42);
-  box-shadow:
-    0 16px 40px rgba(0, 0, 0, 0.38),
-    0 0 0 1px rgba(94, 217, 168, 0.12);
+  border-color: rgba(var(--primary-rgb), 0.42);
+  box-shadow: var(--gradient-card-shadow-hover);
 }
 .poster-container:focus-visible {
   outline: 2px solid rgba(94, 217, 168, 0.55);

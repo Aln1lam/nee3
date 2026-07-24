@@ -199,10 +199,14 @@ html .card {
   pointer-events: none;
   color: var(--circuit-color, rgba(0, 0, 0, 0.55));
   opacity: 0.1;
+  contain: strict;
+  content-visibility: auto;
+  will-change: auto;
 }
 .hex-bg svg {
   width: 100%;
   height: 100%;
+  contain: paint;
 }
 
 .bg-overlay.app-overlay,

@@ -180,6 +180,13 @@
   border-color: var(--gradient-card-border-hover) !important;
 }
 
+.matrix-panel:hover,
+.glass-card:hover,
+.gradient-surface:hover {
+  border-color: var(--gradient-card-border-hover) !important;
+  box-shadow: var(--gradient-card-shadow-hover) !important;
+}
+
 /* ── 大标题与留白 ── */
 .page-title,
 .matrix-page-title,

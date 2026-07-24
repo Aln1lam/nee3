@@ -1,3 +1,0 @@
-    const searchQuery = ref('')
-    const activeCategory = ref('全部')
-    const activeTab = ref('terminal')

@@ -258,7 +258,8 @@
   overflow-x: hidden;
   overflow-y: auto;
   background: #0B0E14;
-  transition: padding 0.32s cubic-bezier(0.4, 0, 0.2, 1);
+  /* 禁止 padding 过渡触发 Layout Thrashing；折叠态用 transform 加速 */
+  transition: none;
 }
 
 .sidebar-collapse-trigger {

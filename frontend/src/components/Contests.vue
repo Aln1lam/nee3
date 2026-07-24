@@ -160,6 +160,7 @@
 
 <script>
 import { ref, computed, inject, onMounted, onUnmounted, watch } from 'vue'
+import { createVisibilityPoll } from '@/utils/polling'
 import { useRouter, useRoute } from 'vue-router'
 import { NSpin, NPagination } from 'naive-ui'
 import { UiLoadingTips } from '@/components/ui'
@@ -192,7 +193,7 @@ export default {
     const keyPage = ref(1)
     const nowTick = ref(Date.now())
     const posterBroken = ref(false)
-    let tickTimer = null
+    const tickPoll = createVisibilityPoll(() => { nowTick.value = Date.now() }, 1000)
 
     /** 状态权重：进行中 > 报名中 > 已结束/归档；同权重按开始时间倒序 */
     function contestSortKey(g) {
@@ -365,12 +366,12 @@ export default {
     })
 
     onMounted(async () => {
-      tickTimer = setInterval(() => { nowTick.value = Date.now() }, 1000)
+      tickPoll.start()
       await loadGames()
     })
 
     onUnmounted(() => {
-      if (tickTimer) clearInterval(tickTimer)
+      tickPoll.stop()
     })
 
     return {
@@ -573,6 +574,11 @@ export default {
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 16px;
   box-shadow: 0 20px 56px rgba(0, 0, 0, 0.35);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+.hero-contest-card:hover {
+  border-color: rgba(var(--primary-rgb), 0.42);
+  box-shadow: var(--gradient-card-shadow-hover), 0 20px 56px rgba(0, 0, 0, 0.35);
 }
 .hero-contest-card.is-live { border-color: rgba(16, 185, 129, 0.28); }
 .hero-contest-body {
@@ -810,11 +816,9 @@ export default {
 }
 .contest-card:hover {
   transform: translateY(-4px);
-  border-color: rgba(16, 185, 129, 0.4);
+  border-color: rgba(var(--primary-rgb), 0.42);
   background: rgba(16, 185, 129, 0.07);
-  box-shadow:
-    0 12px 28px rgba(0, 0, 0, 0.32),
-    0 0 24px rgba(16, 185, 129, 0.1);
+  box-shadow: var(--gradient-card-shadow-hover);
 }
 .contest-card:focus-visible {
   outline: 2px solid rgba(16, 185, 129, 0.55);

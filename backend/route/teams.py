@@ -1,5 +1,5 @@
 from flask import Blueprint, request
-from flask_jwt_extended import jwt_required, get_jwt_identity
+from flask_jwt_extended import jwt_required, get_jwt_identity, verify_jwt_in_request
 from backend.server import extensions
 from backend.server.db_models import (
     User, Team, CtfParticipation, CtfParticipatingUser, CtfScoreboard,
@@ -42,7 +42,13 @@ def create_team():
 
     # ~22 chars URL-safe，远高于旧 token_hex(4)
     invite = secrets.token_urlsafe(16)
-    team = Team(name=name, invite_code=invite)
+    school = (data.get("school") or "").strip() or None
+    tag = (data.get("tag") or "").strip() or None
+    if school and len(school) > 128:
+        return {"msg": "所属组织过长（最多 128 字）"}, 400
+    if tag and len(tag) > 64:
+        return {"msg": "标签过长（最多 64 字）"}, 400
+    team = Team(name=name, invite_code=invite, school=school, tag=tag)
     extensions.db.session.add(team)
     extensions.db.session.flush()
 
@@ -134,17 +140,20 @@ def _team_dict(team, game_id=None, include_private=False):
         if include_private:
             m["email"] = u.email
         members.append(m)
-    school = None
-    for m in members:
-        if m.get("school"):
-            school = m["school"]
-            break
+    # 优先队伍自填组织；旧数据回落成员个人 school
+    school = (getattr(team, "school", None) or "").strip() or None
+    if not school:
+        for m in members:
+            if m.get("school"):
+                school = m["school"]
+                break
     data = {
         "id": team.id,
         "name": team.name,
         "members": members,
         "members_count": len(members),
         "school": school or "无组织",
+        "tag": (getattr(team, "tag", None) or "") or "",
     }
     if include_private:
         data["invite_code"] = team.invite_code
@@ -175,28 +184,56 @@ def my_team():
 
 
 @bp.get("/")
+@jwt_required()
 def list_teams():
-    """列出战队；?game_id= 时仅返回参赛队伍"""
+    """列出战队。未带 game_id 时仅返回公开摘要（无成员花名册）；
+    带 game_id 时仅管理员可看完整参赛名单。
+    """
     game_id = request.args.get("game_id", type=int)
+    user = _current_user()
     if game_id:
+        if not user or not user.is_admin:
+            return {"code": 403, "msg": "公开队伍列表仅管理员可见", "teams": []}, 403
         parts = CtfParticipation.query.filter_by(game_id=game_id).all()
         team_ids = [p.team_id for p in parts if p.team_id]
         teams = Team.query.filter(Team.id.in_(team_ids)).order_by(Team.id.asc()).all() if team_ids else []
         result = [_team_dict(t, game_id) for t in teams]
         return {"teams": result}
+    # 全站列表：仅摘要，防止未鉴权枚举成员
     teams = Team.query.order_by(Team.id.asc()).all()
-    result = [_team_dict(t) for t in teams]
+    result = [
+        {
+            "id": t.id,
+            "name": t.name,
+            "members_count": len(t.users or []),
+            "school": (getattr(t, "school", None) or "") or "无组织",
+            "tag": (getattr(t, "tag", None) or "") or "",
+        }
+        for t in teams
+    ]
     return {"teams": result}
 
 
 @bp.get("/<int:team_id>")
+@jwt_required()
 def get_team(team_id):
-    """获取指定战队的详细信息（包含成员）"""
+    """获取指定战队详情：仅本队成员或管理员可见完整成员列表。"""
+    user = _current_user()
     team = Team.query.get(team_id)
     if not team:
         return {"msg": "team not found"}, 404
     game_id = request.args.get("game_id", type=int)
-    return _team_dict(team, game_id)
+    is_member = bool(user and user.team_id == team_id)
+    is_admin = bool(user and user.is_admin)
+    if not is_member and not is_admin:
+        return {
+            "id": team.id,
+            "name": team.name,
+            "members_count": len(team.users or []),
+            "school": (getattr(team, "school", None) or "") or "无组织",
+            "tag": (getattr(team, "tag", None) or "") or "",
+        }
+    return _team_dict(team, game_id, include_private=is_member or is_admin)
 
 
 @bp.patch("/<int:team_id>")
@@ -219,6 +256,16 @@ def update_team(team_id):
         if existing:
             return {"msg": "队名已存在"}, 409
         team.name = new_name
+    if "school" in data:
+        school = (data.get("school") or "").strip()
+        if len(school) > 128:
+            return {"msg": "所属组织过长（最多 128 字）"}, 400
+        team.school = school or None
+    if "tag" in data:
+        tag = (data.get("tag") or "").strip()
+        if len(tag) > 64:
+            return {"msg": "标签过长（最多 64 字）"}, 400
+        team.tag = tag or None
     extensions.db.session.commit()
     return {"msg": "ok", "data": _team_dict(team, include_private=True)}
 
@@ -226,10 +273,11 @@ def update_team(team_id):
 @bp.post("/<int:team_id>/leave")
 @jwt_required()
 def leave_team(team_id):
-    """离开队伍"""
+    """离开队伍（同步清理赛内参赛归属，避免计分错位）"""
     user = _current_user()
     if not user or user.team_id != team_id:
         return {"msg": "forbidden"}, 403
+    _drop_user_game_membership(user.id)
     user.team_id = None
     extensions.db.session.add(user)
     extensions.db.session.commit()
@@ -238,7 +286,7 @@ def leave_team(team_id):
 
 @bp.get("/<int:team_id>/solves")
 def team_solves(team_id):
-    """队伍解题时间线"""
+    """队伍解题时间线（含一二三血标记；points 为当前动态分+血奖）"""
     game_id = request.args.get("game_id", type=int)
     if not game_id:
         return {"msg": "missing game_id"}, 400
@@ -252,16 +300,31 @@ def team_solves(team_id):
         .order_by(CtfChallengeSubmission.submitted_at.asc())
         .all()
     )
+    blood_rows = CtfSolves.query.filter_by(game_id=game_id, team_id=team_id).all()
+    blood_by_ch = {
+        int(b.challenge_id): int(b.blood_level)
+        for b in blood_rows
+        if b.blood_level is not None and int(b.blood_level) <= 2
+    }
+    blood_labels = ("一血", "二血", "三血")
+
     solves = []
+    seen_ch = set()
     for r in rows:
+        if r.challenge_id in seen_ch:
+            continue
+        seen_ch.add(r.challenge_id)
         ch = CtfChallenge.query.get(r.challenge_id)
         u = User.query.get(r.user_id)
+        level = blood_by_ch.get(int(r.challenge_id))
         solves.append({
             "id": r.id,
             "challenge_id": r.challenge_id,
             "challenge_title": ch.title if ch else "未知题目",
             "nickname": u.nickname if u else "用户",
             "points": r.points_earned or (ch.points if ch else 0),
+            "blood_level": level,
+            "blood_label": blood_labels[level] if level is not None else None,
             "submitted_at": r.submitted_at.isoformat() if r.submitted_at else None,
         })
     return {"solves": solves}
@@ -287,7 +350,7 @@ def team_score_timeline(team_id):
         return {
             "timeline": [{"time": None, "points": 0}],
             "total": 0,
-            "algorithm": payload.get("algorithm") or "ret2shell_snapshot_replay",
+            "algorithm": payload.get("algorithm") or "ret2shell_history_replay",
         }
 
     timeline = [{"time": None, "points": 0}] + [
@@ -303,16 +366,190 @@ def team_score_timeline(team_id):
 @bp.get('/admin')
 @jwt_required()
 def admin_list_teams():
-    """管理员：列出所有队伍及成员"""
+    """管理员：列出队伍及成员；?game_id= 时仅该赛参赛队。"""
     user = _current_user()
     if not user or not user.is_admin:
         return {"msg": "forbidden"}, 403
-    teams = Team.query.order_by(Team.id.asc()).all()
+    game_id = request.args.get("game_id", type=int)
+    if game_id:
+        parts = CtfParticipation.query.filter_by(game_id=game_id).all()
+        team_ids = [p.team_id for p in parts if p.team_id]
+        teams = (
+            Team.query.filter(Team.id.in_(team_ids)).order_by(Team.id.asc()).all()
+            if team_ids else []
+        )
+    else:
+        teams = Team.query.order_by(Team.id.asc()).all()
     out = []
     for t in teams:
-        members = [{"id": u.id, "nickname": u.nickname, "email": u.email} for u in t.users]
-        out.append({"id": t.id, "name": t.name, "invite_code": t.invite_code, "members": members})
-    return {"teams": out}
+        members = [
+            {
+                "id": u.id,
+                "nickname": u.nickname,
+                "username": u.username,
+                "email": u.email,
+                "school": u.school,
+            }
+            for u in t.users
+        ]
+        row = {
+            "id": t.id,
+            "name": t.name,
+            "invite_code": t.invite_code,
+            "school": getattr(t, "school", None) or "无组织",
+            "members": members,
+            "members_count": len(members),
+        }
+        if game_id:
+            row["game_id"] = game_id
+            row["in_game"] = True
+        out.append(row)
+    return {"teams": out, "game_id": game_id}
+
+
+def _ensure_team_participation(team_id, game_id):
+    """保证队伍在比赛中有 participation 行，返回该行。"""
+    part = CtfParticipation.query.filter_by(team_id=team_id, game_id=game_id).first()
+    if part:
+        return part
+    part = CtfParticipation(team_id=team_id, game_id=game_id)
+    extensions.db.session.add(part)
+    extensions.db.session.flush()
+    return part
+
+
+def _sync_user_game_membership(user, new_team_id, game_id=None):
+    """把选手的赛内参赛记录同步到新队伍。game_id 为空则同步其所有参赛赛。"""
+    q = CtfParticipatingUser.query.filter_by(user_id=user.id)
+    if game_id:
+        q = q.filter_by(game_id=game_id)
+    rows = q.all()
+    for pu in rows:
+        part = _ensure_team_participation(new_team_id, pu.game_id)
+        pu.team_id = new_team_id
+        pu.participation_id = part.id
+
+
+def _drop_user_game_membership(user_id, game_id=None):
+    q = CtfParticipatingUser.query.filter_by(user_id=user_id)
+    if game_id:
+        q = q.filter_by(game_id=game_id)
+    q.delete(synchronize_session=False)
+
+
+@bp.post('/admin/members/<int:user_id>/kick')
+@jwt_required()
+def admin_kick_member(user_id):
+    """管理员：将选手移出当前队伍（可选仅清某赛参赛）。"""
+    admin = _current_user()
+    if not admin or not admin.is_admin:
+        return {"msg": "forbidden"}, 403
+    data = request.get_json() or {}
+    game_id = data.get("game_id")
+    if game_id is not None:
+        try:
+            game_id = int(game_id)
+        except (TypeError, ValueError):
+            return {"msg": "game_id 无效"}, 400
+
+    target = User.query.get(user_id)
+    if not target:
+        return {"msg": "用户不存在"}, 404
+    if not target.team_id:
+        return {"msg": "该用户当前不在任何队伍"}, 400
+
+    old_team_id = target.team_id
+    try:
+        if game_id:
+            # 仅解除某场比赛报名；仍留在队伍里
+            _drop_user_game_membership(target.id, game_id)
+        else:
+            _drop_user_game_membership(target.id, None)
+            target.team_id = None
+            extensions.db.session.add(target)
+        extensions.db.session.commit()
+        return {
+            "code": 200,
+            "msg": "已移出" if not game_id else "已取消该赛报名",
+            "data": {"user_id": user_id, "old_team_id": old_team_id, "game_id": game_id},
+        }
+    except Exception as e:
+        extensions.db.session.rollback()
+        return {"msg": f"操作失败: {e}"}, 500
+
+
+@bp.post('/admin/members/<int:user_id>/transfer')
+@jwt_required()
+def admin_transfer_member(user_id):
+    """管理员：把选手转到另一支队伍（可按队伍 ID 或邀请码）。"""
+    admin = _current_user()
+    if not admin or not admin.is_admin:
+        return {"msg": "forbidden"}, 403
+    data = request.get_json() or {}
+    target_team_id = data.get("team_id") or data.get("target_team_id")
+    invite_code = (data.get("invite_code") or "").strip() or None
+    game_id = data.get("game_id")
+    if game_id is not None:
+        try:
+            game_id = int(game_id)
+        except (TypeError, ValueError):
+            return {"msg": "game_id 无效"}, 400
+
+    target = User.query.get(user_id)
+    if not target:
+        return {"msg": "用户不存在"}, 404
+
+    new_team = None
+    if target_team_id is not None:
+        try:
+            new_team = Team.query.get(int(target_team_id))
+        except (TypeError, ValueError):
+            return {"msg": "team_id 无效"}, 400
+    elif invite_code:
+        new_team = Team.query.filter_by(invite_code=invite_code).first()
+    else:
+        return {"msg": "请提供目标 team_id 或 invite_code"}, 400
+
+    if not new_team:
+        return {"msg": "目标队伍不存在"}, 404
+    if target.team_id == new_team.id:
+        return {"msg": "用户已在该队伍中"}, 200
+
+    old_team_id = target.team_id
+    try:
+        target.team_id = new_team.id
+        extensions.db.session.add(target)
+        _sync_user_game_membership(target, new_team.id, game_id)
+        # 若指定了比赛且该队尚未参赛，确保报名
+        if game_id:
+            part = _ensure_team_participation(new_team.id, game_id)
+            pu = CtfParticipatingUser.query.filter_by(user_id=target.id, game_id=game_id).first()
+            if not pu:
+                pu = CtfParticipatingUser(
+                    user_id=target.id,
+                    game_id=game_id,
+                    team_id=new_team.id,
+                    participation_id=part.id,
+                )
+                extensions.db.session.add(pu)
+            else:
+                pu.team_id = new_team.id
+                pu.participation_id = part.id
+        extensions.db.session.commit()
+        return {
+            "code": 200,
+            "msg": f"已将用户转移到 {new_team.name}",
+            "data": {
+                "user_id": user_id,
+                "old_team_id": old_team_id,
+                "new_team_id": new_team.id,
+                "new_team_name": new_team.name,
+                "game_id": game_id,
+            },
+        }
+    except Exception as e:
+        extensions.db.session.rollback()
+        return {"msg": f"转移失败: {e}"}, 500
 
 
 def _cleanup_team_data(team_id):

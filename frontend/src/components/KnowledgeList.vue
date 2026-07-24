@@ -587,7 +587,8 @@ export default {
 }
 .wiki-item:hover {
   background: rgba(255, 255, 255, 0.035);
-  border-color: rgba(94, 217, 168, 0.3);
+  border-color: rgba(var(--primary-rgb), 0.42);
+  box-shadow: var(--gradient-card-shadow-hover);
   transform: translateY(-2px);
 }
 .wiki-item-head {

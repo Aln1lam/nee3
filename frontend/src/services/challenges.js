@@ -1,9 +1,7 @@
 /**
  * 题目侧 API — hints / hammer / submit（与 container.js 同层）
  */
-import axios from 'axios'
-
-const http = axios.create({ withCredentials: true })
+import http from './http'
 
 export async function getHints(challengeId) {
   const { data } = await http.get(`/api/challenges/${challengeId}/hints`)

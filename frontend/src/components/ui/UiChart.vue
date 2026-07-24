@@ -4,7 +4,27 @@
 
 <script>
 import { ref, watch, onMounted, onUnmounted, nextTick } from 'vue'
-import * as echarts from 'echarts'
+import * as echarts from 'echarts/core'
+import { LineChart, BarChart, PieChart } from 'echarts/charts'
+import {
+  GridComponent,
+  TooltipComponent,
+  LegendComponent,
+  DataZoomComponent,
+} from 'echarts/components'
+import { CanvasRenderer } from 'echarts/renderers'
+import { rafThrottle } from '@/utils/polling'
+
+echarts.use([
+  LineChart,
+  BarChart,
+  PieChart,
+  GridComponent,
+  TooltipComponent,
+  LegendComponent,
+  DataZoomComponent,
+  CanvasRenderer,
+])
 
 export default {
   name: 'UiChart',
@@ -18,22 +38,37 @@ export default {
     const chartRef = ref(null)
     let chart = null
     let ro = null
+    let lastTheme = props.theme || ''
 
-    function init() {
-      if (!chartRef.value) return
-      if (chart) chart.dispose()
-      chart = echarts.init(chartRef.value, props.theme || undefined)
-      chart.setOption(props.option, true)
-      emit('ready', chart)
+    function ensureChart() {
+      if (!chartRef.value) return null
+      // 仅在首次或 theme 变更时 init；数据更新一律 setOption，禁止频繁 dispose/re-init
+      if (!chart) {
+        chart = echarts.init(chartRef.value, props.theme || undefined)
+        lastTheme = props.theme || ''
+        emit('ready', chart)
+      } else if ((props.theme || '') !== lastTheme) {
+        chart.dispose()
+        chart = echarts.init(chartRef.value, props.theme || undefined)
+        lastTheme = props.theme || ''
+        emit('ready', chart)
+      }
+      return chart
     }
 
-    function resize() {
-      chart?.resize()
+    function applyOption(opt) {
+      const c = ensureChart()
+      if (!c || !opt) return
+      c.setOption(opt, { notMerge: true, lazyUpdate: true })
     }
+
+    const resize = rafThrottle(() => {
+      try { chart?.resize() } catch { /* ignore */ }
+    })
 
     onMounted(async () => {
       await nextTick()
-      init()
+      applyOption(props.option)
       if (typeof ResizeObserver !== 'undefined' && chartRef.value) {
         ro = new ResizeObserver(resize)
         ro.observe(chartRef.value)
@@ -43,16 +78,21 @@ export default {
     })
 
     onUnmounted(() => {
+      resize.cancel?.()
       ro?.disconnect()
+      ro = null
       window.removeEventListener('resize', resize)
-      chart?.dispose()
+      try { chart?.dispose() } catch { /* ignore */ }
       chart = null
     })
 
     watch(() => props.option, (opt) => {
-      if (chart && opt) chart.setOption(opt, true)
-      else init()
+      applyOption(opt)
     }, { deep: true })
+
+    watch(() => props.theme, () => {
+      applyOption(props.option)
+    })
 
     return { chartRef }
   },
@@ -60,5 +100,9 @@ export default {
 </script>
 
 <style scoped>
-.ui-chart { width: 100%; min-height: 120px; }
+.ui-chart {
+  width: 100%;
+  min-height: 120px;
+  contain: layout paint;
+}
 </style>

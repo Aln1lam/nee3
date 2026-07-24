@@ -17,14 +17,22 @@ def redact_flag_text(text: Optional[str]) -> str:
     return out
 
 
-def sanitize_submission_dict(data: Dict[str, Any], *, include_answer: bool = False) -> Dict[str, Any]:
-    """提交记录对外序列化：默认去掉 answer。"""
+def sanitize_submission_dict(
+    data: Dict[str, Any],
+    *,
+    include_answer: bool = False,
+    include_client_ip: bool = False,
+) -> Dict[str, Any]:
+    """提交记录对外序列化：默认去掉 answer / client_ip。"""
     if not data:
         return data
     out = dict(data)
     if not include_answer:
         out.pop("answer", None)
         out.pop("flag", None)
+    if not include_client_ip:
+        out.pop("client_ip", None)
+    out.pop("correct_dedupe_key", None)
     return out
 
 

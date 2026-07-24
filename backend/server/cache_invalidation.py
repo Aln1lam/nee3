@@ -1,5 +1,7 @@
 """CRUD 后统一失效 Redis 缓存"""
 
+from __future__ import annotations
+
 import logging
 
 from backend.services.cache_aside import (
@@ -70,6 +72,7 @@ def invalidate_system_config_cache() -> None:
 
 
 def invalidate_scoreboard_cache() -> None:
+    """全站清榜（仅作兜底；正常路径应走按 game_id 失效）。"""
     rs = get_redis()
     if rs and rs.is_available():
         try:
@@ -77,6 +80,18 @@ def invalidate_scoreboard_cache() -> None:
             _delete_pattern(f"{ScoreboardCache.CACHE_KEY_PREFIX}:*")
         except Exception as exc:
             logger.warning("Scoreboard cache invalidate failed: %s", exc)
+
+
+def invalidate_scoreboard_cache_for_game(game_id: int) -> None:
+    """只失效单场比赛的积分榜 + Timeline，避免多赛并行时雪崩重算。"""
+    rs = get_redis()
+    if not rs or not rs.is_available():
+        return
+    try:
+        from backend.services.redis_service import ScoreboardCache
+        ScoreboardCache.invalidate_scoreboard(rs, int(game_id))
+    except Exception as exc:
+        logger.warning("Scoreboard cache invalidate game=%s failed: %s", game_id, exc)
 
 
 def invalidate_challenge_cache() -> None:
@@ -99,9 +114,13 @@ INVALIDATORS = {
 }
 
 
-def mark_cache_dirty(session, *kinds: str) -> None:
+def mark_cache_dirty(session, *kinds: str, game_id: int | None = None) -> None:
     dirty = session.info.setdefault("cache_dirty", set())
-    dirty.update(kinds)
+    for kind in kinds:
+        if kind == "scoreboard" and game_id is not None:
+            dirty.add(f"scoreboard:{int(game_id)}")
+        else:
+            dirty.add(kind)
 
 
 def flush_cache_dirty(session) -> None:
@@ -109,10 +128,15 @@ def flush_cache_dirty(session) -> None:
     if not dirty:
         return
     for kind in sorted(dirty):
-        fn = INVALIDATORS.get(kind)
-        if not fn:
-            continue
         try:
+            if kind.startswith("scoreboard:"):
+                gid = int(kind.split(":", 1)[1])
+                invalidate_scoreboard_cache_for_game(gid)
+                logger.debug("Cache invalidated after commit: %s", kind)
+                continue
+            fn = INVALIDATORS.get(kind)
+            if not fn:
+                continue
             fn()
             logger.debug("Cache invalidated after commit: %s", kind)
         except Exception as exc:

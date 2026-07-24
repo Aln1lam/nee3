@@ -65,7 +65,10 @@
   --gradient-card-border: rgba(15, 23, 42, 0.06);
   --gradient-card-border-hover: rgba(45, 181, 138, 0.35);
   --gradient-card-shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
-  --gradient-card-shadow-hover: 0 12px 28px rgba(45, 181, 138, 0.14);
+  --gradient-card-shadow-hover:
+    0 12px 28px rgba(15, 23, 42, 0.1),
+    0 0 0 1px rgba(45, 181, 138, 0.2),
+    0 0 20px rgba(45, 181, 138, 0.22);
   --gradient-card-header: rgba(45, 181, 138, 0.06);
   --gradient-card-header-text: #0F172A;
 
