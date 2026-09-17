@@ -4,9 +4,16 @@
 
 # Agent 硬性前置工作流 (Execution SOP)
 
-你在执行任何 UI/UX 修改或代码重构任务前，**必须首先读取以下两份文档**：
-1. `docs/user-aesthetic-profile.md` (用户审美偏好、人物画像、反模式对照表)
-2. `docs/ui-style.md` (Design Tokens 与工程规范)
+你在执行**任何**开发任务前，**必须按顺序读取**：
+1. **`项目约定.md`** — 协作流程、目录结构、推送与文档同步规则
+2. **`docs/功能说明书.md`** — 功能与「文件 → 函数」映射
+3. **`PUSH_CHANGELOG.md`** — 近期变更，避免重复劳动
+
+UI/UX 任务额外必读：
+4. `docs/user-aesthetic-profile.md` (用户审美偏好、人物画像、反模式对照表)
+5. `docs/ui-style.md` (Design Tokens 与工程规范)
+
+**任务完成后（若改动将推送）：** 必须更新 `PUSH_CHANGELOG.md`；若涉及接口/函数/页面，同步更新 `docs/功能说明书.md`。详见 `项目约定.md` § 四。
 
 ## 强制检查清单 (Pre-flight Checklist)
 在给出代码或完成修改后，你必须隐式完成以下自检：
