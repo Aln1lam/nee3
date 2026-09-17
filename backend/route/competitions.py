@@ -769,6 +769,13 @@ def update_game(game_id):
             game.poster_url = data["poster_url"]
         if "enable_traffic_capture" in data:
             game.enable_traffic_capture = bool(data["enable_traffic_capture"])
+        if "game_type" in data:
+            game.game_type = data["game_type"]
+        if "status" in data:
+            game.status = data["status"]
+
+        from backend.server.time_utils import sync_game_status_if_due
+        sync_game_status_if_due(game)
 
         # 改为非公开时，自动补齐邀请码
         invite_div = _ensure_campus_invite_division(game)

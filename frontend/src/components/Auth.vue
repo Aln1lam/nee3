@@ -28,7 +28,7 @@
         role="dialog"
         aria-modal="true"
       >
-        <n-tabs default-value="login" size="large" justify-content="space-evenly">
+        <n-tabs v-model:value="authTab" size="large" justify-content="space-evenly">
           <n-tab-pane name="login" tab="身份认证">
             <n-form>
               <n-form-item-row label="账号">
@@ -116,6 +116,7 @@ export default {
     const regUsername = ref('')
     
     const registerSuccess = ref(false)
+    const authTab = ref(route.query.mode === 'register' ? 'register' : 'login')
     const { platform } = usePlatformStore()
     const captchaRequired = computed(() => !!(platform.value?.captcha_required || platform.value?.features?.captcha_required))
     const loginCaptchaId = ref('')
@@ -214,6 +215,10 @@ export default {
       }
     })
 
+    watch(() => route.query.mode, (mode) => {
+      if (mode === 'register') authTab.value = 'register'
+    }, { immediate: true })
+
     // When modal closes by user action, if URL is /auth then navigate back / replace
     watch(showLogin, (val) => {
       // If modal was closed and the current URL is /auth (user navigated directly),
@@ -234,6 +239,7 @@ export default {
       loginAccount, loginPassword, email, password, nickname, regUsername,
       goGames, registerSuccess,
       captchaRequired, loginCaptchaId, loginCaptchaAnswer, regCaptchaId, regCaptchaAnswer,
+      authTab,
       authBgStyle, modalAnimationClass
     }
   }

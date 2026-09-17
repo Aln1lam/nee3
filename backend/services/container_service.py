@@ -12,7 +12,7 @@ from backend.server.extensions import db
 from backend.server.db_models import CtfGameInstance, CtfChallenge, User, Team, CtfGame
 import os
 from backend.services.flag_generator import ContainerFlagService, ensure_team_hash_salt
-from backend.server.container_access import build_connection_url
+from backend.server.container_access import build_connection_url, normalize_connection_url
 from backend.server.container_ports import allocate_host_port, release_host_port
 from backend.services.container_traffic import maybe_start_traffic_capture
 
@@ -82,6 +82,10 @@ class ContainerService:
             user, team, challenge_id=challenge.id,
         )
         if existing:
+            url = normalize_connection_url(existing, challenge=challenge)
+            if url and url != (existing.connection_url or ""):
+                existing.connection_url = url
+                db.session.commit()
             return True, existing, quota_msg or "instance already running"
         if not ok_quota:
             return False, None, quota_msg

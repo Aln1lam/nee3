@@ -13,6 +13,9 @@ _EXEMPT_PREFIXES = (
     "/api/platform/version",
     "/api/health",
     "/api/auth/login",
+    "/api/auth/register",
+    "/api/auth/verify-email",
+    "/api/auth/resend-verification",
     "/api/captcha",
 )
 

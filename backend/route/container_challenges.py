@@ -284,10 +284,16 @@ def start_container(challenge_id):
             user, team, challenge_id=challenge_id,
         )
         if existing:
+            url = normalize_connection_url(existing, challenge=challenge)
+            if url and url != (existing.connection_url or ""):
+                existing.connection_url = url
+                db.session.commit()
+            data = existing.to_dict()
+            data["connection_url"] = url or data.get("connection_url")
             return jsonify({
                 "success": True,
                 "action_type": "manage",
-                "data": existing.to_dict(),
+                "data": data,
                 "message": quota_msg or "容器已在运行",
             }), 200
         if not ok_quota:

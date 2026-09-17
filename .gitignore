@@ -78,3 +78,11 @@ instance/
 # External reference / historical bundles (not part of runtime)
 GZCTF-develop/
 archives/
+
+.cursor
+
+# 本地备份与临时产物（勿上传）
+neepu.zip
+neepu/
+scripts/_*.py
+scripts/_*.png

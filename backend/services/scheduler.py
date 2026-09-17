@@ -31,6 +31,7 @@ class TaskScheduler:
         self._register_hide_ephemeral_games()
         self._register_pcap_reconcile()
         self._register_container_start_queue()
+        self._register_game_status_sync()
         
         # 启动调度器
         if not self.scheduler.running:
@@ -166,6 +167,44 @@ class TaskScheduler:
                     self.app.logger.info("PCAP 对账: %s", stats)
             except Exception as e:
                 self.app.logger.warning("PCAP 对账失败: %s", e)
+
+    def _register_game_status_sync(self):
+        """每分钟将已到开始时间的 not_started 赛事置为 ongoing"""
+        self.scheduler.add_job(
+            func=self._sync_game_statuses,
+            trigger='interval',
+            minutes=1,
+            id='game_status_sync',
+            name='同步赛事开始状态',
+            replace_existing=True,
+            max_instances=1,
+            coalesce=True,
+        )
+
+    def _sync_game_statuses(self):
+        if not self.app:
+            return
+        with self.app.app_context():
+            try:
+                from backend.server.db_models import CtfGame
+                from backend.server.extensions import db
+                from backend.server.time_utils import sync_game_status_if_due
+
+                games = CtfGame.query.filter_by(status="not_started").all()
+                changed = 0
+                for game in games:
+                    if sync_game_status_if_due(game):
+                        changed += 1
+                if changed:
+                    db.session.commit()
+                    self.app.logger.info("自动开启赛事: %s 场", changed)
+            except Exception as e:
+                try:
+                    from backend.server.extensions import db
+                    db.session.rollback()
+                except Exception:
+                    pass
+                self.app.logger.warning("同步赛事状态失败: %s", e)
 
     def _register_hide_ephemeral_games(self):
         """每小时隐藏仍公开的 E2E/探针赛事"""

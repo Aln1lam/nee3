@@ -6,10 +6,32 @@
 import uuid
 import hashlib
 import random
+import re
 import secrets
 from enum import Enum
 from typing import Optional, Callable, List, Tuple, Dict
 from dataclasses import dataclass
+
+
+# 兼容管理端/文档中的花括号占位符写法（保留 flag 外层 {}）
+_PLACEHOLDER_ALIASES = (
+    (re.compile(r"\{\{\{team_hash\}\}\}|\{\{team_hash\}\}", re.I), "{[TEAM_HASH]}"),
+    (re.compile(r"(?<!\{)\{team_hash\}(?!\})", re.I), "[TEAM_HASH]"),
+    (re.compile(r"\[team_hash\]", re.I), "[TEAM_HASH]"),
+    (re.compile(r"\{\{\{guid\}\}\}|\{\{guid\}\}", re.I), "{[GUID]}"),
+    (re.compile(r"(?<!\{)\{guid\}(?!\})", re.I), "[GUID]"),
+    (re.compile(r"\[guid\]", re.I), "[GUID]"),
+)
+
+
+def normalize_flag_template(template: Optional[str]) -> Optional[str]:
+    """将 {team_hash} / {{{team_hash}}} 等写法统一为 [TEAM_HASH]。"""
+    if not template:
+        return template
+    out = template
+    for pattern, replacement in _PLACEHOLDER_ALIASES:
+        out = pattern.sub(replacement, out)
+    return out
 
 
 class LeetMode(Enum):
@@ -94,8 +116,8 @@ class DynamicFlagGenerator:
     
     def __init__(self, template: Optional[str]):
         """初始化生成器"""
-        self.raw_template = template
-        self.template_obj = self._parse_template(template)
+        self.raw_template = normalize_flag_template(template)
+        self.template_obj = self._parse_template(self.raw_template)
     
     @classmethod
     def _parse_template(cls, template: Optional[str]) -> FlagTemplate:

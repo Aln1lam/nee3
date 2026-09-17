@@ -1017,10 +1017,22 @@ class PermissionService:
             return False
 
         from backend.server.db_models import CtfGame
+        from backend.server.time_utils import game_has_started, sync_game_status_if_due
+        from backend.server.extensions import db
+
         game = CtfGame.query.get(game_id)
+        if game and sync_game_status_if_due(game):
+            try:
+                db.session.commit()
+            except Exception:
+                db.session.rollback()
+
         is_training = game and (
             game.game_type in ("training", "practice") or game.status == "archived"
         )
+
+        if not is_training and game and not game_has_started(game):
+            return False
 
         # 训练场无截止时间限制
         if not is_training and challenge.deadline and datetime.utcnow() > challenge.deadline:

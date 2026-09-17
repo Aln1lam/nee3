@@ -346,7 +346,10 @@ def submit_flag(challenge_id):
             }), 403
 
         # ✓ 检查：正式赛事需已开始；训练场永久开放
-        if not is_training and datetime.utcnow() < game.start_time:
+        from backend.server.time_utils import game_has_started, sync_game_status_if_due
+        if sync_game_status_if_due(game):
+            db.session.commit()
+        if not is_training and not game_has_started(game):
             return jsonify({
                 "code": 403,
                 "msg": "比赛还未开始，无法提交答案"
