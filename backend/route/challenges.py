@@ -21,7 +21,11 @@ from backend.services.scoring_service import (
 )
 from backend.services.flag_generator import resolve_challenge_expected_flag
 from backend.services.permission_service import PermissionService, GamePermission
-from backend.services.team_service import ensure_user_has_team, resolve_team_for_game
+from backend.services.team_service import (
+    ensure_user_has_team,
+    ensure_user_has_team_for_game,
+    resolve_team_for_game,
+)
 from backend.middleware_refactored import submission_rate_limit, rate_limit
 from backend.server.security_helpers import user_can_manage_instance
 from backend.server.traffic_capture import TrafficCaptureManager
@@ -325,15 +329,17 @@ def submit_flag(challenge_id):
 
         is_training = _is_training_game(game)
 
-        if not is_training:
+        if is_training:
+            team = ensure_user_has_team_for_game(user, game.id)
+            if not team:
+                return jsonify({"code": 500, "msg": "练习场初始化队伍失败"}), 500
+            db.session.flush()
+        else:
             team = ensure_user_has_team(user)
             if not team:
-                return jsonify({
-                    "code": 500,
-                    "msg": "自动创建单人队失败"
-                }), 500
+                return jsonify({"code": 500, "msg": "自动创建单人队失败"}), 500
 
-        # ✓ 检查：用户是否加入了该比赛
+        # ✓ 检查：用户是否加入了该比赛（训练场 submit 前自动 ensure 参赛记录）
         participation = CtfParticipatingUser.query.filter_by(
             user_id=user_id,
             game_id=game.id
@@ -355,9 +361,13 @@ def submit_flag(challenge_id):
         if sync_game_status_if_due(game):
             db.session.commit()
         if not is_training and not game_has_started(game):
+            st = getattr(game, "status", None) or "not_started"
+            hint = ""
+            if st == "not_started" and getattr(game, "start_time", None):
+                hint = "（请确认管理员已保存开赛时间，或等待到达开始时间）"
             return jsonify({
                 "code": 403,
-                "msg": "比赛还未开始，无法提交答案"
+                "msg": f"比赛还未开始，无法提交答案{hint}"
             }), 403
 
         if not is_training and game.archived_at is not None:

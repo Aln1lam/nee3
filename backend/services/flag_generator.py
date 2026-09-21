@@ -382,8 +382,11 @@ def resolve_challenge_expected_flag(challenge, user, user_id, running_instance=N
     if not challenge.flag_template:
         return base
 
-    if int(challenge.challenge_type or 0) != ChallengeCType.DYNAMIC_ATTACHMENT:
-        return ""
+    from backend.services.scoring_service import is_dynamic_container_challenge_type
+
+    ctype = int(challenge.challenge_type or 0)
+    if not is_dynamic_container_challenge_type(ctype) and ctype != ChallengeCType.DYNAMIC_ATTACHMENT:
+        return base
 
     game = CtfGame.query.get(challenge.game_id)
     salt = ensure_team_hash_salt(game)

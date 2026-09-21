@@ -70,6 +70,8 @@ def game_has_started(game) -> bool:
     if not game:
         return False
 
+    sync_game_status_if_due(game)
+
     game_type = getattr(game, "game_type", None) or "official"
     if game_type in ("training", "practice"):
         return True
