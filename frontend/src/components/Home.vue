@@ -220,6 +220,7 @@
 <script>
 import { ref, onMounted, onUnmounted, inject, computed, nextTick, watch } from 'vue'
 import { createVisibilityPoll } from '@/utils/polling'
+import { usePlatformStore } from '@/stores/platform'
 import { useRouter } from 'vue-router'
 import { fetchSession, getUser } from '@/services/auth'
 import { useCollapsibleSidebar } from '../composables/useCollapsibleSidebar'
@@ -347,6 +348,7 @@ export default {
 
 
     const platformGames = ref([])
+    const { platform } = usePlatformStore()
 
     async function fetchFeaturedGame() {
       try {
@@ -363,11 +365,17 @@ export default {
             start: (g.start_time || '').slice(0, 10),
             end: (g.end_time || '').slice(0, 10),
           }))
-        const ongoing = list.filter(g => g.status === 'ongoing')
-        const upcoming = list
-          .filter(g => g.status === 'not_started')
-          .sort((a, b) => new Date(a.start_time || 0) - new Date(b.start_time || 0))
-        featuredGame.value = ongoing[0] || upcoming[0] || list.find(g => g.status !== 'archived') || list[0] || null
+        const pickId = platform.value?.home_featured_game_id
+        if (pickId) {
+          featuredGame.value = list.find(g => Number(g.id) === Number(pickId)) || null
+        }
+        if (!featuredGame.value) {
+          const ongoing = list.filter(g => g.status === 'ongoing')
+          const upcoming = list
+            .filter(g => g.status === 'not_started')
+            .sort((a, b) => new Date(a.start_time || 0) - new Date(b.start_time || 0))
+          featuredGame.value = ongoing[0] || upcoming[0] || list.find(g => g.status !== 'archived') || list[0] || null
+        }
       } catch (e) {
         platformGames.value = []
         featuredGame.value = null

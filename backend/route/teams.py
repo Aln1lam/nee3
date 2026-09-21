@@ -7,6 +7,11 @@ from backend.server.db_models import (
     TeamSeasonStats, PcapCapture,
 )
 from backend.services.sensitive_words import assert_clean_team_name
+from backend.services.team_service import (
+    get_user_team_for_game,
+    user_in_team_for_game,
+    ensure_user_has_team_for_game,
+)
 from backend.middleware_refactored import rate_limit
 from sqlalchemy import text
 import secrets
@@ -34,13 +39,28 @@ def create_team():
     user = _current_user()
     if not user:
         return {"msg": "用户不存在"}, 401
-    if user.team_id:
+
+    game_id = data.get("game_id")
+    try:
+        game_id = int(game_id) if game_id is not None else None
+    except (TypeError, ValueError):
+        game_id = None
+
+    if game_id:
+        if get_user_team_for_game(user.id, game_id):
+            return {"msg": "您已在本赛事有队伍，请先离开当前队伍再创建"}, 409
+        game = CtfGame.query.get(game_id)
+        if not game:
+            return {"msg": "赛事不存在"}, 404
+    elif user.team_id:
         return {"msg": "您已在队伍中，请先离开当前队伍再创建新队伍"}, 409
 
-    if Team.query.filter_by(name=name).first():
+    name_q = Team.query.filter_by(name=name)
+    if game_id is not None:
+        name_q = name_q.filter((Team.game_id == game_id) | Team.game_id.is_(None))
+    if name_q.first():
         return {"msg": "队名已存在，请换一个名称"}, 409
 
-    # ~22 chars URL-safe，远高于旧 token_hex(4)
     invite = secrets.token_urlsafe(16)
     school = (data.get("school") or "").strip() or None
     tag = (data.get("tag") or "").strip() or None
@@ -48,10 +68,22 @@ def create_team():
         return {"msg": "所属组织过长（最多 128 字）"}, 400
     if tag and len(tag) > 64:
         return {"msg": "标签过长（最多 64 字）"}, 400
-    team = Team(name=name, invite_code=invite, school=school, tag=tag)
+    team = Team(name=name, invite_code=invite, school=school, tag=tag, game_id=game_id)
     extensions.db.session.add(team)
     extensions.db.session.flush()
 
+    if game_id:
+        participation = CtfParticipation(
+            game_id=game_id, team_id=team.id, status="confirmed",
+        )
+        extensions.db.session.add(participation)
+        extensions.db.session.flush()
+        extensions.db.session.add(CtfParticipatingUser(
+            user_id=user.id,
+            game_id=game_id,
+            team_id=team.id,
+            participation_id=participation.id,
+        ))
     user.team_id = team.id
     extensions.db.session.add(user)
     extensions.db.session.commit()
@@ -91,6 +123,16 @@ def join_team():
             "code": 404,
             "msg": "邀请码无效或已过期"
         }, 404
+
+    game_id = data.get("game_id")
+    try:
+        game_id = int(game_id) if game_id is not None else None
+    except (TypeError, ValueError):
+        game_id = None
+    if game_id and team.game_id and team.game_id != game_id:
+        return {"code": 400, "msg": "该邀请码不属于当前赛事"}, 400
+    if game_id is None and team.game_id:
+        game_id = team.game_id
     
     user = _current_user()
     if not user:
@@ -98,21 +140,41 @@ def join_team():
             "code": 401,
             "msg": "用户不存在"
         }, 401
-    
-    # 检查用户是否已经在某个团队中
-    if user.team_id:
-        if user.team_id == team.id:
-            return {
-                "code": 200,
-                "msg": "您已在该团队中"
-            }, 200
-        else:
+
+    if game_id:
+        if user_in_team_for_game(user.id, team.id, game_id):
+            return {"code": 200, "msg": "您已在该团队中"}, 200
+        existing = get_user_team_for_game(user.id, game_id)
+        if existing and existing.id != team.id:
             return {
                 "code": 409,
-                "msg": f"您已在{user.team.name}中，无法同时加入多个团队"
+                "msg": f"您已在赛事队伍「{existing.name}」中，请先离开再加入其他队伍",
             }, 409
-    
-    # 加入团队
+    elif user.team_id:
+        if user.team_id == team.id:
+            return {"code": 200, "msg": "您已在该团队中"}, 200
+        return {
+            "code": 409,
+            "msg": f"您已在{user.team.name}中，无法同时加入多个团队",
+        }, 409
+
+    if game_id:
+        participation = CtfParticipation.query.filter_by(
+            game_id=game_id, team_id=team.id,
+        ).first()
+        if not participation:
+            participation = CtfParticipation(
+                game_id=game_id, team_id=team.id, status="confirmed",
+            )
+            extensions.db.session.add(participation)
+            extensions.db.session.flush()
+        extensions.db.session.add(CtfParticipatingUser(
+            user_id=user.id,
+            game_id=game_id,
+            team_id=team.id,
+            participation_id=participation.id,
+        ))
+
     user.team_id = team.id
     extensions.db.session.add(user)
     extensions.db.session.commit()
@@ -168,15 +230,22 @@ def _team_dict(team, game_id=None, include_private=False):
 def my_team():
     user = _current_user()
     game_id = request.args.get("game_id", type=int)
-    if not user or not user.team:
+    if not user:
         return {"team": None, "in_game": False}
 
-    team = user.team
+    team = None
+    if game_id:
+        team = get_user_team_for_game(user.id, game_id)
+    if not team and user.team:
+        team = user.team
+
+    if not team:
+        return {"team": None, "in_game": False}
+
     in_game = True
     if game_id:
-        part = CtfParticipation.query.filter_by(team_id=team.id, game_id=game_id).first()
         pu = CtfParticipatingUser.query.filter_by(user_id=user.id, game_id=game_id).first()
-        in_game = bool(part or pu)
+        in_game = bool(pu)
 
     data = _team_dict(team, game_id, include_private=True)
     data["in_game"] = in_game

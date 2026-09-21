@@ -63,6 +63,7 @@
           </div>
         </div>
 
+        <HiddenSchoolEmblem />
         <ToastContainer />
       </n-dialog-provider>
     </n-message-provider>
@@ -78,6 +79,7 @@ import {
 import CircuitBackground from './components/CircuitBackground.vue'
 import TitleBar from './components/TitleBar.vue'
 import ToastContainer from './components/ToastContainer.vue'
+import { HiddenSchoolEmblem } from './components/shared'
 import { loadPlatform, usePlatformStore } from './stores/platform'
 import { fetchPlatformVersion } from './services/platform'
 import { useToast } from './composables/toast'
@@ -87,7 +89,7 @@ import { getUser, fetchSession, logout as authLogout } from './services/auth'
 export default {
   components: {
     NConfigProvider, NGlobalStyle, NMessageProvider, NDialogProvider,
-    CircuitBackground, TitleBar, ToastContainer,
+    CircuitBackground, TitleBar, ToastContainer, HiddenSchoolEmblem,
   },
   setup() {
     const router = useRouter()

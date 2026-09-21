@@ -33,6 +33,7 @@ SYSTEM_CONFIG_PUBLIC_KEYS = (
     "allow_games",
     "require_email_verification",
     "captcha_required",
+    "home_featured_game_id",
 )
 
 BOOL_SYSTEM_KEYS = (
@@ -154,7 +155,11 @@ def load_public_platform_info() -> Dict[str, Any]:
     if not info.get("brand_desc") and info.get("site_description"):
         info["brand_desc"] = info["site_description"]
 
-    # 兼容别名：训练场欢迎公告
+    raw_featured = (cfg.get("home_featured_game_id") or "").strip()
+    if raw_featured.isdigit():
+        info["home_featured_game_id"] = int(raw_featured)
+
+    # 兼容别名：训练场 welcome
     if info.get("training_welcome"):
         info["training_welcome_banner"] = info["training_welcome"]
 

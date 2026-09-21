@@ -5,6 +5,26 @@
 
 ---
 
+## 2026-09-21 — 赛内通知、校徽、按赛队伍、首页推荐赛
+
+**推送目标仓库：** `https://github.com/Aln1lam/nee3.git`、`origin`  
+**分支：** `main`
+
+### 变更摘要
+
+- **#12 赛内通知：** 题目页右侧 `GameNoticesRail`，`GET /api/competitions/{id}/notices`。
+- **#20 校徽：** 全局 `HiddenSchoolEmblem`（`/assets/neepu-emblem.jpg`）。
+- **#18 按赛事队伍：** `Team.game_id` + `team_service` 按赛隔离；创建/加入/报名带 `game_id`。
+- **#14 首页推荐赛：** `SystemConfig.home_featured_game_id`，管理端系统设置可选；Home Hero 优先展示。
+- 内测文档 `NEEPU-SEC 内测系统.md` 已写全量问题答复（本地，不推送）。
+
+### 验证
+
+- `python -m pytest backend/tests/test_fixes.py -v`
+- `cd frontend && npm run build`
+
+---
+
 ## 2026-09-21 — NEEPU-SEC 内测问题修复（Wiki / 资料 / 内容管理 / 赛事日历等）
 
 **推送目标仓库：** `https://github.com/Aln1lam/nee3.git`、`origin`  

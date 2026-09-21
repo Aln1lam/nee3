@@ -542,7 +542,8 @@ def public_user_profile(user_id):
     ).all()
     solves = len(correct_subs)
 
-    teams = 1 if u.team_id else 0
+    team_ids = {p.team_id for p in participations_raw if p.team_id}
+    teams = len(team_ids) if team_ids else (1 if u.team_id else 0)
 
     category_map = {}
     for sub in correct_subs:

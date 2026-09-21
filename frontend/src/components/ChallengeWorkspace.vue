@@ -80,6 +80,7 @@
       </template>
     </template>
 
+    <div class="workspace-with-notices" :class="{ 'has-notices': mode === 'competition' }">
     <div
       class="challenge-workspace workspace-dock"
       :class="[`mode-${mode}`]"
@@ -220,6 +221,8 @@
       <div v-else class="stage-empty stage-empty--canvas" aria-hidden="true"></div>
     </section>
     </div>
+    <GameNoticesRail v-if="mode === 'competition'" :game-id="gameId" />
+    </div>
   </MatrixShell>
 </template>
 
@@ -228,7 +231,7 @@ import { ref, computed, watch, inject, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { NTag, useMessage } from 'naive-ui'
 import { UiLoadingTips } from '@/components/ui'
-import { Article, MatrixShell } from '@/components/shared'
+import { Article, MatrixShell, GameNoticesRail } from '@/components/shared'
 import { ctfAdmin } from '@/services/admin'
 import { unwrapList } from '../utils/unwrap'
 import { fetchSession, isLoggedIn } from '../services/auth'
@@ -256,7 +259,7 @@ function categoryChipStyle(cat) {
 
 export default {
   name: 'ChallengeWorkspace',
-  components: { NTag, UiLoadingTips, Article, MatrixShell },
+  components: { NTag, UiLoadingTips, Article, MatrixShell, GameNoticesRail },
   props: {
     gameId: { type: [Number, String], required: true },
     mode: { type: String, default: 'competition' },
@@ -1214,6 +1217,17 @@ export default {
 </script>
 
 <style scoped>
+.workspace-with-notices {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
+}
+.workspace-with-notices .workspace-dock {
+  flex: 1;
+  min-width: 0;
+}
 .workspace-dock {
   display: flex;
   flex-direction: column;

@@ -248,6 +248,7 @@ def create_app():
             ("ctf_game", "team_hash_salt", "ALTER TABLE ctf_game ADD COLUMN team_hash_salt VARCHAR(128) NULL"),
             ("team", "school", "ALTER TABLE team ADD COLUMN school VARCHAR(128) NULL"),
             ("team", "tag", "ALTER TABLE team ADD COLUMN tag VARCHAR(64) NULL"),
+            ("team", "game_id", "ALTER TABLE team ADD COLUMN game_id INT NULL"),
             ("ctf_game", "description", "ALTER TABLE ctf_game ADD COLUMN description TEXT NULL"),
             ("ctf_game", "game_type", "ALTER TABLE ctf_game ADD COLUMN game_type VARCHAR(32) DEFAULT 'official'"),
             ("ctf_game", "archived_at", "ALTER TABLE ctf_game ADD COLUMN archived_at DATETIME NULL"),

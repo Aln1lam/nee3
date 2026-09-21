@@ -78,6 +78,17 @@
       </div>
 
       <div class="form-group">
+        <label>工作台首页推荐赛事</label>
+        <select v-model="settings.home_featured_game_id" class="form-input">
+          <option value="">自动（进行中 → 即将开始）</option>
+          <option v-for="g in contestOptions" :key="g.id" :value="String(g.id)">
+            #{{ g.id }} · {{ g.title }}（{{ g.status || '未知' }}）
+          </option>
+        </select>
+        <p class="help-text">指定后工作台 Hero 固定展示该赛事；留空则按状态自动挑选</p>
+      </div>
+
+      <div class="form-group">
         <label>训练场欢迎公告 (Markdown/Text)</label>
         <textarea
           v-model="settings.platform_training_welcome"
@@ -220,6 +231,7 @@
 
 <script>
 import { ref, onMounted } from 'vue'
+import axios from 'axios'
 import platformAdmin from '@/services/admin/platform'
 
 export default {
@@ -252,11 +264,13 @@ export default {
       mail_username: '',
       mail_password: '',
       mail_sender_name: 'NEEPU CTF',
-      mail_sender_email: ''
+      mail_sender_email: '',
+      home_featured_game_id: '',
     })
     
     const saveStatus = ref(null)
     const saving = ref(false)
+    const contestOptions = ref([])
 
     // 将字符串 'true'/'false' 转为布尔值
     function parseConfig(data) {
@@ -311,6 +325,14 @@ export default {
           ...parseConfig(cfg),
           ...mapEnvToSettings(envVars),
           platform_training_welcome: uiWelcome || settings.value.platform_training_welcome || '',
+          home_featured_game_id: cfg.home_featured_game_id != null ? String(cfg.home_featured_game_id) : '',
+        }
+        try {
+          const gamesRes = await axios.get('/api/competitions/', { params: { exclude_training: true } })
+          const rows = gamesRes.data?.data || gamesRes.data?.items || gamesRes.data || []
+          contestOptions.value = Array.isArray(rows) ? rows : []
+        } catch {
+          contestOptions.value = []
         }
         showStatus('success', '设置已加载')
       } catch (e) {
@@ -396,7 +418,8 @@ export default {
       saving,
       saveSettings,
       loadSettings,
-      testEmail
+      testEmail,
+      contestOptions,
     }
   }
 }

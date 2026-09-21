@@ -21,7 +21,7 @@ from backend.services.scoring_service import (
 )
 from backend.services.flag_generator import resolve_challenge_expected_flag
 from backend.services.permission_service import PermissionService, GamePermission
-from backend.services.team_service import ensure_user_has_team
+from backend.services.team_service import ensure_user_has_team, resolve_team_for_game
 from backend.middleware_refactored import submission_rate_limit, rate_limit
 from backend.server.security_helpers import user_can_manage_instance
 from backend.server.traffic_capture import TrafficCaptureManager
@@ -345,6 +345,11 @@ def submit_flag(challenge_id):
                 "msg": "您未加入该比赛，请先加入比赛"
             }), 403
 
+        scoped_team_id = participation.team_id
+        if not scoped_team_id:
+            scoped = resolve_team_for_game(user, game.id)
+            scoped_team_id = scoped.id if scoped else user.team_id
+
         # ✓ 检查：正式赛事需已开始；训练场永久开放
         from backend.server.time_utils import game_has_started, sync_game_status_if_due
         if sync_game_status_if_due(game):
@@ -377,7 +382,7 @@ def submit_flag(challenge_id):
         from backend.services.flag_redact import sanitize_submission_dict
         from sqlalchemy.exc import IntegrityError
 
-        owner_key = submission_owner_key(user)
+        owner_key = f"t{scoped_team_id}" if scoped_team_id else f"u{user_id}"
         with redis_submit_lock(challenge_id, owner_key) as got_lock:
             if not got_lock:
                 return jsonify({"code": 429, "msg": "提交处理中，请稍候再试"}), 429
@@ -403,8 +408,8 @@ def submit_flag(challenge_id):
                 challenge_id=challenge_id,
                 is_correct=True
             )
-            if user.team_id:
-                solved_query = solved_query.filter_by(team_id=user.team_id)
+            if scoped_team_id:
+                solved_query = solved_query.filter_by(team_id=scoped_team_id)
             else:
                 solved_query = solved_query.filter_by(user_id=user_id)
             solved = solved_query.with_for_update().first()
@@ -429,9 +434,16 @@ def submit_flag(challenge_id):
             duration_ms = _resolve_submit_duration_ms(data, running_instance)
             client_ip = _request_client_ip()
             
+            dedupe_key = None
+            if is_correct:
+                dedupe_key = (
+                    f"c{challenge_id}:t{scoped_team_id}"
+                    if scoped_team_id
+                    else f"c{challenge_id}:u{user_id}"
+                )
             submission = CtfChallengeSubmission(
                 user_id=user_id,
-                team_id=user.team_id,
+                team_id=scoped_team_id,
                 challenge_id=challenge_id,
                 game_id=challenge.game_id,
                 answer=answer,
@@ -440,9 +452,7 @@ def submit_flag(challenge_id):
                 submitted_at=datetime.utcnow(),
                 client_ip=client_ip,
                 duration_ms=duration_ms,
-                correct_dedupe_key=(
-                    correct_submission_dedupe_key(challenge_id, user) if is_correct else None
-                ),
+                correct_dedupe_key=dedupe_key,
             )
 
             db.session.add(submission)
@@ -466,7 +476,7 @@ def submit_flag(challenge_id):
                         game_id=challenge.game_id,
                         challenge_id=challenge_id,
                         user_id=user_id,
-                        team_id=user.team_id
+                        team_id=scoped_team_id,
                     )
                     response_data['blood_level'] = blood_level
 

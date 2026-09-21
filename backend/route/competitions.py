@@ -10,11 +10,16 @@ from backend.server.extensions import db
 from backend.server.db_models import (
     User, Team, CtfGame, CtfChallenge, CtfChallengeSubmission,
     CtfParticipation, CtfParticipatingUser, CtfScoreboard, CtfDivision,
-    CtfUserInviteCode, CtfCheatInfo,
+    CtfUserInviteCode, CtfCheatInfo, CtfGameNotice,
 )
 from backend.server.game_filters import is_ephemeral_test_game
 from backend.services.traffic_capture_service import TrafficCaptureService
-from backend.services.team_service import ensure_user_has_team, user_joined_game
+from backend.services.team_service import (
+    ensure_user_has_team,
+    ensure_user_has_team_for_game,
+    user_joined_game,
+    get_user_team_for_game,
+)
 from backend.services.game_delete_service import purge_game
 
 bp = Blueprint("competitions", __name__)
@@ -354,13 +359,13 @@ def join_game(game_id):
         if not user:
             return jsonify({"code": 401, "msg": "用户不存在"}), 401
 
-        team = ensure_user_has_team(user)
-        if not team:
-            return jsonify({"code": 500, "msg": "创建单人队伍失败"}), 500
-
         game = CtfGame.query.get(game_id)
         if not game:
             return jsonify({"code": 404, "msg": "竞赛不存在"}), 404
+
+        team = get_user_team_for_game(user.id, game_id) or ensure_user_has_team_for_game(user, game_id)
+        if not team:
+            return jsonify({"code": 500, "msg": "创建单人队伍失败"}), 500
 
         team_id = team.id
         data = request.get_json() or {}
@@ -593,6 +598,20 @@ def is_joined(game_id):
         return jsonify({"joined": user_joined_game(user_id, game_id)}), 200
     except Exception as e:
         return jsonify({"code": 500, "msg": str(e)}), 500
+
+
+@bp.route("/<int:game_id>/notices", methods=["GET"])
+def game_notices(game_id):
+    """赛事通知（血榜、公告等）"""
+    if not CtfGame.query.get(game_id):
+        return jsonify({"code": 404, "msg": "竞赛不存在"}), 404
+    rows = (
+        CtfGameNotice.query.filter_by(game_id=game_id)
+        .order_by(CtfGameNotice.created_at.desc())
+        .limit(50)
+        .all()
+    )
+    return jsonify({"code": 200, "msg": "ok", "data": [n.to_dict() for n in rows]})
 
 
 @bp.route("/debug/game/<int:game_id>", methods=["GET"])

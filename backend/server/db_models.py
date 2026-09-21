@@ -86,6 +86,7 @@ class User(db.Model):
 class Team(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(128), unique=True, nullable=False)
+    game_id = db.Column(db.Integer, db.ForeignKey("ctf_game.id"), nullable=True, index=True)
     invite_code = db.Column(db.String(32), unique=True, nullable=True)
     # 队伍自行填写的所属组织 / 排行榜标签（自由文本，非下拉枚举）
     school = db.Column(db.String(128), nullable=True)
@@ -97,6 +98,7 @@ class Team(db.Model):
         data = {
             'id': self.id,
             'name': self.name,
+            'game_id': self.game_id,
             'school': self.school or '无组织',
             'tag': self.tag or '',
             'members_count': len(self.users),
