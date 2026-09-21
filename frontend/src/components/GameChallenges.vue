@@ -5,7 +5,11 @@
 </template>
 
 <script>
+import { onBeforeMount } from 'vue'
+import { useRouter } from 'vue-router'
+import axios from 'axios'
 import ChallengeWorkspace from './ChallengeWorkspace.vue'
+import { fetchSession } from '@/services/auth'
 
 export default {
   name: 'GameChallenges',
@@ -13,6 +17,29 @@ export default {
   props: {
     gameId: { type: [String, Number], required: true },
     mode: { type: String, default: 'competition' },
+  },
+  setup(props) {
+    const router = useRouter()
+
+    onBeforeMount(async () => {
+      if (props.mode !== 'competition') return
+      const user = await fetchSession()
+      if (!user) {
+        router.replace({ name: 'Auth', query: { redirect: `/games/${props.gameId}/challenges` } })
+        return
+      }
+      if (user.is_admin) return
+      try {
+        const { data } = await axios.get(`/api/competitions/${props.gameId}/joined`)
+        if (!data?.joined) {
+          router.replace({ name: 'GameTeams', params: { id: props.gameId } })
+        }
+      } catch {
+        router.replace({ name: 'GameDetail', params: { id: props.gameId } })
+      }
+    })
+
+    return {}
   },
 }
 </script>

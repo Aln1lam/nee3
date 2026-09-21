@@ -318,10 +318,21 @@ def list_articles():
     page = request.args.get('page', 1, type=int)
     per_page = request.args.get('per_page', 20, type=int)
     status = request.args.get('status', '', type=str)
+    search = (request.args.get('search') or '').strip()
     
     query = Article.query
     if status:
         query = query.filter_by(status=status)
+    if search:
+        from sqlalchemy import or_
+        like = f'%{search}%'
+        author_ids = [u.id for u in User.query.filter(
+            or_(User.nickname.like(like), User.username.like(like))
+        ).limit(200).all()]
+        filters = [Article.title.like(like)]
+        if author_ids:
+            filters.append(Article.author_id.in_(author_ids))
+        query = query.filter(or_(*filters))
     
     total = query.count()
     articles = query.order_by(desc(Article.created_at)).paginate(page=page, per_page=per_page).items
@@ -361,8 +372,23 @@ def update_article(article_id):
     
     if 'title' in data:
         article.title = data['title']
-    
+    if 'summary' in data:
+        article.summary = data['summary']
+    content = data.get('content')
+    if content is None and 'body' in data:
+        content = data.get('body')
+    if content is not None:
+        article.content = content
+    if 'tags' in data:
+        tags = data.get('tags')
+        article.tags = ','.join(tags) if isinstance(tags, list) else (tags or '')
+
     db.session.commit()
+    try:
+        from backend.server.cache_invalidation import invalidate_articles_cache
+        invalidate_articles_cache()
+    except Exception:
+        pass
     return jsonify({'success': True})
 
 

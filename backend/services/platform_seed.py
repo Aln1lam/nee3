@@ -34,11 +34,11 @@ WIKI_ARTICLES = [
 
 部分题目需要启动 Docker 容器。点击题目上方「启动」按钮，然后使用顶栏 **环境连接器** 查看连接地址。
 
-TCP 类题目请使用 `netcat` 连接，详见 [netcat 访问教程](/wiki)。
+TCP 类题目请使用 `netcat` 连接，详见 [netcat 访问教程](/wiki/netcat)。
 
 ## 需要帮助？
 
-- 查看 [从零开始的 CTF 之路](/wiki)
+- 查看 [从零开始的 CTF 之路](/wiki/ctf-roadmap)
 - 联系平台管理员或在赛事中使用 🔨 锤子反馈
 """,
     },
@@ -256,14 +256,42 @@ wireshark   # 过滤 modbus / dnp3
 
 ## 延伸阅读
 
-- [工控安全入门](/wiki)
-- [连接器使用教程](/wiki) — 在线 Docker 环境
-- [从零开始的 CTF 之路](/wiki)
+- [工控安全入门](/wiki/ics-security)
+- [连接器使用教程](/wiki/connector) — 在线 Docker 环境
+- [从零开始的 CTF 之路](/wiki/ctf-roadmap)
 
 生命不息，探索不止 — 守护能源基础设施，从理解开始。
 """,
     },
 ]
+
+WIKI_INTERNAL_LINK_FIXES = (
+    ("[netcat 访问教程](/wiki)", "[netcat 访问教程](/wiki/netcat)"),
+    ("[从零开始的 CTF 之路](/wiki)", "[从零开始的 CTF 之路](/wiki/ctf-roadmap)"),
+    ("[工控安全入门](/wiki)", "[工控安全入门](/wiki/ics-security)"),
+    ("[连接器使用教程](/wiki)", "[连接器使用教程](/wiki/connector)"),
+    ("[电力信息系统安全](/wiki)", "[电力信息系统安全](/wiki/power-grid-sec)"),
+)
+
+
+def repair_wiki_internal_links():
+    """修正已入库 Wiki 正文中指向 /wiki 的占位内链（幂等）。"""
+    from backend.server.extensions import db
+    from backend.server.db_models import Article
+
+    changed = 0
+    for article in Article.query.filter(Article.tags.contains("wiki:")).all():
+        content = article.content or ""
+        new_content = content
+        for old, new in WIKI_INTERNAL_LINK_FIXES:
+            new_content = new_content.replace(old, new)
+        if new_content != content:
+            article.content = new_content
+            changed += 1
+    if changed:
+        db.session.commit()
+    return changed
+
 
 WELCOME_BULLETIN = {
     "title": "欢迎使用 NEEPU CTF 终端",
@@ -319,6 +347,7 @@ def seed_platform_content(app):
                 db.session.add(bulletin)
                 app.logger.info("Seeded welcome bulletin")
 
+            repair_wiki_internal_links()
             db.session.commit()
         except Exception as e:
             app.logger.debug(f"Platform seed skipped: {e}")

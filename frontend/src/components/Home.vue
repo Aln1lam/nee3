@@ -218,7 +218,7 @@
 </template>
 
 <script>
-import { ref, onMounted, onUnmounted, inject, computed, nextTick } from 'vue'
+import { ref, onMounted, onUnmounted, inject, computed, nextTick, watch } from 'vue'
 import { createVisibilityPoll } from '@/utils/polling'
 import { useRouter } from 'vue-router'
 import { fetchSession, getUser } from '@/services/auth'
@@ -240,14 +240,10 @@ export default {
   const eventsMap = ref({}) // key: 'YYYY-MM-DD' -> [{title,...}]
 
   function goCategory(c) {
-    // navigate to Knowledge and set category as query param
-    router.push({ name: 'Knowledge', query: { cat: c } })
+    router.push({ name: 'Wiki', query: { tag: c } })
   }
 
-    const recentGames = ref([
-      { id: 1, title: 'NEEPU CTF - 校内赛', start: '2025-12-01', end: '2025-12-02' },
-      { id: 2, title: 'NEEPU Open 2025', start: '2025-11-10', end: '2025-11-11' }
-    ])
+    const recentGames = ref([])
     const announcements = ref([])
     const statusOnline = ref(typeof navigator !== 'undefined' ? navigator.onLine : true)
     // 获取公告（需要登录）
@@ -358,6 +354,15 @@ export default {
         const rows = res.data?.data || res.data?.items || res.data || []
         const list = Array.isArray(rows) ? rows : []
         platformGames.value = list
+        recentGames.value = list
+          .filter(g => g.status !== 'archived')
+          .slice(0, 6)
+          .map(g => ({
+            id: g.id,
+            title: g.title,
+            start: (g.start_time || '').slice(0, 10),
+            end: (g.end_time || '').slice(0, 10),
+          }))
         const ongoing = list.filter(g => g.status === 'ongoing')
         const upcoming = list
           .filter(g => g.status === 'not_started')
@@ -540,7 +545,9 @@ export default {
 
     function buildEventsMap(){
       const map = {}
-      const allEvents = [...externalEventsCN.value, ...externalEventsGlobal.value]
+      const allEvents = selectedRegion.value === 'cn'
+        ? [...externalEventsCN.value]
+        : [...externalEventsGlobal.value]
       for(const ev of allEvents){
         const title = ev['比赛名称'] || ev['name'] || ev['title'] || '比赛'
         let range = ev['比赛时间'] || ev['time'] || ''
@@ -859,12 +866,16 @@ export default {
     function onAgendaClick(ev) {
       try {
         if (ev && ev.url) window.open(ev.url, '_blank')
-        else if (ev && ev.id) router.push({ name: 'event-detail', params: { id: ev.id } })
-        else router.push('/games')
+        else router.push('/events')
       } catch (e) {
-        router.push('/games')
+        router.push('/events')
       }
     }
+
+    watch(selectedRegion, () => {
+      buildEventsMap()
+      monthDays.value = buildMonthDays()
+    })
 
     return { recentGames, announcements, categories, goCategory,
       user, months, currentMonth, currentYear, monthDays, prevMonth, nextMonth,

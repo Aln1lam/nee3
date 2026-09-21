@@ -110,7 +110,7 @@ const routes = [
   { path: '/account/oauth', redirect: '/auth' },
   { path: '/account/verify', redirect: '/verify-email' },
 
-  { path: '/home', name: 'PlatformHome', component: Home, meta: { requiresAuth: true } },
+  { path: '/home', name: 'PlatformHome', component: Home },
   { path: '/archive', name: 'Archive', component: Archive },
   {
     path: '/bulletin',
@@ -169,7 +169,7 @@ const routes = [
     meta: { requiresAuth: true },
   },
   { path: '/games/:id/scoreboard', name: 'GameScoreboard', component: GameScoreboard, props: (route) => ({ gameId: route.params.id }) },
-  { path: '/competition/:id', redirect: to => `/games/${to.params.id}/challenges` },
+  { path: '/competition/:id', redirect: to => `/games/${to.params.id}` },
   { path: '/scoreboard/:gameId', redirect: to => `/games/${to.params.gameId}/scoreboard` },
   { path: '/games/:id/teams', name: 'GameTeams', component: GameTeams, props: true, meta: { requiresAuth: true } },
   { path: '/games/:id/teams/choose', name: 'GameTeamsChoose', component: GameTeams, props: true, meta: { requiresAuth: true } },
@@ -269,7 +269,7 @@ import { fetchSession } from '../services/auth'
 const PUBLIC_ROUTES = new Set([
   'Landing', 'Auth', 'VerifyEmail', 'ForgotPassword', 'ResetPassword',
   'Wiki', 'WikiArticle', 'Archive', 'Bulletin', 'Contests', 'GameDetail',
-  'Training', 'TrainingGame', 'HttpError',
+  'Training', 'TrainingGame', 'HttpError', 'PlatformHome', 'Events',
   'BulletinDetail', 'UserList', 'UserProfile', 'GameScoreboard',
 ])
 

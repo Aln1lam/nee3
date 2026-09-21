@@ -71,7 +71,7 @@
 </template>
 
 <script>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import platformAdmin from '@/services/admin/platform'
 
@@ -172,6 +172,10 @@ export default {
       if (!dateStr) return '-'
       return new Date(dateStr).toLocaleString('zh-CN')
     }
+
+    watch(currentPage, () => {
+      loadArticles()
+    })
 
     onMounted(() => {
       loadArticles()

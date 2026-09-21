@@ -101,6 +101,24 @@ export default {
     async function loadUserData() {
       try {
         user.value = (await fetchSession({ force: true })) || getUser()
+        const uid = user.value?.id
+        if (!uid || !axios) return
+        const { data } = await axios.get(`/api/auth/users/${uid}`)
+        const stats = data?.stats || {}
+        participationCount.value = stats.participations ?? 0
+        submissionCount.value = stats.solves ?? 0
+        teamCount.value = stats.teams ?? 0
+        recentParticipation.value = (data?.participations || []).slice(0, 8).map((p) => ({
+          ...p,
+          created_at: p.joined_at || p.created_at,
+        }))
+        const teamNames = new Map()
+        for (const p of data?.participations || []) {
+          if (p.team_name && p.team_id) {
+            teamNames.set(p.team_id, { id: p.team_id, name: p.team_name, description: p.game_title })
+          }
+        }
+        userTeams.value = [...teamNames.values()]
       } catch (e) {
         user.value = null
       }

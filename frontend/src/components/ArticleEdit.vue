@@ -69,7 +69,7 @@ export default {
           summary.value = r.data.summary
           // backend stores tags as comma-separated string; convert to array for the select
           tags.value = (r.data.tags || '').split(',').map(s => s && s.trim()).filter(Boolean)
-        body.value = r.data.body || ''
+        body.value = r.data.content || r.data.body || ''
       } catch (e) {
         console.error('load article failed', e)
         message.error(apiErrorMessage(e, '加载文章失败'))
@@ -100,7 +100,7 @@ export default {
     async function save(status) {
       if (saving.value) return
       // send tags as array of names; backend will join into a string
-      const payload = { title: title.value, body: body.value, summary: summary.value, tags: tags.value, status }
+      const payload = { title: title.value, content: body.value, summary: summary.value, tags: tags.value, status }
       saving.value = true
       try {
         if (isNew.value) {

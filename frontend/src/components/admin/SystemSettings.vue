@@ -201,6 +201,7 @@
         <p class="help-text">用于邮件头的发件人地址（例如 no-reply@neepu.edu.cn）</p>
       </div>
 
+      <p class="help-text">请先保存 SMTP 配置，再发送测试邮件；若未收到请检查垃圾箱与服务器出站 25/465 端口。</p>
       <button class="btn-test" @click="testEmail">发送测试邮件</button>
     </div>
 

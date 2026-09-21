@@ -999,7 +999,7 @@ def start_container(challenge_id):
 
         if async_mode:
             ok, job_id, msg, meta = enqueue_container_start(
-                challenge=challenge, user=user, team=team, expire_hours=2,
+                challenge=challenge, user=user, team=team, expire_hours=None,
             )
             if not ok:
                 return jsonify({"code": 500, "msg": msg or "入队失败"}), 500
@@ -1036,7 +1036,7 @@ def start_container(challenge_id):
             challenge=challenge,
             user=user,
             team=team,
-            expire_hours=2
+            expire_hours=None
         )
 
         if not success:

@@ -20,8 +20,6 @@
                 <input ref="importInput" type="file" accept=".md,text/markdown" style="display:none" @change="onImportFile" />
                 <n-button size="small" @click="exportMarkdown">导出 MD</n-button>
                 <n-button size="small" @click="exportHtml">导出 HTML</n-button>
-                <n-divider vertical />
-                <n-button size="small" @click="saveDraft">保存草稿</n-button>
                 <div style="flex:1"></div>
                 <div class="editor-status" style="color:#666;font-size:12px;">字数: {{ stats.words }} &nbsp; 行: {{ stats.lines }} &nbsp; 光标: {{ stats.cursor }}</div>
               </div>
@@ -230,12 +228,6 @@ export default {
 
       saving.value = true
       try {
-        const token = localStorage.getItem('neepu_token')
-        if (!token) {
-          message.error('请先登录')
-          return null
-        }
-
         const payload = {
           title: form.value.title,
           content: content,
@@ -244,9 +236,7 @@ export default {
         }
 
         const response = await axios.post('/api/articles/', payload, {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
+          withCredentials: true,
         })
 
         message.success(status === 'draft' ? '草稿保存成功' : '文章保存成功')

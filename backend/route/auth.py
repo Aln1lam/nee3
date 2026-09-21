@@ -532,6 +532,7 @@ def public_user_profile(user_id):
             'id': p.id,
             'game_id': p.game_id,
             'game_title': game.title if game else '未知赛事',
+            'team_id': p.team_id,
             'team_name': team.name if team else None,
             'joined_at': p.joined_at.isoformat() if p.joined_at else None,
         })

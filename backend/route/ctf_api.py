@@ -889,7 +889,7 @@ def start_container_instance(challenge_id):
         challenge=challenge,
         user=user,
         team=team,
-        expire_hours=2
+        expire_hours=None
     )
 
     if not success:

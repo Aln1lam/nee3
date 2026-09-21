@@ -49,7 +49,7 @@
             </div>
           </n-tab-pane>
 
-          <n-tab-pane name="register" tab="新用户注册">
+          <n-tab-pane v-if="allowRegistration" name="register" tab="新用户注册">
             <n-form>
               <n-form-item-row label="代号 (Nickname)">
                 <n-input v-model:value="nickname" placeholder="显示名称，必填" />
@@ -119,6 +119,7 @@ export default {
     const authTab = ref(route.query.mode === 'register' ? 'register' : 'login')
     const { platform } = usePlatformStore()
     const captchaRequired = computed(() => !!(platform.value?.captcha_required || platform.value?.features?.captcha_required))
+    const allowRegistration = computed(() => platform.value?.allow_registration !== false)
     const loginCaptchaId = ref('')
     const loginCaptchaAnswer = ref('')
     const regCaptchaId = ref('')
@@ -215,8 +216,12 @@ export default {
       }
     })
 
+    watch(allowRegistration, (allowed) => {
+      if (!allowed && authTab.value === 'register') authTab.value = 'login'
+    })
+
     watch(() => route.query.mode, (mode) => {
-      if (mode === 'register') authTab.value = 'register'
+      if (mode === 'register' && allowRegistration.value) authTab.value = 'register'
     }, { immediate: true })
 
     // When modal closes by user action, if URL is /auth then navigate back / replace
@@ -238,7 +243,7 @@ export default {
       showLogin, loading, login, register,
       loginAccount, loginPassword, email, password, nickname, regUsername,
       goGames, registerSuccess,
-      captchaRequired, loginCaptchaId, loginCaptchaAnswer, regCaptchaId, regCaptchaAnswer,
+      captchaRequired, allowRegistration, loginCaptchaId, loginCaptchaAnswer, regCaptchaId, regCaptchaAnswer,
       authTab,
       authBgStyle, modalAnimationClass
     }

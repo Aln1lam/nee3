@@ -110,13 +110,17 @@ def get_job_status(job_id: str, *, requester_id: int | None = None, is_admin: bo
     return {"status": "unknown", "msg": "任务不存在或已过期"}
 
 
-def enqueue_container_start(challenge, user, team=None, expire_hours: int = 2) -> Tuple[bool, Optional[str], str, dict]:
+def enqueue_container_start(challenge, user, team=None, expire_hours: int | None = None) -> Tuple[bool, Optional[str], str, dict]:
     """
     仅入队，立即返回 job_id（异步）。
     返回 (ok, job_id, msg, meta)
     无 Redis 时直接同步创建并返回伪 done。
     """
+    from backend.services.container_expire import default_container_expire_hours
     from backend.services.container_service import container_service
+
+    if expire_hours is None:
+        expire_hours = default_container_expire_hours()
 
     redis = _redis()
     if not redis:
@@ -169,7 +173,7 @@ def enqueue_container_start(challenge, user, team=None, expire_hours: int = 2) -
     }
 
 
-def create_container_queued(challenge, user, team=None, expire_hours: int = 2):
+def create_container_queued(challenge, user, team=None, expire_hours: int | None = None):
     """与 container_service.create_container 同签名；有 Redis 时入队等待结果。"""
     from backend.services.container_service import container_service
     from backend.server.config import settings
@@ -422,11 +426,14 @@ def process_container_start_queue(max_jobs: int = 2) -> int:
                 _write_result(redis, job_id, False, None, "题目或用户不存在", user_id=user_id)
                 _set_status(redis, job_id, "failed", msg="题目或用户不存在", user_id=user_id)
             else:
+                from backend.services.container_expire import default_container_expire_hours
+                raw_hours = payload.get("expire_hours")
+                hours = default_container_expire_hours() if raw_hours is None else int(raw_hours)
                 ok, inst, msg = container_service.create_container(
                     challenge=challenge,
                     user=user,
                     team=team,
-                    expire_hours=int(payload.get("expire_hours") or 2),
+                    expire_hours=hours,
                 )
                 _write_result(
                     redis, job_id, ok,

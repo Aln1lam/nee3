@@ -5,6 +5,39 @@
 
 ---
 
+## 2026-09-21 — NEEPU-SEC 内测问题修复（Wiki / 资料 / 内容管理 / 赛事日历等）
+
+**推送目标仓库：** `https://github.com/Aln1lam/nee3.git`、`origin`  
+**分支：** `main`
+
+### 变更摘要
+
+- **Wiki**：内链改为 `/wiki/{slug}`；启动时 `repair_wiki_internal_links()`；`ArticleView` 支持 slug 与统一响应解包。
+- **个人资料**：`ProfileEdit` 提交用户名；维护模式放行 `/api/auth/profile`、`/me`；`MyProfile` 拉取 `/api/auth/users/:id` 展示参赛/队伍。
+- **内容管理**：管理端列表支持 `search`；分页切换触发加载；`ArticleEdit` 使用 `content`；发布页 Cookie 会话；发布/编辑后失效文章缓存。
+- **赛事与首页**：近期赛事来自 API；国内/国际日历与 agenda 区域一致；外链 agenda 跳转 `/events`；未报名进题目页重定向队伍页；`/competition/:id` 先进概览。
+- **访问**：`/home` 与训练场浏览对未登录用户开放（做题/提交仍须登录）。
+- **容器**：默认存活 1h（`NEEPU_CONTAINER_EXPIRE_HOURS`，上限 4）。
+- **登录**：`allow_registration=false` 时隐藏注册 Tab（管理员在系统设置关闭）。
+
+### 未在本轮实现（需产品确认）
+
+- 比赛页右侧通知栏、全局旋转校徽、跨赛事独立队伍（当前模型为单用户全局 `team_id`）。
+- 系统重置/备份：见 `docs/deploy-single-server.md` 运维章节。
+- 工作台终端：演示用白名单命令，非真实 shell。
+
+### 涉及文件（主要）
+
+- 后端：`platform_admin.py`、`platform_seed.py`、`maintenance_service.py`、`auth.py`、`container_expire.py`、`container_service.py`、`container_start_queue.py`、`challenges.py`、`ctf_api.py`
+- 前端：`ArticleView.vue`、`ArticleEdit.vue`、`ArticleUpload.vue`、`ContentManagement.vue`、`ProfileEdit.vue`、`MyProfile.vue`、`Home.vue`、`Events.vue`、`GameChallenges.vue`、`Auth.vue`、`App.vue`、`router/index.js`、`SystemSettings.vue`
+
+### 验证
+
+- `python -m pytest backend/tests/test_fixes.py -v`（8 passed）
+- `cd frontend && npm run build`
+
+---
+
 ## 2026-09-17 — 项目约定改为本地文档
 
 **推送目标仓库：** `https://github.com/Aln1lam/nee3.git`、`origin`  

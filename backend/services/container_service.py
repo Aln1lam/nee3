@@ -56,7 +56,7 @@ class ContainerService:
         challenge: CtfChallenge,
         user: User,
         team: Optional[Team] = None,
-        expire_hours: int = 2
+        expire_hours: int | None = None
     ) -> Tuple[bool, Optional[CtfGameInstance], str]:
         """
         为用户创建动态容器实例
@@ -76,6 +76,10 @@ class ContainerService:
         
         if not challenge.docker_image:
             return False, None, "Challenge does not have a Docker image configured"
+
+        from backend.services.container_expire import default_container_expire_hours
+        if expire_hours is None:
+            expire_hours = default_container_expire_hours()
 
         from backend.services.instance_quota import check_can_start_new_instance
         ok_quota, quota_msg, existing = check_can_start_new_instance(

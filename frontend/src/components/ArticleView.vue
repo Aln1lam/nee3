@@ -195,8 +195,13 @@ export default {
       fileIsPdf.value = false
 
       try {
-        const res = await axios.get(`/api/articles/${id}`)
-        article.value = res.data
+        const key = String(id)
+        const isNumericId = /^\d+$/.test(key)
+        const res = isNumericId
+          ? await axios.get(`/api/articles/${key}`)
+          : await axios.get(`/api/articles/wiki/${encodeURIComponent(key)}`)
+        const payload = res.data?.data != null && res.data?.code != null ? res.data.data : res.data
+        article.value = payload
 
         if (!article.value.content && article.value.resource_id) {
           try {

@@ -54,7 +54,7 @@
 </template>
 
 <script>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { NCard, NSelect, NButton, NSpace } from 'naive-ui'
 
 function parseRange(s) {
@@ -124,8 +124,23 @@ export default {
     }
 
     async function fetchDomestic() {
-      // placeholder - could hit /api/events in future
-      events.value = []
+      try {
+        const r = await fetch('/api/external/events?region=cn')
+        const json = await r.json()
+        const rows = json?.data?.cn || json?.data || []
+        const list = Array.isArray(rows) ? rows : []
+        events.value = list.map((it, idx) => {
+          const parsed = parseRange(it['比赛时间'] || it.time || it.time_range || '')
+          return Object.assign(
+            { id: it['比赛ID'] || it.id || idx, title: it['比赛名称'] || it.name, time_range: it['比赛时间'] || it.time },
+            it,
+            { _range: parsed, status: it['比赛状态'] || it.status },
+          )
+        })
+      } catch (e) {
+        console.error('fetch domestic failed', e)
+        events.value = []
+      }
     }
 
     async function fetchEvents() {
@@ -137,6 +152,8 @@ export default {
     function nextMonth() { if (month.value === 11) { month.value = 0; year.value++ } else month.value++ }
 
     function openEvent(ev) { window.open(ev['比赛链接'] || ev.link || ev.url || '#') }
+
+    watch(mode, () => { fetchEvents() })
 
     onMounted(()=>{ fetchEvents() })
 

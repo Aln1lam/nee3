@@ -220,6 +220,13 @@ export default {
       if (info) syncFooterFromPlatform(info)
     }
 
+    watch(
+      () => platform.value?.maintenance,
+      (enabled) => {
+        if (!enabled) forceMaintenance.value = false
+      },
+    )
+
     // Debounce session check — every nav used to hit /api/auth/me and felt janky.
     let authCheckTimer = null
     watch(() => route.path, () => {

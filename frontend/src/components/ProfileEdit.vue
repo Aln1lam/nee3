@@ -145,6 +145,9 @@ export default {
         
         // Add text fields
         formData.append('nickname', form.value.nickname)
+        if (form.value.username != null) {
+          formData.append('username', form.value.username)
+        }
         formData.append('full_name', form.value.full_name)
         formData.append('class_name', form.value.class_name)
         formData.append('direction', form.value.direction)
