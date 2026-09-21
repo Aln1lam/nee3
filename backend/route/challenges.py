@@ -76,7 +76,7 @@ def _challenge_supports_container(challenge) -> bool:
         ctype = int(getattr(challenge, "challenge_type", 0) or 0)
     except (TypeError, ValueError):
         ctype = 0
-    return ctype in (1, 3)  # StaticContainer / DynamicContainer
+    return ctype in (1, 3, 4)  # StaticContainer / DynamicContainer / 附件+动态容器
 
 
 def _attach_container_meta(data, challenge):

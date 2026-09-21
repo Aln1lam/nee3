@@ -5,7 +5,6 @@
  * - 比赛写操作 / 分组 / 归档 / 流量：/api/competitions/admin/*
  * - 比赛只读列表：/api/competitions/（管理端展示）
  * - 题目 CRUD：/api/admin/challenges/games/*
- * - 动态附件包：/api/admin/dynamic-packages/*
  * - 作弊 / 首解：/api/admin/*
  * - 队伍：/api/teams/admin
  * - 排行榜（选手端）：/api/ctf/games/{id}/scoreboard*
@@ -18,10 +17,6 @@
  * 统计 / 导出主路径：/api/competitions/admin/{id}/stats 与 export-scoreboard
  */
 import { authFetch } from '@/utils/http'
-import http from '@/services/http'
-
-/** 需上传进度等 axios 特性的管理请求（复用 CSRF / 401/429 拦截） */
-const adminAxios = http
 
 function jsonBody(body) {
   return {
@@ -88,17 +83,6 @@ export const ctfAdmin = {
   uploadChallengeAttachment: (gameId, challengeId, formData) => authFetch(`/api/admin/challenges/games/${gameId}/challenges/${challengeId}/attachments`, { method: 'POST', body: formData }),
   listChallengeCategories: () => authFetch('/api/admin/challenges/categories'),
   adminChallengeListPath: (gameId) => `/api/admin/challenges/games/${gameId}/challenges-list`,
-
-  // —— 动态附件包 ——
-  listDynamicPackages: (challengeId) => authFetch(`/api/admin/dynamic-packages/challenges/${challengeId}/packages`),
-  getDynamicPackageDistribution: (gameId) => authFetch(`/api/admin/dynamic-packages/statistics/package-distribution/${gameId}`),
-  uploadDynamicPackages: (challengeId, formData, onUploadProgress) =>
-    adminAxios.post(`/api/admin/dynamic-packages/challenges/${challengeId}/upload`, formData, { onUploadProgress }),
-  updateDynamicPackage: (packageId, payload) =>
-    authFetch(`/api/admin/dynamic-packages/packages/${packageId}`, { method: 'PUT', ...jsonBody(payload) }),
-  deleteDynamicPackage: (packageId) =>
-    authFetch(`/api/admin/dynamic-packages/packages/${packageId}`, { method: 'DELETE' }),
-
 
   // —— 作弊 ——
   listCheatRecords: (params = 'page=1&per_page=50') => authFetch(`/api/admin/cheat-detection?${params}`),

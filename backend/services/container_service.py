@@ -100,7 +100,7 @@ class ContainerService:
             # 生成唯一的容器名称
             container_name = f"ctf-{challenge.id}-{user.id}-{uuid.uuid4().hex[:8]}"
 
-            is_dynamic_container = int(challenge.challenge_type or 0) == 3
+            is_dynamic_container = int(challenge.challenge_type or 0) in (3, 4)
             # 使用模块顶层 CtfGame，勿在函数内再 import（会遮蔽导致 UnboundLocalError）
             game = CtfGame.query.get(challenge.game_id)
             team_hash_salt = None

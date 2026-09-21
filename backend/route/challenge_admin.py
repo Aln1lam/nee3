@@ -12,6 +12,36 @@ from backend.server.db_models import (
 
 bp = Blueprint("challenge_admin", __name__)
 
+_CONTAINER_TYPES = (1, 3, 4)
+_DYNAMIC_CONTAINER_TYPES = (3, 4)
+
+
+def _normalize_challenge_type(raw):
+    """解析题型；2=动态附件已下线。"""
+    t = int(raw or 0)
+    if t == 2:
+        return None, "动态附件题型已下线，请使用静态附件或容器题"
+    if t not in (0, 1, 3, 4):
+        return None, "无效的题目类型"
+    return t, None
+
+
+def _apply_delivery_mode(challenge, ctype):
+    """纯附件题不能有容器；容器题可额外挂附件（PWN：二进制 + 远程环境）。"""
+    ctype = int(ctype or 0)
+    if ctype in _CONTAINER_TYPES:
+        if ctype == 1:
+            challenge.flag_template = None
+    elif ctype == 0:
+        challenge.docker_image = None
+        challenge.docker_port = 80
+        challenge.cpu_count = 1
+        challenge.memory_limit = 256
+        challenge.storage_limit = 1024
+        challenge.network_mode = "Open"
+        challenge.enable_traffic_capture = False
+        challenge.flag_template = None
+
 
 # ======================== 题目分类管理 ========================
 
@@ -105,30 +135,59 @@ def create_challenge(game_id):
                 return jsonify({"code": 400, "msg": f"缺少必要字段: {field}"}), 400
         if not points_value:
             return jsonify({"code": 400, "msg": "缺少必要字段: 分值"}), 400
-        
+
+        ctype, ctype_err = _normalize_challenge_type(data.get("challenge_type", 0))
+        if ctype_err:
+            return jsonify({"code": 400, "msg": ctype_err}), 400
+
+        flag_template = None
+        if ctype in _DYNAMIC_CONTAINER_TYPES:
+            flag_template = (data.get("flag_template") or "").strip() or None
+            if not flag_template:
+                return jsonify({"code": 400, "msg": "动态容器题须填写 Flag 模板"}), 400
+
+        docker_image = None
+        docker_port = 80
+        cpu_count = 1
+        memory_limit = 256
+        storage_limit = 1024
+        network_mode = "Open"
+        enable_traffic_capture = False
+        if ctype in _CONTAINER_TYPES:
+            docker_image = (data.get("docker_image") or "").strip() or None
+            if not docker_image:
+                return jsonify({"code": 400, "msg": "容器题须填写 Docker 镜像"}), 400
+            docker_port = int(data.get("docker_port", 80)) if data.get("docker_port") else 80
+            cpu_count = int(data.get("cpu_count", 1)) if data.get("cpu_count") else 1
+            memory_limit = int(data.get("memory_limit", 256)) if data.get("memory_limit") else 256
+            storage_limit = int(data.get("storage_limit", 1024)) if data.get("storage_limit") else 1024
+            network_mode = (data.get("network_mode") or "Open").strip() or "Open"
+            enable_traffic_capture = bool(data.get("enable_traffic_capture", False))
+
         challenge = CtfChallenge(
             game_id=game_id,
             title=data.get("title", "").strip(),
             category=data.get("category", "").strip(),
             description=data.get("description", ""),
             flag=data.get("flag", "").strip(),
-            flag_template=data.get("flag_template", "").strip() or None,
+            flag_template=flag_template,
             original_points=int(points_value),
             # 必须使用请求体中的真实衰减配置（仅缺省时才用默认）
             min_score_rate=float(data["min_score_rate"]) if data.get("min_score_rate") is not None and str(data.get("min_score_rate")) != "" else 0.25,
             difficulty=float(data["difficulty"]) if data.get("difficulty") is not None and str(data.get("difficulty")) != "" else 10.0,
-            docker_image=data.get("docker_image") or None,
-            docker_port=int(data.get("docker_port", 80)) if data.get("docker_port") else 80,
-            challenge_type=int(data.get("challenge_type", 0)) if data.get("challenge_type") else 0,
+            docker_image=docker_image,
+            docker_port=docker_port,
+            challenge_type=ctype,
             submission_limit=int(data.get("submission_limit", 0)) if data.get("submission_limit") else 0,
             disable_blood_bonus=bool(data.get("disable_blood_bonus", False)),
-            cpu_count=int(data.get("cpu_count", 1)) if data.get("cpu_count") else 1,
-            memory_limit=int(data.get("memory_limit", 256)) if data.get("memory_limit") else 256,
-            storage_limit=int(data.get("storage_limit", 1024)) if data.get("storage_limit") else 1024,
-            network_mode=(data.get("network_mode") or "Open").strip() or "Open",
-            enable_traffic_capture=bool(data.get("enable_traffic_capture", False)),
+            cpu_count=cpu_count,
+            memory_limit=memory_limit,
+            storage_limit=storage_limit,
+            network_mode=network_mode,
+            enable_traffic_capture=enable_traffic_capture,
             is_enabled=True
         )
+        _apply_delivery_mode(challenge, ctype)
         
         db.session.add(challenge)
         db.session.commit()
@@ -210,9 +269,6 @@ def update_challenge(game_id, challenge_id):
         
         if "flag" in data and data["flag"].strip():
             challenge.flag = data["flag"].strip()
-
-        if "flag_template" in data:
-            challenge.flag_template = data["flag_template"].strip() or None
         
         # 兼容 original_points / points / score
         scoring_changed = False
@@ -239,39 +295,52 @@ def update_challenge(game_id, challenge_id):
         if "category" in data:
             challenge.category = data.get("category", "").strip()
         
-        if "docker_image" in data:
-            challenge.docker_image = data.get("docker_image")
-        
-        if "docker_port" in data:
-            challenge.docker_port = int(data.get("docker_port", 80)) if data.get("docker_port") else 80
-        
         if "challenge_type" in data:
-            challenge.challenge_type = int(data.get("challenge_type", 0)) if data.get("challenge_type") else 0
+            ctype, ctype_err = _normalize_challenge_type(data.get("challenge_type", 0))
+            if ctype_err:
+                return jsonify({"code": 400, "msg": ctype_err}), 400
+            challenge.challenge_type = ctype
+
+        ctype = int(challenge.challenge_type or 0)
+
+        if ctype in _CONTAINER_TYPES:
+            if "docker_image" in data:
+                challenge.docker_image = (data.get("docker_image") or "").strip() or None
+            if not (challenge.docker_image or "").strip():
+                return jsonify({"code": 400, "msg": "容器题须填写 Docker 镜像"}), 400
+            if "docker_port" in data:
+                challenge.docker_port = int(data.get("docker_port", 80)) if data.get("docker_port") else 80
+            if "cpu_count" in data:
+                challenge.cpu_count = int(data.get("cpu_count", 1)) if data.get("cpu_count") else 1
+            if "memory_limit" in data:
+                challenge.memory_limit = int(data.get("memory_limit", 256)) if data.get("memory_limit") else 256
+            if "storage_limit" in data:
+                challenge.storage_limit = int(data.get("storage_limit", 1024)) if data.get("storage_limit") else 1024
+            if "network_mode" in data:
+                challenge.network_mode = (data.get("network_mode") or "Open").strip() or "Open"
+            if "enable_traffic_capture" in data:
+                val = data.get("enable_traffic_capture")
+                if isinstance(val, str):
+                    challenge.enable_traffic_capture = val.strip().lower() in ("1", "true", "yes", "on")
+                else:
+                    challenge.enable_traffic_capture = bool(val)
+            if ctype in _DYNAMIC_CONTAINER_TYPES and "flag_template" in data:
+                challenge.flag_template = (data.get("flag_template") or "").strip() or None
+                if not challenge.flag_template:
+                    return jsonify({"code": 400, "msg": "动态容器题须填写 Flag 模板"}), 400
+            if ctype in _DYNAMIC_CONTAINER_TYPES and not (challenge.flag_template or "").strip():
+                return jsonify({"code": 400, "msg": "动态容器题须填写 Flag 模板"}), 400
+        elif ctype == 0:
+            # 静态附件题：忽略误传的容器字段
+            pass
+
+        _apply_delivery_mode(challenge, ctype)
         
         if "submission_limit" in data:
             challenge.submission_limit = int(data.get("submission_limit", 0)) if data.get("submission_limit") else 0
         
         if "disable_blood_bonus" in data:
             challenge.disable_blood_bonus = bool(data.get("disable_blood_bonus", False))
-        
-        if "cpu_count" in data:
-            challenge.cpu_count = int(data.get("cpu_count", 1)) if data.get("cpu_count") else 1
-        
-        if "memory_limit" in data:
-            challenge.memory_limit = int(data.get("memory_limit", 256)) if data.get("memory_limit") else 256
-
-        if "storage_limit" in data:
-            challenge.storage_limit = int(data.get("storage_limit", 1024)) if data.get("storage_limit") else 1024
-
-        if "network_mode" in data:
-            challenge.network_mode = (data.get("network_mode") or "Open").strip() or "Open"
-
-        if "enable_traffic_capture" in data:
-            val = data.get("enable_traffic_capture")
-            if isinstance(val, str):
-                challenge.enable_traffic_capture = val.strip().lower() in ("1", "true", "yes", "on")
-            else:
-                challenge.enable_traffic_capture = bool(val)
         
         if "is_enabled" in data:
             challenge.is_enabled = bool(data.get("is_enabled", True))
@@ -429,6 +498,12 @@ def upload_challenge_attachment(game_id, challenge_id):
         ).first()
         if not challenge:
             return jsonify({"code": 404, "msg": "题目不存在"}), 404
+
+        ctype = int(challenge.challenge_type or 0)
+        if ctype == 2:
+            return jsonify({"code": 400, "msg": "动态附件题型已下线"}), 400
+        if ctype not in (0, *_CONTAINER_TYPES):
+            return jsonify({"code": 400, "msg": "当前题型不支持题目附件"}), 400
         
         # 获取上传的文件
         if 'file' not in request.files:

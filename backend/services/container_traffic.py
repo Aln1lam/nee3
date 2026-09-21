@@ -21,7 +21,7 @@ def maybe_start_traffic_capture(
     team: Optional[Team] = None,
 ) -> bool:
     """动态容器 + 比赛开启流量捕获时，启动 TCP 代理并写 PCAP。"""
-    is_dynamic_container = int(challenge.challenge_type or 0) == 3
+    is_dynamic_container = int(challenge.challenge_type or 0) in (3, 4)
     if not is_dynamic_container or not instance.port:
         return False
 

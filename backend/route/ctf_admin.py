@@ -217,7 +217,7 @@ def create_challenge(game_id):
     )
     
     # 处理容器配置
-    if challenge_type in [1, 3]:
+    if challenge_type in [1, 3, 4]:
         challenge.docker_image = request.form.get('docker_image')
         challenge.docker_port = int(request.form.get('docker_port', 80))
         challenge.memory_limit = int(request.form.get('memory_limit', 256))

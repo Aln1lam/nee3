@@ -5,6 +5,24 @@
 
 ---
 
+## 2026-09-21 — 题型 4（附件+动态容器）、移除动态附件包、题目交付校验
+
+**推送目标仓库：** `https://github.com/Aln1lam/nee3.git`、`origin`  
+**分支：** `main`
+
+### 变更摘要
+
+- **管理端题型：** 新增 `challenge_type=4`「附件 + 动态容器（PWN）」；静态附件与容器互斥校验（纯附件题不带 Docker；容器题可挂附件）。
+- **下线动态附件：** 拒绝 `type=2`；删除 `DynamicPackageManager` 与 dynamic-packages 前端 API。
+- **后端：** `challenge_admin` 创建/更新/上传附件校验；容器链路识别 type 4。
+- **脚本：** `backend/scripts/test_challenge_type4.py` 冒烟（登录、type4 CRUD、附件、列表、启容器等）。
+
+### 验证
+
+- `python backend/scripts/test_challenge_type4.py`（需本地 Flask + MySQL；启容器项需 Docker 可用）
+
+---
+
 ## 2026-09-21 — 赛内通知、校徽、按赛队伍、首页推荐赛
 
 **推送目标仓库：** `https://github.com/Aln1lam/nee3.git`、`origin`  

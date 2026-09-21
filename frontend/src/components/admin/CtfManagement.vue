@@ -428,8 +428,8 @@
                 <select v-model.number="challengeForm.challenge_type" class="form-input">
                   <option :value="0">静态附件 (所有队相同答案)</option>
                   <option :value="1">静态容器 (共享容器)</option>
-                  <option :value="2">动态附件 (每队不同答案)</option>
-                  <option :value="3">动态容器 (每队独立容器)</option>
+                  <option :value="3">动态容器 (每队独立，无附件)</option>
+                  <option :value="4">附件 + 动态容器 (PWN：下发文件 + 远程环境)</option>
                 </select>
               </div>
               <div class="form-group">
@@ -438,15 +438,15 @@
               </div>
             </div>
 
-            <!-- 动态 Flag 模板（动态附件 / 动态容器） -->
-            <div v-if="[2, 3].includes(challengeForm.challenge_type)" class="form-group">
+            <!-- 动态 Flag 模板（动态容器） -->
+            <div v-if="isDynamicContainerChallengeType(challengeForm.challenge_type)" class="form-group">
               <label>动态 Flag 模板 *</label>
               <input v-model="challengeForm.flag_template" type="text" placeholder="flag{{{team_hash}}}" class="form-input">
               <small class="form-hint">动态题必填；静态 Flag 字段可作为兜底答案。</small>
             </div>
 
             <!-- 容器相关配置 -->
-            <div v-if="[1, 3].includes(challengeForm.challenge_type)" class="container-config">
+            <div v-if="isContainerChallengeType(challengeForm.challenge_type)" class="container-config">
               <h4 class="docker-heading"><DockerWhaleIcon class="docker-heading-ico" /> 容器配置</h4>
               <div class="form-row">
                 <div class="form-group">
@@ -490,11 +490,14 @@
               </div>
             </div>
 
-            <!-- 附件上传：静态/动态附件题 -->
-            <div v-if="[0, 2].includes(challengeForm.challenge_type)" class="attachment-section">
-              <h4>题目附件</h4>
+            <!-- 附件：静态附件题必填场景；容器题可选（PWN 本地二进制 + 远程 Docker） -->
+            <div v-if="showChallengeAttachmentSection(challengeForm.challenge_type)" class="attachment-section">
+              <h4>题目附件<span v-if="challengeForm.challenge_type === 4" class="form-hint"> *（此题型需上传附件）</span></h4>
               <div class="form-group">
-                <label>上传题目附件（单文件，建议 &lt; 20MB）</label>
+                <label>
+                  上传题目附件（单文件，建议 &lt; 20MB）
+                  <span v-if="challengeForm.challenge_type === 1" class="form-hint"> — 可选</span>
+                </label>
                 <div class="file-upload-box">
                   <input 
                     type="file" 
@@ -682,16 +685,9 @@
       </div>
     </div>
 
-    <!-- 动态附件包 -->
     <div v-show="activeTab === 'traffic'" class="tab-content">
       <div class="card">
         <TrafficCapturePanel :game-id-prop="selectedGameId || null" />
-      </div>
-    </div>
-
-    <div v-show="activeTab === 'packages'" class="tab-content">
-      <div class="card">
-        <DynamicPackageManager :game-id="selectedGameId || null" />
       </div>
     </div>
 
@@ -782,7 +778,6 @@
 </template>
 <script>
 import { getUser } from '@/services/auth'
-import DynamicPackageManager from './DynamicPackageManager.vue'
 import TrafficCapturePanel from './TrafficCapturePanel.vue'
 import { useMessage } from 'naive-ui'
 import { apiErrorFromPayload } from '@/utils/apiError'
@@ -796,7 +791,6 @@ export default {
   name: 'CtfManagement',
   components: {
     DockerWhaleIcon,
-    DynamicPackageManager,
     TrafficCapturePanel,
   },
   setup() {
@@ -816,7 +810,7 @@ export default {
   data() {
     return {
       activeTab: 'games',
-      allTabs: ['games', 'challenges', 'packages', 'traffic', 'cheat', 'scoreboard', 'teams'],
+      allTabs: ['games', 'challenges', 'traffic', 'cheat', 'scoreboard', 'teams'],
       gameTypeFilter: '',
       showEphemeral: false,
       games: [],
@@ -911,14 +905,26 @@ export default {
       this.loadScoreboard(newVal);
       this.loadGameStats(newVal);
     },
+    'challengeForm.challenge_type'(t) {
+      this.onChallengeTypeChange(t);
+    },
   },
 
   methods: {
+    isContainerChallengeType(t) {
+      return [1, 3, 4].includes(Number(t));
+    },
+    isDynamicContainerChallengeType(t) {
+      return [3, 4].includes(Number(t));
+    },
+    showChallengeAttachmentSection(t) {
+      return [0, 1, 3, 4].includes(Number(t));
+    },
+
     getTabCode(tab) {
       const codes = {
         games: 'GMS',
         challenges: 'CHL',
-        packages: 'PKG',
         traffic: 'TRF',
         cheat: 'CHT',
         scoreboard: 'SCR',
@@ -933,7 +939,6 @@ export default {
         cheat: '作弊检测',
         scoreboard: '排行榜',
         traffic: '流量捕获',
-        packages: '动态附件包',
         teams: '队伍管理',
       };
       return labels[tab] || tab;
@@ -1407,6 +1412,22 @@ export default {
       }
     },
 
+    onChallengeTypeChange(t) {
+      const type = Number(t);
+      if (type === 0) {
+        this.challengeForm.docker_image = '';
+        this.challengeForm.docker_port = 80;
+        this.challengeForm.memory_limit = 256;
+        this.challengeForm.cpu_count = 1;
+        this.challengeForm.storage_limit = 1024;
+        this.challengeForm.network_mode = 'Open';
+        this.challengeForm.enable_traffic_capture = false;
+        this.challengeForm.flag_template = '';
+      } else if (this.isContainerChallengeType(type)) {
+        if (type === 1) this.challengeForm.flag_template = '';
+      }
+    },
+
     handleFileUpload(e) {
       const f = e.target.files && e.target.files[0];
       if (f) this.challengeForm.attachment_file = f;
@@ -1437,32 +1458,46 @@ export default {
           this.message.warning('请填写题目名称与分类');
           return;
         }
-        if (!String(this.challengeForm.flag || '').trim() && ![2, 3].includes(t)) {
+        if (!String(this.challengeForm.flag || '').trim() && !this.isDynamicContainerChallengeType(t)) {
           this.message.warning('请填写 Flag 答案');
           return;
         }
-        if ([1, 3].includes(t) && !String(this.challengeForm.docker_image || '').trim()) {
+        if (this.isContainerChallengeType(t) && t !== 0 && !String(this.challengeForm.docker_image || '').trim()) {
           this.message.warning('容器题必须填写 Docker 镜像');
           return;
         }
-        if ([2, 3].includes(t) && !String(this.challengeForm.flag_template || '').trim()) {
-          this.message.warning('动态题必须填写 Flag 模板');
+        if (this.isDynamicContainerChallengeType(t) && !String(this.challengeForm.flag_template || '').trim()) {
+          this.message.warning('动态容器题必须填写 Flag 模板');
           return;
+        }
+        if (t === 4 && !this.challengeForm.attachment_file && !this.challengeForm.attachment_meta) {
+          this.message.warning('「附件 + 动态容器」建议上传题目附件；未上传时选手端仅显示容器环境');
         }
         if (this.challengeForm.attachment_file && this.challengeForm.attachment_file.size > 20 * 1024 * 1024) {
           this.message.warning('附件过大（上限约 20MB）');
           return;
         }
 
-        const fields = [
-          'title', 'category', 'flag', 'flag_template',
-          'description', 'challenge_type', 'submission_limit', 'docker_image', 'docker_port',
-          'memory_limit', 'cpu_count', 'storage_limit', 'network_mode',
+        const commonFields = [
+          'title', 'category', 'flag', 'description', 'challenge_type', 'submission_limit',
         ];
         const payload = {};
-        for (const k of fields) {
+        for (const k of commonFields) {
           if (this.challengeForm[k] !== undefined && this.challengeForm[k] !== null && this.challengeForm[k] !== '') {
             payload[k] = this.challengeForm[k];
+          }
+        }
+        if (this.isDynamicContainerChallengeType(t)) {
+          payload.flag_template = this.challengeForm.flag_template;
+        }
+        if (this.isContainerChallengeType(t) && t !== 0) {
+          const dockerFields = [
+            'docker_image', 'docker_port', 'memory_limit', 'cpu_count', 'storage_limit', 'network_mode',
+          ];
+          for (const k of dockerFields) {
+            if (this.challengeForm[k] !== undefined && this.challengeForm[k] !== null && this.challengeForm[k] !== '') {
+              payload[k] = this.challengeForm[k];
+            }
           }
         }
         // 衰减三件套必须真实提交（禁止因空串判定被静默丢弃）
@@ -1510,7 +1545,7 @@ export default {
         }
 
         if (this.challengeForm.attachment_file) {
-          if (![0, 2].includes(t)) {
+          if (!this.showChallengeAttachmentSection(t)) {
             this.message.warning('当前题型不支持附件，已跳过上传');
           } else {
             const form = new FormData();
@@ -1570,6 +1605,14 @@ export default {
         if (res.ok) {
           const d = await res.json();
           const c = d.data || {};
+          let ctype = Number(c.challenge_type || 0);
+          if (ctype === 2) {
+            ctype = 0;
+            this.message.warning('该题为已下线的「动态附件」类型，请确认后保存为静态附件或其它题型');
+          }
+          if (ctype === 3 && (c.attachment_id || c.attachment)) {
+            ctype = 4;
+          }
           this.challengeForm = Object.assign(this.getEmptyChallengeForms(), {
             title: c.title || '',
             category: c.category || '',
@@ -1579,7 +1622,7 @@ export default {
             flag: c.flag || '',
             flag_template: c.flag_template || '',
             description: c.description || '',
-            challenge_type: c.challenge_type || 0,
+            challenge_type: ctype,
             submission_limit: c.submission_limit || 0,
             docker_image: c.docker_image || '',
             docker_port: c.docker_port || 80,
@@ -1804,8 +1847,8 @@ export default {
       const map = {
         0: '静态附件',
         1: '静态容器',
-        2: '动态附件',
-        3: '动态容器'
+        3: '动态容器',
+        4: '附件+动态容器',
       };
       return map[type] || '未知类型';
     },

@@ -109,7 +109,7 @@
               </div>
               <Article :content="descriptionContent" class="brief-desc" />
 
-              <!-- 附件题：仅下载附件（challenge_type 0/2） -->
+              <!-- 附件：静态附件题或容器题挂了 attachment_id（如 PWN binary） -->
               <div v-if="showAttachmentBar" class="challenge-actions-bar">
                 <a
                   v-if="attachmentUrl"
@@ -351,8 +351,8 @@ export default {
       const map = {
         0: '静态附件',
         1: '静态容器',
-        2: '动态附件',
         3: '动态容器',
+        4: '附件+动态容器',
       }
       return map[challengeTypeNum.value] ?? '静态题'
     })
@@ -414,7 +414,7 @@ export default {
 
     const writeupContent = computed(() => selectedChallenge.value?.writeup || '')
 
-    /** 管理端题目类型：0 静态附件 / 1 静态容器 / 2 动态附件 / 3 动态容器 */
+    /** 管理端题目类型：0 静态附件 / 1 静态容器 / 3 动态容器 / 4 附件+动态容器 */
     const challengeTypeNum = computed(() => {
       const t = selectedChallenge.value?.challenge_type
       const n = Number(t)
@@ -426,7 +426,7 @@ export default {
       if (!ch) return false
       const ctype = challengeTypeNum.value
       // 严格按管理端类型：1=静态容器 3=动态容器
-      if (ctype === 1 || ctype === 3) return true
+      if (ctype === 1 || ctype === 3 || ctype === 4) return true
       // 兼容：明确声明支持容器且带镜像
       if ((ch.supports_container === true || ch.needs_container === true) && ch.docker_image) return true
       if (ch.docker_image && ctype !== 0 && ctype !== 2) return true

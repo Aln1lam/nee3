@@ -849,7 +849,11 @@ def start_container_instance(challenge_id):
         return error_response("Challenge not found", 404)
 
     # 检查是否支持容器
-    if challenge.challenge_type not in [ChallengeCType.STATIC_CONTAINER, ChallengeCType.DYNAMIC_CONTAINER]:
+    if challenge.challenge_type not in [
+        ChallengeCType.STATIC_CONTAINER,
+        ChallengeCType.DYNAMIC_CONTAINER,
+        ChallengeCType.DYNAMIC_CONTAINER_ATTACHMENT,
+    ]:
         return error_response("Challenge does not support containers", 400)
 
     user = User.query.get(user_id)

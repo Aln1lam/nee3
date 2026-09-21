@@ -612,7 +612,7 @@ class CtfChallenge(db.Model):
     memory_limit = db.Column(db.Integer, default=256)  # MB
     storage_limit = db.Column(db.Integer, default=1024)  # MB
     network_mode = db.Column(db.String(32), default="Open")  # Open, Isolated, Custom
-    challenge_type = db.Column(db.Integer, default=0)  # 0=StaticAttachment, 1=StaticContainer, 2=DynamicAttachment, 3=DynamicContainer
+    challenge_type = db.Column(db.Integer, default=0)  # 0=StaticAttachment, 1=StaticContainer, 2=DynamicAttachment(下线), 3=DynamicContainer, 4=DynamicContainer+Attachment
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 

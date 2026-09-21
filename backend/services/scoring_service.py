@@ -37,6 +37,27 @@ class ChallengeCType(IntEnum):
     STATIC_CONTAINER = 0b01        # 所有队伍共享容器
     DYNAMIC_ATTACHMENT = 0b10      # 动态答案，使用文件
     DYNAMIC_CONTAINER = 0b11       # 每队独立容器和动态答案
+    DYNAMIC_CONTAINER_ATTACHMENT = 4  # 动态容器 + 题目附件（PWN 等）
+
+
+def is_container_challenge_type(challenge_type) -> bool:
+    try:
+        t = int(challenge_type or 0)
+    except (TypeError, ValueError):
+        return False
+    return t in (
+        ChallengeCType.STATIC_CONTAINER,
+        ChallengeCType.DYNAMIC_CONTAINER,
+        ChallengeCType.DYNAMIC_CONTAINER_ATTACHMENT,
+    )
+
+
+def is_dynamic_container_challenge_type(challenge_type) -> bool:
+    try:
+        t = int(challenge_type or 0)
+    except (TypeError, ValueError):
+        return False
+    return t in (ChallengeCType.DYNAMIC_CONTAINER, ChallengeCType.DYNAMIC_CONTAINER_ATTACHMENT)
 
 
 class AnswerResult(IntEnum):
